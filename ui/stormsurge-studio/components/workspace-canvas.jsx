@@ -255,11 +255,11 @@ export function WorkspaceCanvas({
               Hierarchy
             </Typography>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Drag within the tree
+              Edit the tree
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 640 }}>
-              Drag handles reorder sibling nodes. Promote and demote from the inspector
-              to reshape parent-child relationships.
+              Reorder sibling nodes by drag handle, or use the inspector to change
+              parent-child relationships.
             </Typography>
           </Box>
 
