@@ -1,0 +1,443 @@
+{
+  "stage": "stage1_section_tree",
+  "filename": "STRATA_TO1_PWS.docx",
+  "source_kind": "normalized_markdown",
+  "sections": [
+    {
+      "section_number": "1",
+      "section_title": "(U) Purpose",
+      "parent_section_number": null,
+      "depth": 1,
+      "source_order": 44,
+      "source_page": null,
+      "heading_text_exact": "1 (U) Purpose",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "2",
+      "section_title": "(U) Scope",
+      "parent_section_number": null,
+      "depth": 1,
+      "source_order": 46,
+      "source_page": null,
+      "heading_text_exact": "2 (U) Scope",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3",
+      "section_title": "(U) Performance Objectives",
+      "parent_section_number": null,
+      "depth": 1,
+      "source_order": 52,
+      "source_page": null,
+      "heading_text_exact": "3 (U) Performance Objectives",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3.1",
+      "section_title": "(U) Operation and Sustainment",
+      "parent_section_number": "3",
+      "depth": 2,
+      "source_order": 55,
+      "source_page": null,
+      "heading_text_exact": "3.1 (U) Operation and Sustainment",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3.1.1",
+      "section_title": "(U) Map Stack",
+      "parent_section_number": "3.1",
+      "depth": 3,
+      "source_order": 77,
+      "source_page": null,
+      "heading_text_exact": "3.1.1 (U) Map Stack",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3.1.2",
+      "section_title": "(U) IC GIS Portal",
+      "parent_section_number": "3.1",
+      "depth": 3,
+      "source_order": 91,
+      "source_page": null,
+      "heading_text_exact": "3.1.2 (U) IC GIS Portal",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3.1.3",
+      "section_title": "(U) Google Earth",
+      "parent_section_number": "3.1",
+      "depth": 3,
+      "source_order": 96,
+      "source_page": null,
+      "heading_text_exact": "3.1.3 (U) Google Earth",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3.1.4",
+      "section_title": "(U) SOM Discovery",
+      "parent_section_number": "3.1",
+      "depth": 3,
+      "source_order": 100,
+      "source_page": null,
+      "heading_text_exact": "3.1.4 (U) SOM Discovery",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3.1.5",
+      "section_title": "(U) Untied States Forces Korea (USFK)",
+      "parent_section_number": "3.1",
+      "depth": 3,
+      "source_order": 102,
+      "source_page": null,
+      "heading_text_exact": "3.1.5 (U) Untied States Forces Korea (USFK)",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3.1.6",
+      "section_title": "(U) LSeg Sensor",
+      "parent_section_number": "3.1",
+      "depth": 3,
+      "source_order": 112,
+      "source_page": null,
+      "heading_text_exact": "3.1.6 (U) LSeg Sensor",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3.1.7",
+      "section_title": "(U) NSeg Sensor",
+      "parent_section_number": "3.1",
+      "depth": 3,
+      "source_order": 115,
+      "source_page": null,
+      "heading_text_exact": "3.1.7 (U) NSeg Sensor",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3.2",
+      "section_title": "(U) Integration and Visualization",
+      "parent_section_number": "3",
+      "depth": 2,
+      "source_order": 117,
+      "source_page": null,
+      "heading_text_exact": "3.2 (U) Integration and Visualization",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3.2.1",
+      "section_title": "(U) New Capabilities and Modernization",
+      "parent_section_number": "3.2",
+      "depth": 3,
+      "source_order": 128,
+      "source_page": null,
+      "heading_text_exact": "3.2.1 (U) New Capabilities and Modernization",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3.2.2",
+      "section_title": "(U) New LSeg Sensor Data Integration, Visualization, and Analytics",
+      "parent_section_number": "3.2",
+      "depth": 3,
+      "source_order": 134,
+      "source_page": null,
+      "heading_text_exact": "3.2.2 (U) New LSeg Sensor Data Integration, Visualization, and Analytics",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3.2.3",
+      "section_title": "(U) New NSeg Sensor Data Integration and Visualization",
+      "parent_section_number": "3.2",
+      "depth": 3,
+      "source_order": 137,
+      "source_page": null,
+      "heading_text_exact": "3.2.3 (U) New NSeg Sensor Data Integration and Visualization",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3.3",
+      "section_title": "(U) Test and Evaluation (T&amp;E)",
+      "parent_section_number": "3",
+      "depth": 2,
+      "source_order": 140,
+      "source_page": null,
+      "heading_text_exact": "3.3 (U) Test and Evaluation (T&amp;E)",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "3.4",
+      "section_title": "(U) Program and Contract Management",
+      "parent_section_number": "3",
+      "depth": 2,
+      "source_order": 149,
+      "source_page": null,
+      "heading_text_exact": "3.4 (U) Program and Contract Management",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "4",
+      "section_title": "(U) Performance Requirements Summary (PRS)",
+      "parent_section_number": null,
+      "depth": 1,
+      "source_order": 151,
+      "source_page": null,
+      "heading_text_exact": "4 (U) Performance Requirements Summary (PRS)",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "5",
+      "section_title": "(U) Constraints",
+      "parent_section_number": null,
+      "depth": 1,
+      "source_order": 153,
+      "source_page": null,
+      "heading_text_exact": "5 (U) Constraints",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "6",
+      "section_title": "(U) Administrative and General Information",
+      "parent_section_number": null,
+      "depth": 1,
+      "source_order": 155,
+      "source_page": null,
+      "heading_text_exact": "6 (U) Administrative and General Information",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "6.1",
+      "section_title": "(U) Period of Performance",
+      "parent_section_number": "6",
+      "depth": 2,
+      "source_order": 156,
+      "source_page": null,
+      "heading_text_exact": "6.1 (U) Period of Performance",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "6.2",
+      "section_title": "(U) Place of Performance",
+      "parent_section_number": "6",
+      "depth": 2,
+      "source_order": 158,
+      "source_page": null,
+      "heading_text_exact": "6.2 (U) Place of Performance",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "6.3",
+      "section_title": "(U) Other Administrative and General Information",
+      "parent_section_number": "6",
+      "depth": 2,
+      "source_order": 161,
+      "source_page": null,
+      "heading_text_exact": "6.3 (U) Other Administrative and General Information",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "7",
+      "section_title": "(U) Government Furnished Equipment / Information (GFE/I)",
+      "parent_section_number": null,
+      "depth": 1,
+      "source_order": 163,
+      "source_page": null,
+      "heading_text_exact": "7 (U) Government Furnished Equipment / Information (GFE/I)",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "8",
+      "section_title": "(U) Deliverables",
+      "parent_section_number": null,
+      "depth": 1,
+      "source_order": 165,
+      "source_page": null,
+      "heading_text_exact": "8 (U) Deliverables",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    },
+    {
+      "section_number": "9",
+      "section_title": "(U) Acronyms",
+      "parent_section_number": null,
+      "depth": 1,
+      "source_order": 192,
+      "source_page": null,
+      "heading_text_exact": "9 (U) Acronyms",
+      "tree_kind": "MAIN",
+      "detection_method": "numbered_pattern"
+    }
+  ],
+  "audit": {
+    "input_block_count": 195,
+    "accepted_section_count": 26,
+    "rejected_candidate_count": 169,
+    "parent_warning_count": 0,
+    "parent_warnings": [],
+    "rejected_candidates_preview": [
+      {
+        "source_order": 0,
+        "text_exact": "<!-- image -->",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 1,
+        "text_exact": "**(U) Strata Task Order #1**",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 2,
+        "text_exact": "**Performance Work Statement (PWS)**",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 3,
+        "text_exact": "**June 15, 2023**",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 4,
+        "text_exact": "Table of Contents",
+        "reason": "toc_heading"
+      },
+      {
+        "source_order": 5,
+        "text_exact": "[1\t(U) Purpose\t3](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 6,
+        "text_exact": "[2\t(U) Scope\t3](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 7,
+        "text_exact": "[3\t(U) Performance Objectives\t3](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 8,
+        "text_exact": "[3.1\t(U) Operation and Sustainment\t3](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 9,
+        "text_exact": "[3.1.1\t(U) Map Stack\t5](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 10,
+        "text_exact": "[3.1.2\t(U) IC GIS Portal\t6](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 11,
+        "text_exact": "[3.1.3\t(U) Google Earth\t7](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 12,
+        "text_exact": "[3.1.4\t(U) SOM Discovery\t7](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 13,
+        "text_exact": "[3.1.5\t(U) Untied States Forces Korea (USFK)\t7](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 14,
+        "text_exact": "[3.1.6\t(U) LSeg Sensor\t8](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 15,
+        "text_exact": "[3.1.7\t(U) NSeg Sensor\t8](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 16,
+        "text_exact": "[3.2\t(U) Integration and Visualization\t8](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 17,
+        "text_exact": "[3.2.1\t(U) New Capabilities and Modernization\t9](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 18,
+        "text_exact": "[3.2.2\t(U) New LSeg Sensor Data Integration, Visualization, and Analytics\t9](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 19,
+        "text_exact": "[3.2.3\t(U) New NSeg Sensor Data Integration and Visualization\t10](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 20,
+        "text_exact": "[3.3\t(U) Test and Evaluation (T&amp;E)\t10](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 21,
+        "text_exact": "[3.4\t(U) Program and Contract Management\t10](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 22,
+        "text_exact": "[4\t(U) Performance Requirements Summary (PRS)\t10](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 23,
+        "text_exact": "[5\t(U) Constraints\t11](.)",
+        "reason": "no_heading_match"
+      },
+      {
+        "source_order": 24,
+        "text_exact": "[6\t(U) Administrative and General Information\t11](.)",
+        "reason": "no_heading_match"
+      }
+    ],
+    "candidate_sources": [
+      {
+        "source_kind": "docling_structured_document",
+        "accepted_section_count": 9,
+        "parent_warning_count": 0
+      },
+      {
+        "source_kind": "normalized_markdown",
+        "accepted_section_count": 26,
+        "parent_warning_count": 0
+      }
+    ]
+  },
+  "comparison": {
+    "existing_pws_extract_section_count": 119,
+    "existing_parse_mode": "hybrid_markdown_fill"
+  }
+}

@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+:root {
+  --app-canvas: #eef3f8;
+  --shell: #f8fbff;
+  --panel: #ffffff;
+  --panel-muted: #f5f8fc;
+  --panel-strong: #eaf0f7;
+  --ink: #0f172a;
+  --ink-soft: #5b677a;
+  --line: #d4deea;
+  --line-strong: #b8c6d8;
+  --accent: #0a66e8;
+  --accent-soft: #e0ecff;
+  --success: #0f7b47;
+  --success-soft: #e4f7eb;
+  --warning: #b85a00;
+  --warning-soft: #fff0de;
+  --danger: #c22828;
+  --danger-soft: #fde8e8;
+  --ring: rgba(10, 102, 232, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app-canvas: #0d1420;
+    --shell: #111a29;
+    --panel: #162131;
+    --panel-muted: #121b2b;
+    --panel-strong: #1e2b3f;
+    --ink: #e8eef8;
+    --ink-soft: #9dacbe;
+    --line: #2b3950;
+    --line-strong: #40516d;
+    --accent: #66a5ff;
+    --accent-soft: rgba(102, 165, 255, 0.14);
+    --success: #6ce9b8;
+    --success-soft: rgba(15, 123, 71, 0.24);
+    --warning: #ffb86a;
+    --warning-soft: rgba(184, 90, 0, 0.2);
+    --danger: #ff7b7b;
+    --danger-soft: rgba(194, 40, 40, 0.18);
+    --ring: rgba(102, 165, 255, 0.26);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--app-canvas);
+  color: var(--ink);
+}
+
+body {
+  font-family: "Aptos", "Segoe UI Variable Text", "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.01em;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: var(--accent-soft);
+}

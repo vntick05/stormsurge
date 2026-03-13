@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Perfect RFP Package Inventory</title>
+  <style>
+    body {
+      font-family: Georgia, "Times New Roman", serif;
+      margin: 0;
+      background: #f4efe6;
+      color: #1e293b;
+    }
+    main {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px 40px;
+    }
+    section {
+      background: #fffdf8;
+      border: 1px solid #ddd2bf;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+    }
+    h1, h2 {
+      margin-top: 0;
+    }
+    a {
+      color: #0b6e4f;
+    }
+    code {
+      background: #f2ecdf;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+    ul {
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section>
+      <h1>RFP Package Inventory</h1>
+      <p>This page shows where your ingested package lives in the current stack.</p>
+    </section>
+
+    <section>
+      <h2>Best Browser Views</h2>
+      <ul>
+        <li><a href="http://192.168.1.236:9001" target="_blank" rel="noreferrer">MinIO Console</a>:
+          originals and normalized artifacts are stored here.</li>
+        <li><a href="http://192.168.1.236:8020/downloads.html" target="_blank" rel="noreferrer">Local Downloads Page</a>:
+          generated CSV and summary files.</li>
+        <li><a href="http://192.168.1.236:8081/healthz" target="_blank" rel="noreferrer">Document Service Health</a></li>
+        <li><a href="http://192.168.1.236:8091/healthz" target="_blank" rel="noreferrer">Normalization Service Health</a></li>
+        <li><a href="http://192.168.1.236:8381/healthz" target="_blank" rel="noreferrer">Retrieval Service Health</a></li>
+        <li><a href="http://192.168.1.236:8092/healthz" target="_blank" rel="noreferrer">Analysis Service Health</a></li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Where The Files Are</h2>
+      <ul>
+        <li>Local package folder: <code>/home/admin/perfect-rfp-trt/data/rfps/starting-test-set</code></li>
+        <li>Original uploaded objects: MinIO bucket <code>raw</code></li>
+        <li>Normalized markdown and JSON: MinIO bucket <code>normalized</code></li>
+        <li>Metadata, sections, requirements, and tables: Postgres</li>
+      </ul>
+      <p>There is not currently a Postgres web UI in the stack.</p>
+    </section>
+
+    <section>
+      <h2>Current Package Files</h2>
+      <ul>
+        <li>HM047623R0012.pdf</li>
+        <li>L-1 OCI Disclosure Form.docx</li>
+        <li>L-10 Prposal Pricing Template.xlsx</li>
+        <li>L-2 BOE (without cost_price).xlsx</li>
+        <li>L-3 Key Personnel Resume Template.docx</li>
+        <li>L-4 Small Business Participation Template.xlsx</li>
+        <li>L-5_Master Project Template.xlsx</li>
+        <li>L-6 Past Performance Questionnaire.docx</li>
+        <li>L-7 Intellectual Property Schedule.docx</li>
+        <li>L-8 Facility Security Clearance Level Template.docx</li>
+        <li>L-9 Personnel Security Clearance Template.docx</li>
+        <li>STRATA_TO1_PWS.docx</li>
+        <li>STRATA_TO1_PWS_Appendix_A_Map_Stack_v6.docx</li>
+        <li>STRATA_TO1_PWS_Appendix_B_IC_GIS_v6.docx</li>
+        <li>STRATA_TO1_PWS_Appendix_C_3D_Globe_v5.docx</li>
+        <li>STRATA_TO1_PWS_Appendix_D_Queries_v3.docx</li>
+        <li>STRATA_TO1_PWS_Appendix_E_Sensor_Integration_v6.docx</li>
+        <li>STRATA_TO1_PWS_Appendix_F_Milestone_Roadmap v3.docx</li>
+        <li>STRATA_TO1_PWS_Appendix_G_Acronyms_Unclassifed_v3.docx</li>
+        <li>Section L.docx</li>
+        <li>Section M.docx</li>
+        <li>Strata Base IDIQ PWS.docx</li>
+        <li>Strata-CDRLS.docx</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

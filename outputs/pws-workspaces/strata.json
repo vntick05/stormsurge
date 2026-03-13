@@ -1,0 +1,939 @@
+{
+  "workspace_id": "strata",
+  "workspace_name": "Strata",
+  "filename": "STRATA_TO1_PWS.docx",
+  "project_id": "starting-test-set",
+  "outline": [
+    {
+      "section_number": "1",
+      "section_title": "(U) Purpose",
+      "depth": 1,
+      "markdown_level": 2,
+      "children": [
+        {
+          "type": "paragraph",
+          "id": "1.p1",
+          "text_exact": "(U) This Strata Task Order (TO) performance work statement (PWS) describes the technical expertise, support, and services required to operate, sustain, develop, implement/integrate, and modernize mission-critical National Geospatial-Intelligence Agency (NGA) capabilities. These capabilities are developed and maintained by the NGA GeoCapabilities Division for the functional areas described in section 3 of the Strata Indefinite Delivery Indefinite Quantity (IDIQ) Base PWS.",
+          "children": []
+        }
+      ],
+      "parent_section_number": null
+    },
+    {
+      "section_number": "2",
+      "section_title": "(U) Scope",
+      "depth": 1,
+      "markdown_level": 2,
+      "children": [
+        {
+          "type": "paragraph",
+          "id": "2.p1",
+          "text_exact": "(U) Provide the technical expertise required to conduct operations and sustainment, integration and visualization, test and evaluation, and program management support via a cloud-based and on-prem infrastructure using an agile (e.g., Scaled Agile Framework (SAFe)) software development methodology. Table 1 illustrates the two-level Work Breakdown Structure (WBS) for Strata TO-01. Support must include the design, development, maintenance, operation, sustainment, implementation, integration, and improvement of current and future services, capabilities, and interfaces developed and maintained by the GeoCapabilities Division and articulated in Appendices A \u2013 E, H and I.",
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "id": "2.p2",
+          "text_exact": "Table 1: (U) Strata TO-01 Two-Level Work Breakdown Structure (WBS)",
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "id": "2.p3",
+          "text_exact": "(U) Support must include the operation, monitoring, maintenance and sustainment of 1.2+ million lines of code across 500+ virtual servers.",
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "id": "2.p4",
+          "text_exact": "(U) The Contractor must incorporate new features and provide S/W upgrades to resolve defects, address vulnerabilities, and modify operational functionality.",
+          "children": []
+        }
+      ],
+      "parent_section_number": null
+    },
+    {
+      "section_number": "3",
+      "section_title": "(U) Performance Objectives",
+      "depth": 1,
+      "markdown_level": 2,
+      "children": [
+        {
+          "type": "paragraph",
+          "id": "3.p1",
+          "text_exact": "(U) The Contractor must perform in accordance with (IAW) the standards listed in section 5 of the IDIQ Base PWS Performance Requirements Summary (PRS) as well as all NGA directives and instructions listed in section 10 of the Strata IDIQ Base PWS.",
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "id": "3.p2",
+          "text_exact": "(U) The Contractor must apply each of the services listed in the Strata IDIQ Base PWS sections 4.1 through 4.14 as necessary to support the systems and capabilities listed in Appendices A \u2013 E, H and I. This requirement also applies to new systems and capabilities developed under this Task Order.",
+          "children": []
+        },
+        {
+          "section_number": "3.1",
+          "section_title": "(U) Operation and Sustainment",
+          "depth": 2,
+          "markdown_level": 3,
+          "children": [
+            {
+              "type": "paragraph",
+              "id": "3.1.p1",
+              "text_exact": "(U) The Contractor must provide operations and sustainment support IAW sections 3 and 4 of the the Strata IDIQ Base PWS to include all associated sub-sections.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.1.p2",
+              "text_exact": "(U) The Contractor must provide operations and sustainment for all operational capabilities described in Appendices A \u2013 E, H and I IAW the Strata IDIQ Base PWS sections 4.1 through 4.14, and all sub-sections, as necessary.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.1.p3",
+              "text_exact": "(U) The Contractor must provide the system security services required to obtain and maintain the Authority to Operate (ATO) for each security plan identifier (SPID) and all systems and capabilities IAW section 4.6 of the Strata IDIQ Base PWS and Appendices A \u2013 E, H and I. Security support must include the current SPIDs and any future SPIDs. Services include but may not be limited to:",
+              "children": [
+                {
+                  "type": "bullet",
+                  "id": "3.1.p3.b1",
+                  "marker": "-",
+                  "text_exact": "Compliance with NGA Policy notes issued by Chief Information Officer (CIO), Chief Information Security Officer (CISO) or Cognizant Security Authority (CSA)."
+                },
+                {
+                  "type": "bullet",
+                  "id": "3.1.p3.b2",
+                  "marker": "-",
+                  "text_exact": "Systems, devices, and applications configured in accordance with Defense Information Systems Agency (DISA) Security Technical Implementation Guide (STIGs) and all open findings documented on an approved Plan of Action and Milestones (POA&M) or waiver form."
+                },
+                {
+                  "type": "bullet",
+                  "id": "3.1.p3.b3",
+                  "marker": "-",
+                  "text_exact": "Systems, devices, and applications are Information Assurance Vulnerability Management (IAVM) compliant within the USCYBERCOM 21-day requirement or have an approved POA&M or waiver form."
+                },
+                {
+                  "type": "bullet",
+                  "id": "3.1.p3.b4",
+                  "marker": "-",
+                  "text_exact": "Ensure the Endpoint Security Solutions (ESS) Agent and all applicable modules are installed and configured correctly."
+                },
+                {
+                  "type": "bullet",
+                  "id": "3.1.p3.b5",
+                  "marker": "-",
+                  "text_exact": "Ensure all devices are configured to allow credentialed access for vulnerability scanning with Assured Compliance & Assessment Solution (ACAS) tools."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "id": "3.1.p4",
+              "text_exact": "(U) The Contractor must participate and comply with continuity readiness and preparedness activities which include but may not be limited to:",
+              "children": [
+                {
+                  "type": "bullet",
+                  "id": "3.1.p4.b1",
+                  "marker": "-",
+                  "text_exact": "Coordination with Information Technology (IT) Asset Management and Business Continuity Division (TOPC), NGA Operations Center Mission Assurance Division (NOCM), and other stakeholders to establish Recovery Time Objectives (RTO) and Recovery Time Capabilities (RTC) for each Information System Contingency Plan (ISCP)."
+                },
+                {
+                  "type": "bullet",
+                  "id": "3.1.p4.b2",
+                  "marker": "-",
+                  "text_exact": "Create technically comprehensive Disaster Recovery Plans (DRPs) to formally verify the RTC and post in the Continuity Planning Tool (CPT) along with the ISCP. This should also include how often data backups are performed."
+                },
+                {
+                  "type": "bullet",
+                  "id": "3.1.p4.b3",
+                  "marker": "-",
+                  "text_exact": "Conduct annual continuity exercises for ISCPs."
+                },
+                {
+                  "type": "bullet",
+                  "id": "3.1.p4.b4",
+                  "marker": "-",
+                  "text_exact": "Perform continuity exercises with external agencies."
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "id": "3.1.p5",
+              "text_exact": "(U) The Contractor must resolve defects and modify operational functionality IAW section 4.7 of the Strata IDIQ Base PWS for capabilities listed in Appendix A, B, D, E, H and I.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.1.p6",
+              "text_exact": "(U) The Contractor must provide technical support IAW section 4.10 of the Strata IDIQ Base PWS for the use of each capability listed in Appendices A \u2013 E, H and I. Technical support hours must be IAW with the requirements listed in the Strata IDIQ Base PWS Table 3: Performance Requirements Summary.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.1.p7",
+              "text_exact": "(U) The Contractor must provide exercise support required IAW section 4.11 of the Strata IDIQ Base PWS to achieve exercise objectives. The Government anticipates support will be required for approximately six events annually.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.1.p8",
+              "text_exact": "(U) The Contractor must provide outreach efforts IAW section 4.9 of the Strata IDIQ Base PWS for user communities of both new capabilities and deployed capabilities listed in Appendices A \u2013 E, H and I. The Government anticipates the need for 65+ user engagements annually.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.1.p9",
+              "text_exact": "(U) The Contractor must maintain and update a Service Landing Page IAW section 4.10 of the Strata IDIQ Base PWS that provides detailed information on all operational capabilities described in Appendices A \u2013 E, H and I.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.1.p10",
+              "text_exact": "(U) The Contractor must yearly review and optimize cloud utilization and storage IAW section 4.1 of the Strata IDIQ Base PWS to maximize cloud efficiency and minimize cloud costs.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.1.p11",
+              "text_exact": "(U) The Contractor must host and make available an ArcGIS Earth client application for the community on the Service Landing Page. Approximately four (4) version updates are anticipated per year. See Appendix C for a comprehensive description of ArcGIS Earth.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.1.p12",
+              "text_exact": "(U) The Contractor must maintain an ArcGIS Earth configuration file to enable the option to configure and specify application parameters to meet organizational requirements. See Appendix C for a comprehensive description of ArcGIS Earth.",
+              "children": []
+            },
+            {
+              "section_number": "3.1.1",
+              "section_title": "(U) Map Stack",
+              "depth": 3,
+              "markdown_level": 4,
+              "children": [
+                {
+                  "type": "paragraph",
+                  "id": "3.1.1.p1",
+                  "text_exact": "(U) The Contractor must sustain, maintain, upgrade and modify the Map Stack technology stack, APIs, and capabilities as necessary to ensure that Map Stack remains operational to users to provide an online geospatial environment that empowers users to discover, visualize, collaborate, and share GEOINT imagery, reports, and products. See Appendix A: Map Stack for a comprehensive description of the Map Stack application.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.1.p2",
+                  "text_exact": "(U) The Contractor must support, update, and provide content for Disconnected Map of the World. See Appendix A: Map Stack for a comprehensive description of the Disconnected Map Stack application.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.1.p3",
+                  "text_exact": "(U) The Contractor must sustain, maintain, upgrade and modify software to enable plugin availability and usage via Map Stack. See Appendix A: Plugins for a comprehensive description of plugins. Anticipate approximately one (1) new capability per year transitioning into operations for ongoing maintenance.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.1.p4",
+                  "text_exact": "(U) The Contractor must create, sustain, maintain, upgrade, and modify the entire suite of queries, utilities, and tools. See Appendix D: Queries, Utilities, and Tools for a comprehensive list of queries, utilities, and tools.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.1.p5",
+                  "text_exact": "(U) The Contractor must create and/or support the creation of crisis action page(s) for Map of the World (MoW) as determined by world events. See Appendix A: Basemaps and Content for a comprehensive description of a crisis response.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.1.p6",
+                  "text_exact": "(U) The Contractor must provide services necessary to host, ensure availability, and enable access to existing, updated and new basemaps, overlays, and other geospatial content via Map Stack. See Appendix A: Basemaps and Content for a comprehensive description of basemaps and content.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.1.p7",
+                  "text_exact": "(U) The Contractor must perform quality control on provided updates to the basemap datasets. See Appendix A: Basemaps and Content for a comprehensive description of basemaps and content.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.1.p8",
+                  "text_exact": "(U) The Contractor must generate cached content, on provided updates to the basemap datasets. See Appendix A: Basemaps and Content for a comprehensive description of basemaps and content.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.1.p9",
+                  "text_exact": "(U) The Contractor must sustain, maintain, host, upgrade, and modify the Cesium Ion server thereby enabling 3D worldwide terrain data availability via Map Stack. See Appendix A for a comprehensive description of Cesium for Map Stack.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.1.p10",
+                  "text_exact": "(U) The Contractor must provide 3D visualization and maintain and provide feature parity between 2D and 3D visualization. See Appendix A for a comprehensive description of Cesium for Map Stack.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.1.p11",
+                  "text_exact": "(U) The Contractor must update the Cesium Ion server with NGA foundational terrain data sets approximately once every three (3) years. See Appendix A for a comprehensive description of Cesium for Map Stack.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.1.p12",
+                  "text_exact": "(U) The Contractor must host and ensure availability of the Naval Research Lab (NRL) Tile Services and the associated data in the cloud environment. See Appendix A for a comprehensive description of NRL Tile Services.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.1.p13",
+                  "text_exact": "(U) The Contractor must coordinate, communicate and troubleshoot with external organizations as needed to ensure that NRL Tile Services are updated with the latest version and data. See Appendix A for a comprehensive description of NRL Tile Services.",
+                  "children": []
+                }
+              ],
+              "parent_section_number": "3.1"
+            },
+            {
+              "section_number": "3.1.2",
+              "section_title": "(U) IC GIS Portal",
+              "depth": 3,
+              "markdown_level": 4,
+              "children": [
+                {
+                  "type": "paragraph",
+                  "id": "3.1.2.p1",
+                  "text_exact": "(U) The Contractor must sustain, maintain, upgrade, and modify the IC GIS Portal technology stack, GOTS customizations, ArcGIS baseline and capabilities as necessary to ensure that the IC GIS Portal capability remains operational to users to provide a collaborative geospatial content management system. See Appendix B: IC GIS Portal for a comprehensive description of IC GIS Portal.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.2.p2",
+                  "text_exact": "(U) The Contractor shall demonstrate expertise and ability to provide support and customer implementation of ArcGIS applications to include, but may not be limited to, ArcGIS Portal, ArcGIS Instant Apps, Scene Viewer, ArcGIS Dashboards, Configurable Apps, ArcGIS Enterprise Sites, ArcGIS StoryMaps, Map Viewer, ArcGIS Experience Builder, ArcGIS Web AppBuilder, ArcGIS Workforce, ArcGIS Survey 123, ArcGIS for Office, ArcGIS for SharePoint, ArcGIS Insights, and ArcGIS Earth. See Appendix B: IC GIS Portal for a comprehensive description of IC GIS Portal.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.2.p3",
+                  "text_exact": "(U) The Contractor shall create, maintain, and update Government-Off-The-Shelf (GOTS) tools to extend the \u201cout-of-the-box\u201d ArcGIS capability to support the IC and DoD community. See Appendix B: IC GIS Portal for a comprehensive description of IC GIS Portal.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.2.p4",
+                  "text_exact": "(U) The Contractor shall provide support for Portal-to-Portal configurations and workflows. See Appendix B: IC GIS Portal for a comprehensive description of IC GIS Portal.",
+                  "children": []
+                }
+              ],
+              "parent_section_number": "3.1"
+            },
+            {
+              "section_number": "3.1.3",
+              "section_title": "(U) Google Earth",
+              "depth": 3,
+              "markdown_level": 4,
+              "children": [
+                {
+                  "type": "paragraph",
+                  "id": "3.1.3.p1",
+                  "text_exact": "(U) The Contractor must provide a customized version of open-source Google Earth Enterprise (OpenGEE), tailored to address community needs for on-demand access to GEOINT data and products on operational networks. See Appendix C for a comprehensive description of Google Earth.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.3.p2",
+                  "text_exact": "(U) The Contractor must host and make available the Google Earth Client for the community. Approximately four (4) version updates are anticipated per year. See Appendix C for a comprehensive description of Google Earth.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.3.p3",
+                  "text_exact": "(U//FOUO) The Contractor, upon user/organization request, must create and provide a portable globe or map by creating a cut of the specified globe database(s). On average, there are approximately 45 requests for portable content per year. When providing portable content, the Contractor must follow all applicable International Traffic in Arms Regulation (ITAR), classification, and documentation rules. See Appendix C for a comprehensive description of Google Earth portable content.",
+                  "children": []
+                }
+              ],
+              "parent_section_number": "3.1"
+            },
+            {
+              "section_number": "3.1.4",
+              "section_title": "(U) SOM Discovery",
+              "depth": 3,
+              "markdown_level": 4,
+              "children": [
+                {
+                  "type": "paragraph",
+                  "id": "3.1.4.p1",
+                  "text_exact": "(U) The Contractor must sustain, maintain, upgrade, and modify the Structured Observation Management (SOM) discovery plugin as part of the operational baseline. See Appendix A: SOM Discovery Plugin.",
+                  "children": []
+                }
+              ],
+              "parent_section_number": "3.1"
+            },
+            {
+              "section_number": "3.1.5",
+              "section_title": "(U) Untied States Forces Korea (USFK)",
+              "depth": 3,
+              "markdown_level": 4,
+              "children": [
+                {
+                  "type": "paragraph",
+                  "id": "3.1.5.p1",
+                  "text_exact": "(U) The Contractor must provide OCONUS Field Service Representatives (FSRs) support IAW section 4.12 of the Strata IDIQ Base PWS to enable program capabilities in designated Areas of Responsibility (AORs). The Contractor must provide two FSRs in South Korea in support of USFK requirements. FSR support must include the provisioning of GEOINT Services, including sustainment and development, to maintain USFK's local GEOINT system supporting targeting, intelligence, and operations. Support includes adaptive and perfective maintenance to accommodate evolving USFK GEOINT functional needs for enhancements and non-functional system requirements (e.g., security). The Contractor must:",
+                  "children": [
+                    {
+                      "type": "bullet",
+                      "id": "3.1.5.p1.b1",
+                      "marker": "-",
+                      "text_exact": "(U) Provide 2 on-peninsula FSRs for Operations & Sustainment (O&S) of software and hardware as part of USFK's local GEOINT instantiation and USFK applications to include systems administration, security, and tier 1 & 2 maintenance."
+                    },
+                    {
+                      "type": "bullet",
+                      "id": "3.1.5.p1.b2",
+                      "marker": "-",
+                      "text_exact": "(U) Provide data management for hosting and exposing GEOINT on networks, including CENTRIXS-K and Korea Coalition Forces."
+                    },
+                    {
+                      "type": "bullet",
+                      "id": "3.1.5.p1.b3",
+                      "marker": "-",
+                      "text_exact": "(U) Provide training and tier 3 maintenance and help desk functions/activities."
+                    },
+                    {
+                      "type": "bullet",
+                      "id": "3.1.5.p1.b4",
+                      "marker": "-",
+                      "text_exact": "(U) Provide GEOINT Services development for USFK site-specific capabilities such as the Battle Damage Assessment Reporting Tool (BDART)."
+                    },
+                    {
+                      "type": "bullet",
+                      "id": "3.1.5.p1.b5",
+                      "marker": "-",
+                      "text_exact": "(U) Collect requirements, develop, and deploy GEOINT capabilities in support of USFK:"
+                    },
+                    {
+                      "type": "bullet",
+                      "id": "3.1.5.p1.b6",
+                      "marker": "1.",
+                      "text_exact": "The development will leverage existing infrastructure on CENTRIXS-K."
+                    },
+                    {
+                      "type": "bullet",
+                      "id": "3.1.5.p1.b7",
+                      "marker": "2.",
+                      "text_exact": "Training is only authorized if the subject matter is new and not part of the original position skill requirement."
+                    },
+                    {
+                      "type": "bullet",
+                      "id": "3.1.5.p1.b8",
+                      "marker": "3.",
+                      "text_exact": "FSRs will be coded as emergency essential and will remain working as the BDART subject matter expert (SME) in the event of hostilities."
+                    }
+                  ]
+                }
+              ],
+              "parent_section_number": "3.1"
+            },
+            {
+              "section_number": "3.1.6",
+              "section_title": "(U) LSeg Sensor",
+              "depth": 3,
+              "markdown_level": 4,
+              "children": [
+                {
+                  "type": "paragraph",
+                  "id": "3.1.6.p1",
+                  "text_exact": "(U) The Contractor must sustain, maintain, upgrade, and modify the sensor data visualization, integration, and analysis capabilities as part of the operational baseline to ensure the capabilities remain operational to users. See Appendix E: Sensor Integration section 1.1 and Appendix H LSeg Description, Overview and Requirements for a comprehensive description of LSeg sensor integration.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.1.6.p2",
+                  "text_exact": "(U) The Contractor must facilitate the continued use, sustainment, enhancement, and development of big data discovery and persistent analytics as part of the operational baseline. See Appendix E: Sensor Integration section 1.1 and Appendix H (located on the classified network) LSeg Description, Overview and Requirements for a comprehensive description of LSeg sensor integration.",
+                  "children": []
+                }
+              ],
+              "parent_section_number": "3.1"
+            },
+            {
+              "section_number": "3.1.7",
+              "section_title": "(U) NSeg Sensor",
+              "depth": 3,
+              "markdown_level": 4,
+              "children": [
+                {
+                  "type": "paragraph",
+                  "id": "3.1.7.p1",
+                  "text_exact": "(U) The Contractor must sustain, maintain, upgrade, and modify the sensor data visualization and integration capabilities as part of the operational baseline to ensure the capabilities remain operational to users. See Appendix E: Sensor Integration section 1.2 and Appendix I (located on the classified network) NSeg Description, Overview and Requirements for a comprehensive description of NSeg sensor integration.",
+                  "children": []
+                }
+              ],
+              "parent_section_number": "3.1"
+            }
+          ],
+          "parent_section_number": "3"
+        },
+        {
+          "section_number": "3.2",
+          "section_title": "(U) Integration and Visualization",
+          "depth": 2,
+          "markdown_level": 3,
+          "children": [
+            {
+              "type": "paragraph",
+              "id": "3.2.p1",
+              "text_exact": "(U) The Contractor must provide new features/capabilities and integrate new data sources IAW sections 4.2 through 4.9, 4.13 and 4.14 of the Strata IDIQ Base PWS for geospatial visualization and discovery and dissemination of geospatial content.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.2.p2",
+              "text_exact": "(U) Appendix F: Milestone Roadmap shows a representative list of potential feature milestones and a corresponding delivery schedule. This roadmap is representative of what is in the backlog and known at this time. As the agile development process is executed, the Government will control prioritization, refinement and modification of the roadmap.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.2.p3",
+              "text_exact": "(U) The Contractor must provide systems and systems software architecture services IAW section 4.3 of the Strata IDIQ Base PWS to modernize, refresh and integrate new data and technologies. Architectural services and products must be sustained, maintained, and integrated with enterprise architectures.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.2.p4",
+              "text_exact": "(U) The Contractor must provide systems engineering expertise and resources IAW section 4.4 of the Strata IDIQ Base PWS to efficiently deliver new operational capabilities, engineering assessments, and create and maintain system documentation.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.2.p5",
+              "text_exact": "(U) The Contractor must provide support and perform systems and software design IAW section 4.5 of the Strata IDIQ Base PWS for integration and visualization efforts.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.2.p6",
+              "text_exact": "(U) The Contractor must provide software development IAW section 4.7 of the Strata IDIQ Base PWS for integration and visualization efforts.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.2.p7",
+              "text_exact": "(U) The Contractor is required to deliver approximately two prototypes annually IAW section 4.8 of the Strata IDIQ Base PWS.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.2.p8",
+              "text_exact": "(U) The Contractor must provide User Interface/User Experience (UI/UX) design, engineering, development, and integration services IAW sections 4.5, 4.7, 4.7.1, and 4.9 of the Strata IDIQ Base PWS to improve and enhance UI/UX and data visualization, enabling dynamic user interaction with massive volumes of geospatial data.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.2.p9",
+              "text_exact": "(U) The Contractor must provide the following documentation IAW section 4.14 of the Strata IDIQ Base PWS: systems and software design, OV-1, installation guides, and architecture diagrams.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.2.p10",
+              "text_exact": "(U) The Contractor must deliver software code IAW the approved Contractor-developed Agile Development Management Plan (ADMP) and IAW sections 4.5, 4.7, and 4.7.1 of the Strata IDIQ Base PWS.",
+              "children": []
+            },
+            {
+              "section_number": "3.2.1",
+              "section_title": "(U) New Capabilities and Modernization",
+              "depth": 3,
+              "markdown_level": 4,
+              "children": [
+                {
+                  "type": "paragraph",
+                  "id": "3.2.1.p1",
+                  "text_exact": "(U) The Contractor may be required to modernize the MoW UI and UX to improve its ability to enable users to discover and interact with massive volumes of geospatial data. See Appendix A: Map Stack for a comprehensive description of the Map Stack application.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.2.1.p2",
+                  "text_exact": "(U) The Contractor may be required to develop and deliver new capabilities and/or plugins to the Map Stack capability. See Appendix A: Plugins, for a comprehensive description of existing plugins.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.2.1.p3",
+                  "text_exact": "(U) The Contractor may be required to develop and deliver new queries, utilities, and tools. See Appendix D: Queries, Utilities, and Tools for a comprehensive description of queries, utilities, and tools.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.2.1.p4",
+                  "text_exact": "(U) The Contractor may be required to create a new Security Plan Identifier (SPID) and achieve ATO IAW section 4.6 of the Strata IDIQ Base PWS for new capabilities developed under the contract.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.2.1.p5",
+                  "text_exact": "(U) The Contractor must evaluate any existing Cesium Ion server capabilities offered through the existing Cesium Ion license, and propose development roadmap features for cesium capabilities that are not currently available to Map Stack users. See Appendix A for a comprehensive description of Cesium for Map Stack.",
+                  "children": []
+                }
+              ],
+              "parent_section_number": "3.2"
+            },
+            {
+              "section_number": "3.2.2",
+              "section_title": "(U) New LSeg Sensor Data Integration, Visualization, and Analytics",
+              "depth": 3,
+              "markdown_level": 4,
+              "children": [
+                {
+                  "type": "paragraph",
+                  "id": "3.2.2.p1",
+                  "text_exact": "(U//FOUO) The Contractor is required to conduct new data/data source(s) integration for the LSeg sensors. These tasks may include enhancements to discovery, visualization and persistence analytics. See Appendix E: Sensor Integration section 1.1 and Appendix H (located on the classified network) LSeg Description, Overview and Requirements for a comprehensive description of LSeg sensor integration.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.2.2.p2",
+                  "text_exact": "(U) Classified Appendix J: LSeg Milestone Roadmap shows a representative list of potential feature milestones and corresponding delivery schedule. This roadmap is representative of what is in the backlog and known at this time. As the agile development process is executed, the Government will control prioritization, refinement and modification of the roadmap.",
+                  "children": []
+                }
+              ],
+              "parent_section_number": "3.2"
+            },
+            {
+              "section_number": "3.2.3",
+              "section_title": "(U) New NSeg Sensor Data Integration and Visualization",
+              "depth": 3,
+              "markdown_level": 4,
+              "children": [
+                {
+                  "type": "paragraph",
+                  "id": "3.2.3.p1",
+                  "text_exact": "(U//FOUO) The Contractor is required to conduct new data/data source(s) integration for the NSeg sensors. See Appendix E: Sensor Integration section 1.2 and Appendix I (located on the classified network) NSeg Description, Overview and Requirements for a comprehensive description of NSeg sensor integration.",
+                  "children": []
+                },
+                {
+                  "type": "paragraph",
+                  "id": "3.2.3.p2",
+                  "text_exact": "(U) Classified Appendix K (located on the classified network): NSeg Milestone Roadmap shows a representative list of potential feature milestones and corresponding delivery schedule. This roadmap is representative of what is in the backlog and known at this time. As the agile development process is executed, the Government will control prioritization, refinement and modification of the roadmap.",
+                  "children": []
+                }
+              ],
+              "parent_section_number": "3.2"
+            }
+          ],
+          "parent_section_number": "3"
+        },
+        {
+          "section_number": "3.3",
+          "section_title": "(U) Test and Evaluation (T&E)",
+          "depth": 2,
+          "markdown_level": 3,
+          "children": [
+            {
+              "type": "paragraph",
+              "id": "3.3.p1",
+              "text_exact": "(U) The Contractor must provide test and evaluation (T&E) support IAW section 4.14 of the Strata IDIQ Base PWS and all sub sections.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.3.p2",
+              "text_exact": "(U) The Contractor must develop and deliver test documentation IAW section 4.14 of the Strata IDIQ Base PWS and CDRLs A001, A002, A003, and A004.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.3.p3",
+              "text_exact": "(U) The Contractor will test each new version of ArcGIS Earth before making it available for operational use within the NSG. See Appendix C for a comprehensive description of ArcGIS Earth.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.3.p4",
+              "text_exact": "(U) The Contractor must conduct code peer-reviews, quality checks, and unit testing prior to committing application source code.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.3.p5",
+              "text_exact": "(U) The Contractor must perform Factory Acceptance Testing (FAT) of the applications, including functional, system-to-system, services, performance, and security.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.3.p6",
+              "text_exact": "(U) The Contractor must provide developmental and enterprise-level T&E support for sensor and sensor segment integration efforts. See Appendix E: Sensor Integration.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.3.p7",
+              "text_exact": "(U) The Contractor will be required to passively support approximately 12 test events annually. T&E will include operational baseline and new capability (i.e., sensor integrations) testing.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "3.3.p8",
+              "text_exact": "(U//FOUO) The Contractor will be required to provide, sustain, and operate a classified and unclassified test environment for NRG integration with the MoW and other components.",
+              "children": []
+            }
+          ],
+          "parent_section_number": "3"
+        },
+        {
+          "section_number": "3.4",
+          "section_title": "(U) Program and Contract Management",
+          "depth": 2,
+          "markdown_level": 3,
+          "children": [
+            {
+              "type": "paragraph",
+              "id": "3.4.p1",
+              "text_exact": "(U) The Contractor must provide program management, transition, staffing, quality, and management reports IAW section 7 and all sub sections of the Strata IDIQ Base PWS.",
+              "children": []
+            }
+          ],
+          "parent_section_number": "3"
+        }
+      ],
+      "parent_section_number": null
+    },
+    {
+      "section_number": "4",
+      "section_title": "(U) Performance Requirements Summary (PRS)",
+      "depth": 1,
+      "markdown_level": 2,
+      "children": [
+        {
+          "type": "paragraph",
+          "id": "4.p1",
+          "text_exact": "(U) The Contractor must provide support and services IAW the PRS matrix in section 5 of the Strata IDIQ Base PWS.",
+          "children": []
+        }
+      ],
+      "parent_section_number": null
+    },
+    {
+      "section_number": "5",
+      "section_title": "(U) Constraints",
+      "depth": 1,
+      "markdown_level": 2,
+      "children": [
+        {
+          "type": "paragraph",
+          "id": "5.p1",
+          "text_exact": "(U) The Contractor must abide by the constraints listed in section 6 of the Strata IDIQ Base PWS.",
+          "children": []
+        }
+      ],
+      "parent_section_number": null
+    },
+    {
+      "section_number": "6",
+      "section_title": "(U) Administrative and General Information",
+      "depth": 1,
+      "markdown_level": 2,
+      "children": [
+        {
+          "section_number": "6.1",
+          "section_title": "(U) Period of Performance",
+          "depth": 2,
+          "markdown_level": 3,
+          "children": [
+            {
+              "type": "paragraph",
+              "id": "6.1.p1",
+              "text_exact": "(U) The TO period of performance is one (1) base period of 10 months and four (4) 12-month option periods.",
+              "children": []
+            }
+          ],
+          "parent_section_number": "6"
+        },
+        {
+          "section_number": "6.2",
+          "section_title": "(U) Place of Performance",
+          "depth": 2,
+          "markdown_level": 3,
+          "children": [
+            {
+              "type": "paragraph",
+              "id": "6.2.p1",
+              "text_exact": "(U) Place of performance shall be IAW section 8.2 of the Strata IDIQ Base PWS.",
+              "children": []
+            },
+            {
+              "type": "paragraph",
+              "id": "6.2.p2",
+              "text_exact": "(U) The Contractor must provide two (2) FSRs in the South Korean AOR.",
+              "children": []
+            }
+          ],
+          "parent_section_number": "6"
+        },
+        {
+          "section_number": "6.3",
+          "section_title": "(U) Other Administrative and General Information",
+          "depth": 2,
+          "markdown_level": 3,
+          "children": [
+            {
+              "type": "paragraph",
+              "id": "6.3.p1",
+              "text_exact": "(U) The Contractor shall provide telework, travel, other direct costs (ODC), security support, and Government Furnished Equipment / Information (GFE/I) management and support IAW section 8 and all sub-sections of the Strata IDIQ Base PWS.",
+              "children": []
+            }
+          ],
+          "parent_section_number": "6"
+        }
+      ],
+      "parent_section_number": null
+    },
+    {
+      "section_number": "7",
+      "section_title": "(U) Government Furnished Equipment / Information (GFE/I)",
+      "depth": 1,
+      "markdown_level": 2,
+      "children": [
+        {
+          "type": "paragraph",
+          "id": "7.p1",
+          "text_exact": "(U//FOUO) For shipment of globes/data, the Contractor will be provided with appropriate ITAR shipping authority via written letterhead.",
+          "children": []
+        }
+      ],
+      "parent_section_number": null
+    },
+    {
+      "section_number": "8",
+      "section_title": "(U) Deliverables",
+      "depth": 1,
+      "markdown_level": 2,
+      "children": [
+        {
+          "type": "paragraph",
+          "id": "8.p1",
+          "text_exact": "(U) The Contractor must prepare and deliver the list of CDRLs in Table 2 below IAW section 9 of the Strata IDIQ Base PWS.",
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "id": "8.p2",
+          "text_exact": "Table 2. (U) TO-1 Deliverables",
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "id": "8.p3",
+          "text_exact": "| (U) CDRL # | (U) Title | |--------------|-------------------------------------------------| | (U) A001 | (U) Software Development/Delivery | | (U) A002 | (U) Technical Documentation | | (U) A003 | (U) V&V Test Documentation | | (U) A004 | (U) Test and Evaluation Master Plan (TEMP) | | (U) A005 | (U) Transition Plan | | (U) A006 | (U) Quality Control Plan (QCP) | | (U) A007 | (U) Program Management Plan (PmP) | | (U) A008 | (U) Integrated Master Schedule (IMS) | | (U) A009 | (U) Agile Development Management Plan (ADMP) | | (U) A010 | (U) Metrics Collection, Analysis, and Reporting | | (U) A011 | (U) Program Management Review (PMR) | | (U) A012 | (U) Payment Reports | | (U) A013 | (U) Weekly Activity Report (WAR) | | (U) A014 | (U) Contract Closeout Report |",
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "id": "8.p4",
+          "text_exact": "(U) The Contractor must prepare and deliver the following list of CDRL A002 Technical Document IAW section 4 of the Strata IDIQ Base PWS:",
+          "children": [
+            {
+              "type": "bullet",
+              "id": "8.p4.b1",
+              "marker": "-",
+              "text_exact": "(U) OV-1"
+            },
+            {
+              "type": "bullet",
+              "id": "8.p4.b2",
+              "marker": "-",
+              "text_exact": "(U) SV-1"
+            },
+            {
+              "type": "bullet",
+              "id": "8.p4.b3",
+              "marker": "-",
+              "text_exact": "(U) Architecture Diagrams (SysML Compliant)"
+            },
+            {
+              "type": "bullet",
+              "id": "8.p4.b4",
+              "marker": "-",
+              "text_exact": "(U) Systems and S/W Design Documentation"
+            },
+            {
+              "type": "bullet",
+              "id": "8.p4.b5",
+              "marker": "-",
+              "text_exact": "(U) Dismounted MoW (DMoW) Installation Guide"
+            },
+            {
+              "type": "bullet",
+              "id": "8.p4.b6",
+              "marker": "-",
+              "text_exact": "(U) Analysis of Alternatives (AoA) (as requested)"
+            },
+            {
+              "type": "bullet",
+              "id": "8.p4.b7",
+              "marker": "-",
+              "text_exact": "(U) White Papers (as requested)"
+            }
+          ]
+        }
+      ],
+      "parent_section_number": null
+    },
+    {
+      "section_number": "9",
+      "section_title": "(U) Acronyms",
+      "depth": 1,
+      "markdown_level": 2,
+      "children": [
+        {
+          "type": "paragraph",
+          "id": "9.p1",
+          "text_exact": "See Appendix G: Acronyms Unclassified for a listing of all unclassified acronyms.",
+          "children": []
+        },
+        {
+          "type": "paragraph",
+          "id": "9.p2",
+          "text_exact": "See Appendix L (located on the classified network): Acronyms Classified for a listing of all classified acronyms.",
+          "children": []
+        }
+      ],
+      "parent_section_number": null
+    }
+  ],
+  "linked_requirements_by_source": {
+    "3.1.p7": [
+      {
+        "requirement_id": "834fc550-a4d1-496d-adc9-65fa20e68c38:docling:requirement:25:0",
+        "document_id": "834fc550-a4d1-496d-adc9-65fa20e68c38",
+        "filename": "Section L.docx",
+        "section_number": "\u2013 SUB-FACTOR 1.1 TECHNICAL",
+        "section_heading": "Supplemental - Instructions, Conditions, and Notices to Bidders > \u2013 Factor 1, Technical/Management > \u2013 Sub-Factor 1.1 Technical",
+        "heading_path": "SECTION L > \u2013 FACTOR 1, TECHNICAL/MANAGEMENT > \u2013 SUB-FACTOR 1.1 TECHNICAL",
+        "requirement_text": "In responding to Sub-factor 1.1, the Offer shall describe its overall technical approach to meeting the Strata requirements of the PWS, including: Sub-factor 1.1(a): Offeror shall demonstrate the ability to deliver performant software delivery teams to provide stable services/capabilities by describing a successful approach to the following three Performance Requirements (as detailed in IDIQ PWS Section 5): Deployment Frequency Change Failure Rates Mean Time to Recovery Sub-factor 1.1(b): Offeror shall describe an adequate approach to operations and sustainment of Map Stack (TO 1 PWS Appendix A) utilizing elements detailed in the Base IDIQ PWS Section 4.1.",
+        "normalized_requirement_text": "In responding to Sub-factor 1.1, the Offer shall describe its overall technical approach to meeting the Strata requirements of the PWS, including: Sub-factor 1.1(a): Offeror shall demonstrate the ability to deliver performant software delivery teams to provide stable services/capabilities by describing a successful approach to the following three Performance Requirements (as detailed in IDIQ PWS Section 5): Deployment Frequency Change Failure Rates Mean Time to Recovery Sub-factor 1.1(b): Offeror shall describe an adequate approach to operations and sustainment of Map Stack (TO 1 PWS Appendix A) utilizing elements detailed in the Base IDIQ PWS Section 4.1.",
+        "modality": "instruction",
+        "actor": null,
+        "action": null,
+        "object_text": null,
+        "score": 30,
+        "match_reason": "shared terms: base, idiq, pws, section, strata; priority document"
+      }
+    ]
+  },
+  "selected_requirement_id": "3.1.1.p2",
+  "selected_requirement_ids": [
+    "3.1.1.p2",
+    "3.1.1.p5"
+  ],
+  "active_tool": "solution-helper",
+  "solution_groups": [
+    {
+      "id": "group-1773349496276",
+      "name": "Map of the World",
+      "notes": "",
+      "requirement_ids": [
+        "3.1.1.p2",
+        "3.1.1.p5"
+      ]
+    }
+  ],
+  "created_at": "2026-03-12T20:21:55.306972+00:00",
+  "updated_at": "2026-03-12T21:07:37.791724+00:00"
+}

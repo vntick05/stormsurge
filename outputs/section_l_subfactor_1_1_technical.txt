@@ -1,0 +1,23 @@
+In responding to Sub-factor 1.1, the Offer shall describe its overall technical approach to meeting the Strata requirements of the PWS, including:
+
+Sub-factor 1.1(a): Offeror shall demonstrate the ability to deliver performant software delivery teams to provide stable services/capabilities by describing a successful approach to the following three Performance Requirements (as detailed in IDIQ PWS Section 5):
+
+Deployment Frequency
+
+Change Failure Rates
+
+Mean Time to Recovery
+
+Sub-factor 1.1(b): Offeror shall describe an adequate approach to operations and sustainment of Map Stack (TO 1 PWS Appendix A) utilizing elements detailed in the Base IDIQ PWS Section 4.1.
+
+Sub-factor 1.1(c): Offeror shall describe a proposed approach that demonstrates an understanding of integrating new sensor data (TO1 PWS Appendix H) within an enterprise solution in accordance with the IC Configuration Management Process and the Request for Change process. Response shall include key considerations and discussion of how resource and cost implications are assessed.
+
+Sub-Factor 1.1(d): Offeror shall demonstrate experience and knowledge operating, sustaining, maintaining, and upgrading the ArcGIS software suite (ArcGIS Pro, Server, Portal). Offeror shall demonstrate expertise in optimizing and managing ArcGIS Enterprise configurations, upgrading ArcGIS Enterprise, and performing GIS web development.
+
+Sub-Factor 1.1(e): Offeror shall demonstrate knowledge and level of experience providing, operating, and maintaining solutions that process large amounts of Geospatial data. Offeror shall demonstrate expertise in extract, transform & load (ELT) processing of large datasets, delivering analytic capabilities and optimizing for continually increasing data volume. (Offerors have the option of submitting a classified response for this Standard. Classified responses shall be submitted on the Classified ARC. Offerors are responsible for ensuring the total page count of Unclassified and Classified responses do not exceed the maximum page count for this volume.)
+
+Sub-factor 1.1(f): Offeror shall describe a plan to improve the Map of the World user interface. The plan shall demonstrate innovation, knowledge of the UI/UX discipline, and impact on users. Offerors may leverage the Map of the World (MoW) UI at
+
+https://map.nga.mil
+
+(CAC required for access) as the basis for providing a hypothetical plan See TO 1 PWS Appendix A Map Stack for a description of the MoW user interface.

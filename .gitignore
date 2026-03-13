@@ -1,0 +1,7 @@
+.env
+open-webui-data/
+__pycache__/
+*.pyc
+services/pws-structuring-service/.venv/
+ui/pws-workbench/node_modules/
+ui/pws-workbench/.next/

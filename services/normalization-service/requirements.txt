@@ -1,0 +1,6 @@
+docling==2.65.0
+fastapi==0.115.12
+minio==7.2.15
+psycopg[binary]==3.2.6
+python-multipart==0.0.20
+uvicorn==0.34.0
