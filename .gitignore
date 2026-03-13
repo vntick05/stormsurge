@@ -5,3 +5,5 @@ __pycache__/
 services/pws-structuring-service/.venv/
 ui/pws-workbench/node_modules/
 ui/pws-workbench/.next/
+ui/stormsurge-studio/node_modules/
+ui/stormsurge-studio/.next/

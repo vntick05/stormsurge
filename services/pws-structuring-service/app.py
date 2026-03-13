@@ -33,8 +33,9 @@ API_GATEWAY_BASE_URL = os.environ.get(
 ).rstrip("/")
 COMPANION_MAX_REQUIREMENTS = int(os.environ.get("COMPANION_MAX_REQUIREMENTS", "6"))
 COMPANION_EVIDENCE_TOP_K = int(os.environ.get("COMPANION_EVIDENCE_TOP_K", "4"))
-WORKSPACE_STORAGE_DIR = (
-    Path(os.environ.get("PWS_WORKSPACE_STORAGE_DIR", Path(__file__).resolve().parents[2] / "outputs" / "pws-workspaces"))
+_DEFAULT_WORKSPACE_STORAGE_DIR = Path(__file__).resolve().parent / "outputs" / "pws-workspaces"
+WORKSPACE_STORAGE_DIR = Path(
+    os.environ.get("PWS_WORKSPACE_STORAGE_DIR", str(_DEFAULT_WORKSPACE_STORAGE_DIR))
 )
 
 

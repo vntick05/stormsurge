@@ -2,12 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="/home/admin/stormsurge"
-PWS_DIR="${ROOT_DIR}/services/pws-structuring-service"
-PYTHON_BIN="${PWS_DIR}/.venv/bin/python"
 LOG_DIR="${HOME}/.stormsurge"
 LOG_FILE="${LOG_DIR}/launch.log"
-PWS_PID_FILE="${LOG_DIR}/pws-structuring.pid"
-APP_URL="http://127.0.0.1:8193/"
+APP_URL="http://127.0.0.1:3200/"
 
 mkdir -p "${LOG_DIR}"
 touch "${LOG_FILE}"
@@ -55,43 +52,15 @@ wait_for_service() {
   return 1
 }
 
-cleanup_stale_pws() {
-  if [[ -f "${PWS_PID_FILE}" ]]; then
-    local pid
-    pid="$(cat "${PWS_PID_FILE}")"
-    if [[ -n "${pid}" ]] && kill -0 "${pid}" >/dev/null 2>&1; then
-      if wait_for_service "${APP_URL}" "StormSurge UI" 1 0; then
-        log "StormSurge UI already running (pid ${pid})"
-        return 0
-      fi
-      log "Stopping stale StormSurge UI process ${pid}"
-      kill "${pid}" >/dev/null 2>&1 || true
-      sleep 1
-    fi
-    rm -f "${PWS_PID_FILE}"
-  fi
-}
-
-start_pws_ui() {
+start_studio_ui() {
   if wait_for_service "${APP_URL}" "StormSurge UI" 1 0; then
     log "StormSurge UI already available"
     return 0
   fi
 
-  cleanup_stale_pws
-
-  log "Starting StormSurge UI on :8193"
-  (
-    cd "${PWS_DIR}"
-    NORMALIZATION_SERVICE_BASE_URL="http://127.0.0.1:8191" \
-    RETRIEVAL_SERVICE_BASE_URL="http://127.0.0.1:8481" \
-    API_GATEWAY_BASE_URL="http://127.0.0.1:8460" \
-    setsid "${PYTHON_BIN}" -m uvicorn app:app --host 127.0.0.1 --port 8193 >>"${LOG_FILE}" 2>&1 < /dev/null &
-    echo $! > "${PWS_PID_FILE}"
-  )
-  sleep 1
-  if ! kill -0 "$(cat "${PWS_PID_FILE}")" >/dev/null 2>&1; then
-    log "StormSurge UI process exited before becoming ready"
+  log "Starting StormSurge Studio on :3200"
+  if ! docker compose -f "${ROOT_DIR}/compose.yaml" up -d --build stormsurge-studio >>"${LOG_FILE}" 2>&1; then
+    log "StormSurge Studio container failed to start"
     return 1
   fi
 }
@@ -122,7 +91,7 @@ main() {
     log "Start the StormSurge backend services first."
     exit 1
   fi
-  start_pws_ui
+  start_studio_ui
   wait_for_service "${APP_URL}" "StormSurge UI" 60 1
   open_browser
   log "StormSurge is ready"

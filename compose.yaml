@@ -243,6 +243,33 @@ services:
       timeout: 10s
       retries: 10
 
+  pws-structuring-service:
+    build:
+      context: /home/admin/stormsurge/services/pws-structuring-service
+    container_name: stormsurge-pws-structuring-service
+    restart: "no"
+    depends_on:
+      normalization-service:
+        condition: service_healthy
+      retrieval-service:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      NORMALIZATION_SERVICE_BASE_URL: ${PWS_NORMALIZATION_SERVICE_BASE_URL:-http://normalization-service:8191}
+      RETRIEVAL_SERVICE_BASE_URL: ${PWS_RETRIEVAL_SERVICE_BASE_URL:-http://retrieval-service:8481}
+      API_GATEWAY_BASE_URL: ${PWS_API_GATEWAY_BASE_URL:-http://host.docker.internal:8460}
+      PWS_WORKSPACE_STORAGE_DIR: /workspace-outputs
+    extra_hosts:
+      - host.docker.internal=host-gateway
+    volumes:
+      - /home/admin/stormsurge/outputs/pws-workspaces:/workspace-outputs
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8193/healthz', timeout=5)\""]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
   api:
     build:
       context: /home/admin/stormsurge/gateway
@@ -278,6 +305,26 @@ services:
       ENABLE_OLLAMA_API: ${ENABLE_OLLAMA_API:-False}
     volumes:
       - /home/admin/stormsurge/open-webui-data:/app/backend/data
+
+  stormsurge-studio:
+    build:
+      context: /home/admin/stormsurge/ui/stormsurge-studio
+    container_name: stormsurge-studio
+    restart: "no"
+    depends_on:
+      api:
+        condition: service_started
+      normalization-service:
+        condition: service_healthy
+      pws-structuring-service:
+        condition: service_healthy
+      retrieval-service:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      PWS_STRUCTURING_SERVICE_URL: http://pws-structuring-service:8193
+    ports:
+      - "${WORKBENCH_PORT:-3200}:3000"
 
 volumes:
   gov_rfp_postgres_data:
