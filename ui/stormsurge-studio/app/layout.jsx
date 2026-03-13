@@ -1,5 +1,5 @@
-import { CssBaseline } from "@mui/material";
 import "./globals.css";
+import { ThemeRegistry } from "@/app/theme-registry";
 
 export const metadata = {
   title: "StormSurge Studio",
@@ -10,8 +10,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <CssBaseline />
-        {children}
+        <ThemeRegistry>{children}</ThemeRegistry>
       </body>
     </html>
   );

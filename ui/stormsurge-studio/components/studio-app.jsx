@@ -9,6 +9,20 @@ import DragIndicatorRounded from "@mui/icons-material/DragIndicatorRounded";
 import HubRounded from "@mui/icons-material/HubRounded";
 import InsightsRounded from "@mui/icons-material/InsightsRounded";
 import {
+  closestCenter,
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   Alert,
   AppBar,
   Box,
@@ -72,6 +86,65 @@ function clampRailWidth(width) {
   return Math.min(Math.max(width, RAIL_MIN_WIDTH), RAIL_MAX_WIDTH);
 }
 
+function buildCustomSection(label, sectionCount) {
+  const trimmedLabel = label.trim() || `Custom Section ${sectionCount + 1}`;
+  const shortLabel = trimmedLabel
+    .split(/\s+/)
+    .map((token) => token[0])
+    .join("")
+    .slice(0, 4)
+    .toUpperCase();
+
+  return {
+    id: `custom-${Date.now()}`,
+    label: trimmedLabel,
+    shortLabel: shortLabel || "CUST",
+    prompt: "Use this lane for custom grouped requirements and solution framing.",
+    description:
+      "Custom sections let you reorganize extracted material outside the original PWS shape.",
+    sourceKind: "manual",
+    sectionNumber: null,
+  };
+}
+
+function SortableSectionTab({ section, selected, onSelect }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id: section.id,
+  });
+
+  return (
+    <ListItemButton
+      ref={setNodeRef}
+      selected={selected}
+      onClick={() => onSelect(section.id)}
+      sx={{
+        borderRadius: 1,
+        mb: 0.5,
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+    >
+      <Box
+        {...attributes}
+        {...listeners}
+        onClick={(event) => event.stopPropagation()}
+        sx={{
+          width: 6,
+          alignSelf: "stretch",
+          mr: 1,
+          ml: -0.5,
+          borderRadius: 0.5,
+          bgcolor: selected ? "primary.light" : "primary.main",
+          opacity: selected ? 0.95 : 0.7,
+          cursor: "grab",
+          flexShrink: 0,
+        }}
+      />
+      <ListItemText primary={section.label} />
+    </ListItemButton>
+  );
+}
+
 function RailShell({
   side,
   title,
@@ -98,8 +171,8 @@ function RailShell({
         borderBottom: { xs: 1, xl: 0 },
         borderColor: "divider",
         bgcolor: "background.paper",
-        backgroundImage:
-          "linear-gradient(180deg, rgba(255,255,255,0.96), rgba(241,244,249,0.96))",
+        backgroundImage: (theme) =>
+          `linear-gradient(180deg, ${theme.palette.background.paper}, rgba(15,23,42,0.96))`,
         transition: "width 180ms ease",
         overflow: "hidden",
       }}
@@ -194,17 +267,17 @@ function RailShell({
             width: 4,
             height: 56,
             borderRadius: 999,
-            bgcolor: "rgba(26, 43, 72, 0.16)",
+            bgcolor: "rgba(148, 163, 184, 0.18)",
           },
           "&:hover::before": {
-            bgcolor: "rgba(26, 43, 72, 0.28)",
+            bgcolor: "rgba(148, 163, 184, 0.34)",
           },
         }}
       >
         <DragIndicatorRounded
           sx={{
             position: "absolute",
-            color: "rgba(26, 43, 72, 0.52)",
+            color: "rgba(203, 213, 225, 0.54)",
             fontSize: 18,
             transform: "rotate(90deg)",
           }}
@@ -237,6 +310,7 @@ export function StudioApp() {
   const [rightRailWidth, setRightRailWidth] = useState(RIGHT_RAIL_DEFAULT_WIDTH);
   const [leftRailCollapsed, setLeftRailCollapsed] = useState(false);
   const [rightRailCollapsed, setRightRailCollapsed] = useState(false);
+  const [collapsedRequirementIds, setCollapsedRequirementIds] = useState(() => new Set());
 
   const sections = workspace.sections;
   const requirements = workspace.requirements;
@@ -350,6 +424,9 @@ export function StudioApp() {
 
   const leftRailDisplayWidth = leftRailCollapsed ? RAIL_COLLAPSED_WIDTH : leftRailWidth;
   const rightRailDisplayWidth = rightRailCollapsed ? RAIL_COLLAPSED_WIDTH : rightRailWidth;
+  const sectionTabSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
 
   function startRailResize(side) {
     return (event) => {
@@ -524,30 +601,96 @@ export function StudioApp() {
     }));
   }
 
+  function handleSectionTabDragEnd(event) {
+    const { active, over } = event;
+    if (!active?.id || !over?.id || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = sections.findIndex((section) => section.id === active.id);
+    const newIndex = sections.findIndex((section) => section.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    setWorkspace((current) => ({
+      ...current,
+      sections: arrayMove(current.sections, oldIndex, newIndex),
+    }));
+  }
+
+  function toggleCollapsedRequirement(requirementId) {
+    setCollapsedRequirementIds((current) => {
+      const next = new Set(current);
+      if (next.has(requirementId)) {
+        next.delete(requirementId);
+      } else {
+        next.add(requirementId);
+      }
+      return next;
+    });
+  }
+
+  function expandAllRequirements() {
+    setCollapsedRequirementIds(new Set());
+  }
+
+  function collapseAllRequirements() {
+    const parentIds = new Set(
+      requirements
+        .filter((requirement) =>
+          requirements.some((candidate) => candidate.parentId === requirement.id),
+        )
+        .map((requirement) => requirement.id),
+    );
+    setCollapsedRequirementIds(parentIds);
+  }
+
+  const hasCollapsibleRequirements = requirements.some((requirement) =>
+    requirements.some((candidate) => candidate.parentId === requirement.id),
+  );
+
   function handleCreateSection() {
-    const label = newSectionLabel.trim() || `Custom Section ${sections.length + 1}`;
-    const shortLabel = label
-      .split(/\s+/)
-      .map((token) => token[0])
-      .join("")
-      .slice(0, 4)
-      .toUpperCase();
-    const nextSection = {
-      id: `custom-${Date.now()}`,
-      label,
-      shortLabel: shortLabel || "CUST",
-      prompt: "Use this lane for custom grouped requirements and solution framing.",
-      description:
-        "Custom sections let you reorganize extracted material outside the original PWS shape.",
-      sourceKind: "manual",
-      sectionNumber: null,
-    };
+    const nextSection = buildCustomSection(newSectionLabel, sections.length);
 
     setWorkspace((current) => ({
       ...current,
       sections: [...current.sections, nextSection],
     }));
     setActiveSectionId(nextSection.id);
+    setNewSectionLabel("");
+  }
+
+  function handleCreateSectionFromRequirement() {
+    if (!selectedRequirement) {
+      return;
+    }
+
+    const defaultLabel = newSectionLabel.trim() || selectedRequirement.title || `Custom Section ${sections.length + 1}`;
+    const label = window.prompt("New section tab name", defaultLabel);
+    if (label === null) {
+      return;
+    }
+
+    const trimmedLabel = label.trim();
+    if (!trimmedLabel) {
+      return;
+    }
+
+    const nextSection = buildCustomSection(trimmedLabel, sections.length);
+
+    setWorkspace((current) => ({
+      ...current,
+      sections: [...current.sections, nextSection],
+      requirements: reassignRequirement(
+        current.requirements,
+        selectedRequirement.id,
+        nextSection.id,
+      ),
+    }));
+    setActiveSectionId(nextSection.id);
+    setSelectedRequirementId(selectedRequirement.id);
     setNewSectionLabel("");
   }
 
@@ -607,7 +750,7 @@ export function StudioApp() {
           borderBottom: 1,
           borderColor: "divider",
           backdropFilter: "blur(14px)",
-          bgcolor: "rgba(247, 249, 252, 0.84)",
+          bgcolor: "rgba(11, 18, 32, 0.78)",
           pl: { xs: 2, xl: `calc(${leftRailDisplayWidth}px + 16px)` },
           pr: { xs: 2, xl: `calc(${rightRailDisplayWidth}px + 16px)` },
           transition: "padding 180ms ease",
@@ -644,30 +787,17 @@ export function StudioApp() {
         onToggleCollapsed={() => setLeftRailCollapsed((current) => !current)}
         onResizeStart={startRailResize("left")}
       >
-        <Box>
-          <Typography variant="overline" color="text.secondary">
-            Intake
-          </Typography>
-          <Typography variant="h6" sx={{ mt: 0.5 }}>
-            Upload and organize a PWS
-          </Typography>
-        </Box>
-
         <UploadWorkspaceCard loading={uploadState.loading} onUpload={handleOutlineUpload} />
 
         {uploadState.error ? <Alert severity="error">{uploadState.error}</Alert> : null}
 
-        <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
+        <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1 }}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
             <HubRounded color="primary" />
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
               Section Tabs
             </Typography>
           </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Each imported top-level PWS section becomes a working tab. Add your own
-            tabs when you want to regroup the hierarchy into proposal-oriented lanes.
-          </Typography>
           <Stack direction="row" spacing={1}>
             <TextField
               size="small"
@@ -690,21 +820,27 @@ export function StudioApp() {
           <Typography variant="overline" color="text.secondary">
             Workspace
           </Typography>
-          <List sx={{ mt: 1, border: 1, borderColor: "divider", borderRadius: 3, p: 1 }}>
-            {sections.map((section) => {
-              const selected = section.id === activeSectionId;
-              return (
-                <ListItemButton
-                  key={section.id}
-                  selected={selected}
-                  onClick={() => selectSection(section.id)}
-                  sx={{ borderRadius: 2, mb: 0.5 }}
-                >
-                  <ListItemText primary={section.label} />
-                </ListItemButton>
-              );
-            })}
-          </List>
+          <DndContext
+            sensors={sectionTabSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleSectionTabDragEnd}
+          >
+            <SortableContext
+              items={sections.map((section) => section.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <List sx={{ mt: 1, border: 1, borderColor: "divider", borderRadius: 1, p: 1 }}>
+                {sections.map((section) => (
+                  <SortableSectionTab
+                    key={section.id}
+                    section={section}
+                    selected={section.id === activeSectionId}
+                    onSelect={selectSection}
+                  />
+                ))}
+              </List>
+            </SortableContext>
+          </DndContext>
         </Box>
       </RailShell>
 
@@ -725,38 +861,8 @@ export function StudioApp() {
       >
         <Toolbar sx={{ minHeight: 80 }} />
         <Stack spacing={3}>
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 3,
-              borderRadius: 4,
-              background:
-                "linear-gradient(135deg, rgba(10,98,168,0.08), rgba(255,255,255,0.92))",
-            }}
-          >
-            <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="center">
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="overline" color="text.secondary">
-                  Modern Workspace
-                </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-                  Ingest a PWS and edit the structure
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  Upload a PWS, review the extracted sections as tabs, and edit the
-                  hierarchy within each tab.
-                </Typography>
-              </Box>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Chip label={`${workspaceStats.extractedCount} extracted`} color="primary" />
-                <Chip label={`${workspaceStats.manualCount} manual`} color="secondary" />
-                <Chip label={workspace.sourceFormat || "No ingest yet"} variant="outlined" />
-              </Stack>
-            </Stack>
-          </Paper>
-
           {uploadState.loading ? (
-            <Paper variant="outlined" sx={{ p: 6, borderRadius: 4 }}>
+            <Paper variant="outlined" sx={{ p: 6, borderRadius: 1 }}>
               <Stack spacing={2} alignItems="center">
                 <CircularProgress />
                 <Typography variant="h6">Building hierarchy from uploaded PWS</Typography>
@@ -769,7 +875,7 @@ export function StudioApp() {
           ) : null}
 
           {!sections.length && !uploadState.loading ? (
-            <Paper variant="outlined" sx={{ p: 6, borderRadius: 4 }}>
+            <Paper variant="outlined" sx={{ p: 6, borderRadius: 1 }}>
               <Stack spacing={2} alignItems="flex-start">
                 <CloudUploadRounded color="primary" sx={{ fontSize: 40 }} />
                 <Typography variant="h5" sx={{ fontWeight: 700 }}>
@@ -788,13 +894,13 @@ export function StudioApp() {
             <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
               <WorkspaceCanvas
                 section={activeSection}
-                requirements={activeRequirements}
                 allRequirements={requirements}
                 unassignedRequirements={unassignedRequirements}
                 selectedRequirementId={selectedRequirementId}
-                onCreateRequirement={handleCreateTopLevelRequirement}
                 onReorderRequirements={handleReorderRequirements}
                 onSelectRequirement={selectRequirement}
+                collapsedIds={collapsedRequirementIds}
+                onToggleCollapsed={toggleCollapsedRequirement}
               />
             </Box>
           ) : null}
@@ -822,13 +928,18 @@ export function StudioApp() {
           section={activeSection}
           requirement={selectedRequirement}
           sections={sections}
+          hasCollapsibleRequirements={hasCollapsibleRequirements}
+          onCreateTopLevelRequirement={handleCreateTopLevelRequirement}
           onCreateChildRequirement={handleCreateChildRequirement}
+          onExpandAllRequirements={expandAllRequirements}
+          onCollapseAllRequirements={collapseAllRequirements}
           onRequirementChange={handleRequirementChange}
           onAssignToSection={handleAssignToActiveSection}
           onMoveRequirement={handleMoveRequirement}
           onMoveToUnassigned={handleMoveToUnassigned}
           onPromoteRequirement={handlePromoteRequirement}
           onDemoteRequirement={handleDemoteRequirement}
+          onCreateSectionFromRequirement={handleCreateSectionFromRequirement}
         />
       </RailShell>
     </Box>

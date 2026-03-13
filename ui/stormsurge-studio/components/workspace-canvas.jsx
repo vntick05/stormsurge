@@ -1,13 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import DragIndicatorRounded from "@mui/icons-material/DragIndicatorRounded";
-import PlaylistAddRounded from "@mui/icons-material/PlaylistAddRounded";
+import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
+import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
 import {
   Alert,
   Box,
   Button,
-  Chip,
   Divider,
   Paper,
   Stack,
@@ -29,10 +28,21 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { getChildren, getRequirementById, getSectionRoots, resequenceGroup } from "@/lib/studio-graph";
 
+const REQUIREMENT_INDENT_PX = 12;
+const REQUIREMENT_MAX_INDENT_LEVELS = 4;
+
+function formatRequirementMarker(requirement) {
+  const source = String(requirement.sourceRef || requirement.title || "").trim();
+  return source || requirement.title;
+}
+
 function RequirementCard({
   requirement,
   selected,
   onSelect,
+  collapsed,
+  hasChildren,
+  onToggleCollapsed,
   dragHandleProps,
   setNodeRef,
   style,
@@ -44,35 +54,62 @@ function RequirementCard({
         variant="outlined"
         onClick={() => onSelect(requirement.id)}
         sx={{
-          p: 1.25,
-          borderRadius: 2.5,
+          position: "relative",
+          overflow: "hidden",
+          pl: 1.75,
+          pr: 1.25,
+          py: 1.25,
+          borderRadius: 1,
           cursor: "pointer",
           borderColor: selected ? "primary.main" : "divider",
-          bgcolor: selected ? "rgba(11,92,173,0.05)" : "background.paper",
+          bgcolor: selected ? "rgba(108,182,255,0.16)" : "rgba(8, 15, 28, 0.88)",
           transition: "border-color 120ms ease, background-color 120ms ease",
         }}
       >
+        <Box
+          {...dragHandleProps}
+          onClick={(event) => event.stopPropagation()}
+          sx={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 8,
+            bgcolor: selected ? "primary.light" : "primary.main",
+            opacity: selected ? 0.95 : 0.8,
+            cursor: "grab",
+          }}
+        />
         <Stack direction="row" spacing={1} alignItems="flex-start">
-          <Button
-            {...dragHandleProps}
-            size="small"
-            sx={{ minWidth: 34, px: 0.5, mt: 0, color: "text.secondary" }}
+          <Box
+            sx={{
+              width: 52,
+              minWidth: 52,
+              alignSelf: "stretch",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRight: 1,
+              borderColor: "divider",
+              pl: 0.25,
+              pr: 0.5,
+            }}
           >
-            <DragIndicatorRounded fontSize="small" />
-          </Button>
-          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: 0.5 }}>
-              <Chip size="small" label={requirement.title} color="primary" variant="outlined" />
-              <Chip
-                size="small"
-                label={requirement.sourceType}
-                color={requirement.sourceType === "manual" ? "secondary" : "default"}
-                variant="outlined"
-              />
-              {requirement.kind !== "paragraph" ? (
-                <Chip size="small" label={requirement.kind} variant="outlined" />
-              ) : null}
-            </Stack>
+            <Typography
+              variant="caption"
+              color="primary.main"
+              sx={{
+                fontWeight: 700,
+                letterSpacing: 0.2,
+                textAlign: "center",
+                lineHeight: 1.2,
+                wordBreak: "break-word",
+              }}
+            >
+              {formatRequirementMarker(requirement)}
+            </Typography>
+          </Box>
+          <Box sx={{ flexGrow: 1, minWidth: 0, pr: 0.25 }}>
             <Typography
               variant="body2"
               color="text.primary"
@@ -87,6 +124,28 @@ function RequirementCard({
               {requirement.text || requirement.summary}
             </Typography>
           </Box>
+          <Button
+            size="small"
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleCollapsed?.(requirement.id);
+            }}
+            sx={{
+              minWidth: 28,
+              px: 0.25,
+              mt: 0,
+              ml: 0.25,
+              color: hasChildren ? "text.secondary" : "transparent",
+              visibility: hasChildren ? "visible" : "hidden",
+              alignSelf: "center",
+            }}
+          >
+            {collapsed ? (
+              <ExpandMoreRounded fontSize="small" />
+            ) : (
+              <ExpandLessRounded fontSize="small" />
+            )}
+          </Button>
         </Stack>
       </Paper>
       {children}
@@ -100,6 +159,8 @@ function SortableRequirementNode({
   selectedRequirementId,
   onSelectRequirement,
   onReorderRequirements,
+  collapsedIds,
+  onToggleCollapsed,
   depth = 0,
 }) {
   const {
@@ -110,27 +171,34 @@ function SortableRequirementNode({
     transition,
   } = useSortable({ id: requirement.id });
   const childRequirements = getChildren(allRequirements, requirement.id);
+  const collapsed = collapsedIds.has(requirement.id);
 
   return (
     <RequirementCard
       requirement={requirement}
       selected={selectedRequirementId === requirement.id}
       onSelect={onSelectRequirement}
+      collapsed={collapsed}
+      hasChildren={childRequirements.length > 0}
+      onToggleCollapsed={onToggleCollapsed}
       dragHandleProps={{ ...attributes, ...listeners }}
       setNodeRef={setNodeRef}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
-        marginLeft: depth * 24,
+        marginLeft:
+          Math.min(depth, REQUIREMENT_MAX_INDENT_LEVELS) * REQUIREMENT_INDENT_PX,
       }}
     >
-      {childRequirements.length ? (
+      {childRequirements.length && !collapsed ? (
         <RequirementList
           requirements={childRequirements}
           allRequirements={allRequirements}
           selectedRequirementId={selectedRequirementId}
           onSelectRequirement={onSelectRequirement}
           onReorderRequirements={onReorderRequirements}
+          collapsedIds={collapsedIds}
+          onToggleCollapsed={onToggleCollapsed}
           depth={depth + 1}
         />
       ) : null}
@@ -144,6 +212,8 @@ function RequirementList({
   selectedRequirementId,
   onSelectRequirement,
   onReorderRequirements,
+  collapsedIds,
+  onToggleCollapsed,
   depth = 0,
 }) {
   const requirementIds = requirements.map((requirement) => requirement.id);
@@ -186,7 +256,7 @@ function RequirementList({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={requirementIds} strategy={verticalListSortingStrategy}>
-        <Box sx={{ mt: depth === 0 ? 0 : 0.75 }}>
+        <Box sx={{ mt: depth === 0 ? 0 : 0.5 }}>
           {requirements.map((requirement) => (
             <SortableRequirementNode
               key={requirement.id}
@@ -195,6 +265,8 @@ function RequirementList({
               selectedRequirementId={selectedRequirementId}
               onSelectRequirement={onSelectRequirement}
               onReorderRequirements={onReorderRequirements}
+              collapsedIds={collapsedIds}
+              onToggleCollapsed={onToggleCollapsed}
               depth={depth}
             />
           ))}
@@ -206,13 +278,13 @@ function RequirementList({
 
 export function WorkspaceCanvas({
   section,
-  requirements,
   allRequirements,
   unassignedRequirements,
   selectedRequirementId,
-  onCreateRequirement,
   onReorderRequirements,
   onSelectRequirement,
+  collapsedIds,
+  onToggleCollapsed,
 }) {
   const sectionRoots = useMemo(
     () => (section ? getSectionRoots(allRequirements, section.id) : []),
@@ -225,37 +297,14 @@ export function WorkspaceCanvas({
 
   return (
     <Stack spacing={2}>
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems="flex-start">
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="overline" color="text.secondary">
-              Active Tab
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-              {section.label}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {section.description}
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={<PlaylistAddRounded />}
-            onClick={onCreateRequirement}
-          >
-            Add top-level requirement
-          </Button>
-        </Stack>
-      </Paper>
-
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack spacing={1.5}>
           <Box>
             <Typography variant="overline" color="text.secondary">
               Hierarchy
             </Typography>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Edit the tree
+              {section.label}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 640 }}>
               Reorder sibling nodes by drag handle, or use the inspector to change
@@ -270,6 +319,8 @@ export function WorkspaceCanvas({
               selectedRequirementId={selectedRequirementId}
               onSelectRequirement={onSelectRequirement}
               onReorderRequirements={onReorderRequirements}
+              collapsedIds={collapsedIds}
+              onToggleCollapsed={onToggleCollapsed}
             />
           ) : (
             <Alert severity="info">
@@ -279,7 +330,7 @@ export function WorkspaceCanvas({
         </Stack>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack spacing={1.5}>
           <Box>
             <Typography variant="overline" color="text.secondary">
@@ -302,10 +353,14 @@ export function WorkspaceCanvas({
                   onClick={() => onSelectRequirement(requirement.id)}
                   sx={{
                     p: 1.5,
-                    borderRadius: 2.5,
+                    borderRadius: 1,
                     cursor: "pointer",
                     borderColor:
                       selectedRequirementId === requirement.id ? "primary.main" : "divider",
+                    bgcolor:
+                      selectedRequirementId === requirement.id
+                        ? "rgba(108,182,255,0.14)"
+                        : "rgba(8, 15, 28, 0.88)",
                   }}
                 >
                   <Typography variant="caption" color="primary.main" sx={{ fontWeight: 700 }}>

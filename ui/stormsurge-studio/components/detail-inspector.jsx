@@ -1,5 +1,6 @@
 "use client";
 
+import PlaylistAddRounded from "@mui/icons-material/PlaylistAddRounded";
 import {
   Box,
   Button,
@@ -15,17 +16,22 @@ export function DetailInspector({
   section,
   requirement,
   sections,
+  hasCollapsibleRequirements,
+  onCreateTopLevelRequirement,
   onCreateChildRequirement,
+  onExpandAllRequirements,
+  onCollapseAllRequirements,
   onRequirementChange,
   onAssignToSection,
   onMoveRequirement,
   onMoveToUnassigned,
   onPromoteRequirement,
   onDemoteRequirement,
+  onCreateSectionFromRequirement,
 }) {
   if (!requirement) {
     return (
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           Inspector
         </Typography>
@@ -43,7 +49,7 @@ export function DetailInspector({
 
   return (
     <Stack spacing={2}>
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack spacing={1.5}>
           <Box>
             <Typography variant="overline" color="text.secondary">
@@ -71,38 +77,77 @@ export function DetailInspector({
             minRows={8}
             value={requirement.text}
             onChange={(event) => onRequirementChange("text", event.target.value)}
+            InputLabelProps={{
+              sx: {
+                fontSize: "0.875rem",
+              },
+            }}
+            InputProps={{
+              sx: {
+                fontSize: "0.875rem",
+                lineHeight: 1.4,
+                alignItems: "flex-start",
+              },
+            }}
           />
         </Stack>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack spacing={1.5}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             Hierarchy Controls
           </Typography>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Button variant="contained" onClick={onCreateChildRequirement}>
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<PlaylistAddRounded />}
+              onClick={onCreateTopLevelRequirement}
+            >
+              Add top-level
+            </Button>
+            <Button size="small" variant="contained" onClick={onCreateChildRequirement}>
               Add child
             </Button>
-            <Button variant="outlined" onClick={onPromoteRequirement}>
+            <Button size="small" variant="outlined" onClick={onPromoteRequirement}>
               Promote
             </Button>
-            <Button variant="outlined" onClick={onDemoteRequirement}>
+            <Button size="small" variant="outlined" onClick={onDemoteRequirement}>
               Demote
+            </Button>
+            <Button size="small" variant="outlined" onClick={onCreateSectionFromRequirement}>
+              New tab from req
             </Button>
           </Stack>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Button variant="outlined" onClick={() => onMoveRequirement("up")}>
+            <Button size="small" variant="outlined" onClick={() => onMoveRequirement("up")}>
               Move up
             </Button>
-            <Button variant="outlined" onClick={() => onMoveRequirement("down")}>
+            <Button size="small" variant="outlined" onClick={() => onMoveRequirement("down")}>
               Move down
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={onExpandAllRequirements}
+              disabled={!hasCollapsibleRequirements}
+            >
+              Expand all
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={onCollapseAllRequirements}
+              disabled={!hasCollapsibleRequirements}
+            >
+              Collapse all
             </Button>
           </Stack>
         </Stack>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack spacing={1.5}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             Section Controls
@@ -112,17 +157,17 @@ export function DetailInspector({
             node into that tab or move it back to the holding area.
           </Typography>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Button variant="contained" color="secondary" onClick={onAssignToSection}>
+            <Button size="small" variant="contained" color="secondary" onClick={onAssignToSection}>
               Move to active tab
             </Button>
-            <Button variant="outlined" onClick={onMoveToUnassigned}>
+            <Button size="small" variant="outlined" onClick={onMoveToUnassigned}>
               Send to holding area
             </Button>
           </Stack>
         </Stack>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack spacing={1.5}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             Provenance
