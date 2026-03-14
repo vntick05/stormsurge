@@ -1376,8 +1376,10 @@ export function StudioApp() {
         <DetailInspector
           section={activeSection}
           requirement={selectedRequirement}
+          allRequirements={requirements}
           sections={sections}
           hasCollapsibleRequirements={hasCollapsibleRequirements}
+          onSelectRequirement={selectRequirement}
           onCreateTopLevelRequirement={handleCreateTopLevelRequirement}
           onCreateChildRequirement={handleCreateChildRequirement}
           onExpandAllRequirements={expandAllRequirements}
