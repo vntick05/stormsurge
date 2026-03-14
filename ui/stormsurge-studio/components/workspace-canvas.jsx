@@ -48,6 +48,16 @@ function RequirementCard({
   style,
   children,
 }) {
+  const isManualRequirement = requirement.sourceType === "manual";
+  const accentColor = isManualRequirement
+    ? selected
+      ? "#F59E0B"
+      : "#D97706"
+    : selected
+      ? "primary.light"
+      : "primary.main";
+  const markerColor = isManualRequirement ? accentColor : "primary.main";
+
   return (
     <Box ref={setNodeRef} style={style} sx={{ mb: 1 }}>
       <Paper
@@ -59,7 +69,7 @@ function RequirementCard({
           pl: 2,
           pr: 1.5,
           py: 1.4,
-          borderRadius: 1.5,
+          borderRadius: 1,
           cursor: "pointer",
           borderColor: selected ? "rgba(110, 168, 254, 0.62)" : "rgba(36, 50, 74, 0.72)",
           bgcolor: selected ? "#243552" : "#15191F",
@@ -79,7 +89,7 @@ function RequirementCard({
             top: 0,
             bottom: 0,
             width: 8,
-            bgcolor: selected ? "primary.light" : "primary.main",
+            bgcolor: accentColor,
             opacity: selected ? 1 : 0.5,
             cursor: "grab",
           }}
@@ -99,12 +109,12 @@ function RequirementCard({
               pr: 0.5,
             }}
           >
-            <Typography
-              variant="caption"
-              color="primary.main"
-              sx={{
-                fontWeight: 700,
-                letterSpacing: 0.2,
+          <Typography
+            variant="caption"
+            color={markerColor}
+            sx={{
+              fontWeight: 700,
+              letterSpacing: 0.2,
                 textAlign: "center",
                 lineHeight: 1.2,
                 wordBreak: "break-word",
@@ -303,7 +313,7 @@ export function WorkspaceCanvas({
       variant="outlined"
       sx={{
         p: 2.75,
-        borderRadius: 1.5,
+        borderRadius: 1,
         bgcolor: "#1D232C",
         borderColor: "rgba(47, 64, 90, 0.9)",
         boxShadow: "0 10px 22px rgba(3, 8, 18, 0.18)",

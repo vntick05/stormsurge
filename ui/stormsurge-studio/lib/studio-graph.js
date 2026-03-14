@@ -67,6 +67,27 @@ export function resequenceGroup(requirements, group) {
   );
 }
 
+export function insertRequirementInGroup(
+  requirements,
+  draftRequirement,
+  siblingGroup,
+  insertIndex,
+) {
+  const clampedIndex = Math.max(0, Math.min(insertIndex, siblingGroup.length));
+  const reordered = [...siblingGroup];
+  reordered.splice(clampedIndex, 0, draftRequirement);
+  const nextPositions = new Map(reordered.map((item, index) => [item.id, index + 1]));
+
+  return [
+    ...requirements.map((requirement) =>
+      nextPositions.has(requirement.id)
+        ? { ...requirement, position: nextPositions.get(requirement.id) }
+        : requirement,
+    ),
+    { ...draftRequirement, position: nextPositions.get(draftRequirement.id) },
+  ];
+}
+
 export function moveRequirement(requirements, requirementId, direction) {
   const current = getRequirementById(requirements, requirementId);
   if (!current) {

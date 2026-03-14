@@ -26,6 +26,7 @@ function buildPrompt(sectionLabel) {
 export async function POST(request) {
   const payload = await request.json().catch(() => null);
   const sectionLabel = payload?.sectionLabel;
+  const customPrompt = String(payload?.prompt || "").trim();
   const requirements = Array.isArray(payload?.requirements) ? payload.requirements : [];
 
   if (!requirements.length) {
@@ -53,7 +54,7 @@ export async function POST(request) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      prompt: buildPrompt(sectionLabel),
+      prompt: customPrompt || buildPrompt(sectionLabel),
       checked_requirements: checkedRequirements,
       mode: "ask",
       use_project_evidence: false,

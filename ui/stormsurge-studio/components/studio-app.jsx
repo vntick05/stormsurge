@@ -6,8 +6,9 @@ import ChevronRightRounded from "@mui/icons-material/ChevronRightRounded";
 import CloudUploadRounded from "@mui/icons-material/CloudUploadRounded";
 import DragIndicatorRounded from "@mui/icons-material/DragIndicatorRounded";
 import EditRounded from "@mui/icons-material/EditRounded";
-import HubRounded from "@mui/icons-material/HubRounded";
+import HomeRounded from "@mui/icons-material/HomeRounded";
 import InsightsRounded from "@mui/icons-material/InsightsRounded";
+import SaveRounded from "@mui/icons-material/SaveRounded";
 import {
   closestCenter,
   DndContext,
@@ -29,6 +30,10 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   IconButton,
   List,
@@ -52,7 +57,9 @@ import {
   demoteRequirement,
   getChildren,
   getRequirementById,
+  getSiblingGroup,
   getSectionRoots,
+  insertRequirementInGroup,
   moveRequirement,
   promoteRequirement,
   reassignRequirement,
@@ -68,6 +75,7 @@ const BOTTOM_DOCK_DEFAULT_HEIGHT = 340;
 const BOTTOM_DOCK_MIN_HEIGHT = 220;
 const BOTTOM_DOCK_MAX_HEIGHT = 520;
 const STUDIO_STATE_STORAGE_KEY = "stormsurge-studio-state-v1";
+const SAVED_PROJECTS_STORAGE_KEY = "stormsurge-studio-saved-projects-v1";
 const STORM_WORKSPACE_TABS = [
   "MTS Definition",
   "MTS Solution",
@@ -136,6 +144,82 @@ function buildCustomSection(label, sectionCount) {
   };
 }
 
+function buildSectionBarSx(selected) {
+  return {
+    position: "relative",
+    overflow: "hidden",
+    alignItems: "stretch",
+    borderRadius: 0.75,
+    mb: 0.75,
+    px: 1.1,
+    py: 0.2,
+    minHeight: 54,
+    bgcolor: selected ? "rgba(32, 44, 66, 0.96)" : "rgba(18, 23, 31, 0.92)",
+    border: "1px solid",
+    borderColor: selected ? "rgba(110, 168, 254, 0.3)" : "rgba(40, 53, 74, 0.9)",
+    boxShadow: selected ? "0 10px 22px rgba(5, 11, 22, 0.22)" : "none",
+    transition: "border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease",
+    "&:hover": {
+      bgcolor: selected ? "rgba(35, 49, 72, 0.98)" : "rgba(23, 29, 38, 0.96)",
+      borderColor: selected ? "rgba(110, 168, 254, 0.34)" : "rgba(54, 71, 97, 0.92)",
+    },
+  };
+}
+
+function SectionTabContent({ section, selected, dragHandleProps, onRename }) {
+  return (
+    <>
+      <Box
+        {...dragHandleProps}
+        onClick={(event) => event.stopPropagation()}
+        sx={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 6,
+          bgcolor: selected ? "primary.light" : "primary.main",
+          opacity: selected ? 0.82 : 0.34,
+          cursor: dragHandleProps ? "grab" : "default",
+        }}
+      />
+      <Stack direction="row" spacing={1.1} alignItems="center" sx={{ width: "100%" }}>
+        <Box sx={{ flexGrow: 1, minWidth: 0, py: 0.95, pl: 0.8 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: selected ? 700 : 600,
+              lineHeight: 1.2,
+              color: "text.primary",
+            }}
+          >
+            {section.label}
+          </Typography>
+        </Box>
+        {onRename ? (
+          <Tooltip title="Rename section tab">
+            <IconButton
+              size="small"
+              edge="end"
+              onClick={(event) => {
+                event.stopPropagation();
+                onRename(section.id);
+              }}
+              sx={{
+                alignSelf: "center",
+                color: "text.secondary",
+                opacity: selected ? 0.92 : 0.66,
+              }}
+            >
+              <EditRounded fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        ) : null}
+      </Stack>
+    </>
+  );
+}
+
 function SortableSectionTab({ section, selected, onSelect, onRename }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: section.id,
@@ -148,50 +232,17 @@ function SortableSectionTab({ section, selected, onSelect, onRename }) {
       onClick={() => onSelect(section.id)}
       onDoubleClick={() => onRename(section.id)}
       sx={{
-        borderRadius: 1,
-        mb: 0.5,
         transform: CSS.Transform.toString(transform),
         transition,
-        px: 1,
-        py: 0.45,
-        bgcolor: selected ? "rgba(110, 168, 254, 0.12)" : "transparent",
-        border: "1px solid",
-        borderColor: selected ? "rgba(110, 168, 254, 0.24)" : "transparent",
-        "&:hover": {
-          bgcolor: selected ? "rgba(110, 168, 254, 0.14)" : "rgba(255, 255, 255, 0.03)",
-        },
+        ...buildSectionBarSx(selected),
       }}
     >
-      <Box
-        {...attributes}
-        {...listeners}
-        onClick={(event) => event.stopPropagation()}
-        sx={{
-          width: 6,
-          alignSelf: "stretch",
-          mr: 1,
-          ml: -0.5,
-          borderRadius: 0.5,
-          bgcolor: selected ? "primary.light" : "primary.main",
-          opacity: selected ? 0.9 : 0.38,
-          cursor: "grab",
-          flexShrink: 0,
-        }}
+      <SectionTabContent
+        section={section}
+        selected={selected}
+        dragHandleProps={{ ...attributes, ...listeners }}
+        onRename={onRename}
       />
-      <ListItemText primary={section.label} />
-      <Tooltip title="Rename section tab">
-        <IconButton
-          size="small"
-          edge="end"
-          onClick={(event) => {
-            event.stopPropagation();
-            onRename(section.id);
-          }}
-          sx={{ ml: 0.5 }}
-        >
-          <EditRounded fontSize="small" />
-        </IconButton>
-      </Tooltip>
     </ListItemButton>
   );
 }
@@ -357,6 +408,26 @@ function buildEmptyStormWorkspace() {
   }, {});
 }
 
+function buildDefaultMtsDefinitionPrompt(sectionLabel) {
+  const scopedSection = String(sectionLabel || "this section").trim();
+  return [
+    `Draft an MTS Definition for ${scopedSection}.`,
+    "MTS means Meets the Standard.",
+    "Read the requirements as a group.",
+    "Identify the common baseline expectation across them.",
+    "Define the minimum credible, compliant, and executable approach.",
+    "Focus on what would make a government evaluator conclude the offeror understands the work and can perform it with acceptable risk.",
+    "Include expected elements such as approach, process, staffing, tools, governance, deliverables, and performance controls only if they are clearly implied by the requirements.",
+    "Do not write strengths, discriminators, or win themes.",
+    "Do not just restate the requirements.",
+    "Do not use marketing language.",
+    "Write in practical evaluator-facing language.",
+    "Use 2 to 3 short paragraphs.",
+    "Do not use headings, bullets, markdown emphasis, or labels.",
+    "Do not mention source metadata, internal tooling, or the phrase 'Meets the Standard' in the response body.",
+  ].join(" ");
+}
+
 function normalizeStormWorkspaceNotes(notesBySection) {
   if (!notesBySection || typeof notesBySection !== "object" || Array.isArray(notesBySection)) {
     return {};
@@ -373,6 +444,22 @@ function normalizeStormWorkspaceNotes(notesBySection) {
     };
     return accumulator;
   }, {});
+}
+
+function normalizeSavedProjects(savedProjects) {
+  if (!Array.isArray(savedProjects)) {
+    return [];
+  }
+
+  return savedProjects.filter(
+    (project) =>
+      project &&
+      typeof project === "object" &&
+      typeof project.id === "string" &&
+      typeof project.name === "string" &&
+      project.snapshot &&
+      typeof project.snapshot === "object",
+  );
 }
 
 function getSectionRequirementScope(requirements, sectionId) {
@@ -392,6 +479,8 @@ function StormWorkspaceBar({
   notesByTab,
   onNotesChange,
   onGenerateMtsDefinition,
+  onClearActiveTab,
+  onEditMtsPrompt,
   generationState,
   activeSection,
   activeSectionRequirementCount,
@@ -406,7 +495,7 @@ function StormWorkspaceBar({
     <Paper
       variant="outlined"
       sx={{
-        borderRadius: { xs: 1, xl: 0 },
+        borderRadius: { xs: 0.75, xl: 0 },
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
@@ -479,17 +568,31 @@ function StormWorkspaceBar({
               ) : null}
             </Box>
             {activeTab === "MTS Definition" ? (
-              <Button
-                variant="contained"
-                onClick={onGenerateMtsDefinition}
-                disabled={!canGenerateMtsDefinition}
-                startIcon={
-                  generationState.loading ? <CircularProgress size={16} color="inherit" /> : null
-                }
-              >
-                {generationState.loading ? "Generating..." : "Generate Definition"}
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Button variant="outlined" onClick={onClearActiveTab}>
+                  Clear
+                </Button>
+                <Button variant="outlined" onClick={onEditMtsPrompt}>
+                  Edit Prompt
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={onGenerateMtsDefinition}
+                  disabled={!canGenerateMtsDefinition}
+                  startIcon={
+                    generationState.loading ? (
+                      <CircularProgress size={16} color="inherit" />
+                    ) : null
+                  }
+                >
+                  {generationState.loading ? "Generating..." : "Generate Definition"}
+                </Button>
+              </Stack>
+            ) : (
+              <Button variant="outlined" onClick={onClearActiveTab}>
+                Clear
               </Button>
-            ) : null}
+            )}
           </Stack>
           {generationState.error && activeTab === "MTS Definition" ? (
             <Alert severity="error">{generationState.error}</Alert>
@@ -522,6 +625,11 @@ export function StudioApp() {
   const [workspace, setWorkspace] = useState(buildEmptyWorkspace);
   const [stormWorkspaceTab, setStormWorkspaceTab] = useState(STORM_WORKSPACE_TABS[0]);
   const [stormWorkspaceNotes, setStormWorkspaceNotes] = useState({});
+  const [stormWorkspacePrompts, setStormWorkspacePrompts] = useState({});
+  const [savedProjects, setSavedProjects] = useState([]);
+  const [mtsPromptDialogOpen, setMtsPromptDialogOpen] = useState(false);
+  const [mtsPromptDraft, setMtsPromptDraft] = useState("");
+  const [homeDialogOpen, setHomeDialogOpen] = useState(false);
   const [stormWorkspaceHeight, setStormWorkspaceHeight] = useState(BOTTOM_DOCK_DEFAULT_HEIGHT);
   const [activeSectionId, setActiveSectionId] = useState("");
   const [selectedRequirementId, setSelectedRequirementId] = useState("");
@@ -566,6 +674,16 @@ export function StudioApp() {
       ...(stormWorkspaceNotes[activeSection.id] || {}),
     };
   }, [activeSection, stormWorkspaceNotes]);
+  const activeSectionMtsPrompt = useMemo(() => {
+    if (!activeSection?.id) {
+      return buildDefaultMtsDefinitionPrompt("this section");
+    }
+
+    return (
+      String(stormWorkspacePrompts[activeSection.id] || "").trim() ||
+      buildDefaultMtsDefinitionPrompt(activeSection.label)
+    );
+  }, [activeSection, stormWorkspacePrompts]);
 
   const workspaceStats = useMemo(() => {
     const extractedCount = requirements.filter(
@@ -581,60 +699,109 @@ export function StudioApp() {
       manualCount,
     };
   }, [displaySections.length, requirements]);
+  const isHomeScreen = !sections.length;
+
+  function buildStudioSnapshot() {
+    return {
+      workspace,
+      activeSectionId,
+      selectedRequirementId,
+      stormWorkspaceTab,
+      stormWorkspaceNotes,
+      stormWorkspacePrompts,
+      stormWorkspaceHeight,
+      leftRailWidth,
+      rightRailWidth,
+      leftRailCollapsed,
+      rightRailCollapsed,
+    };
+  }
+
+  function resetToHomeScreen() {
+    setWorkspace(buildEmptyWorkspace());
+    setStormWorkspaceTab(STORM_WORKSPACE_TABS[0]);
+    setStormWorkspaceNotes({});
+    setStormWorkspacePrompts({});
+    setActiveSectionId("");
+    setSelectedRequirementId("");
+    setCollapsedRequirementIds(new Set());
+    setUploadState({ loading: false, error: "" });
+    setMtsDefinitionGenerationState({ loading: false, error: "" });
+  }
+
+  function restoreStudioSnapshot(snapshot) {
+    setWorkspace(snapshot?.workspace ? snapshot.workspace : buildEmptyWorkspace());
+    setActiveSectionId(typeof snapshot?.activeSectionId === "string" ? snapshot.activeSectionId : "");
+    setSelectedRequirementId(
+      typeof snapshot?.selectedRequirementId === "string" ? snapshot.selectedRequirementId : "",
+    );
+    setStormWorkspaceTab(
+      typeof snapshot?.stormWorkspaceTab === "string"
+        ? snapshot.stormWorkspaceTab
+        : STORM_WORKSPACE_TABS[0],
+    );
+    setStormWorkspaceNotes(normalizeStormWorkspaceNotes(snapshot?.stormWorkspaceNotes));
+    setStormWorkspacePrompts(
+      snapshot?.stormWorkspacePrompts &&
+        typeof snapshot.stormWorkspacePrompts === "object" &&
+        !Array.isArray(snapshot.stormWorkspacePrompts)
+        ? snapshot.stormWorkspacePrompts
+        : {},
+    );
+    setStormWorkspaceHeight(
+      typeof snapshot?.stormWorkspaceHeight === "number"
+        ? clampDockHeight(snapshot.stormWorkspaceHeight)
+        : BOTTOM_DOCK_DEFAULT_HEIGHT,
+    );
+    setLeftRailWidth(
+      typeof snapshot?.leftRailWidth === "number"
+        ? clampRailWidth(snapshot.leftRailWidth)
+        : LEFT_RAIL_DEFAULT_WIDTH,
+    );
+    setRightRailWidth(
+      typeof snapshot?.rightRailWidth === "number"
+        ? clampRailWidth(snapshot.rightRailWidth)
+        : RIGHT_RAIL_DEFAULT_WIDTH,
+    );
+    setLeftRailCollapsed(
+      typeof snapshot?.leftRailCollapsed === "boolean" ? snapshot.leftRailCollapsed : false,
+    );
+    setRightRailCollapsed(
+      typeof snapshot?.rightRailCollapsed === "boolean" ? snapshot.rightRailCollapsed : false,
+    );
+    setCollapsedRequirementIds(new Set());
+    setUploadState({ loading: false, error: "" });
+    setMtsDefinitionGenerationState({ loading: false, error: "" });
+  }
 
   useEffect(() => {
     setMounted(true);
     try {
       const savedState = window.localStorage.getItem(STUDIO_STATE_STORAGE_KEY);
-      if (!savedState) {
-        return;
-      }
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        if (parsed?.stormWorkspaceNotes && typeof parsed.stormWorkspaceNotes === "object") {
+          const hasLegacyShape = STORM_WORKSPACE_TABS.some(
+            (tab) => typeof parsed.stormWorkspaceNotes?.[tab] === "string",
+          );
+          const restoredActiveSectionId =
+            typeof parsed?.activeSectionId === "string" ? parsed.activeSectionId : "";
 
-      const parsed = JSON.parse(savedState);
-      if (parsed?.workspace) {
-        setWorkspace(parsed.workspace);
-      }
-      if (typeof parsed?.activeSectionId === "string") {
-        setActiveSectionId(parsed.activeSectionId);
-      }
-      if (typeof parsed?.selectedRequirementId === "string") {
-        setSelectedRequirementId(parsed.selectedRequirementId);
-      }
-      if (typeof parsed?.stormWorkspaceTab === "string") {
-        setStormWorkspaceTab(parsed.stormWorkspaceTab);
-      }
-      if (parsed?.stormWorkspaceNotes && typeof parsed.stormWorkspaceNotes === "object") {
-        const hasLegacyShape = STORM_WORKSPACE_TABS.some(
-          (tab) => typeof parsed.stormWorkspaceNotes?.[tab] === "string",
-        );
-        const restoredActiveSectionId =
-          typeof parsed?.activeSectionId === "string" ? parsed.activeSectionId : "";
-
-        if (hasLegacyShape && restoredActiveSectionId) {
-          setStormWorkspaceNotes({
-            [restoredActiveSectionId]: {
-              ...buildEmptyStormWorkspace(),
-              ...parsed.stormWorkspaceNotes,
-            },
-          });
-        } else {
-          setStormWorkspaceNotes(normalizeStormWorkspaceNotes(parsed.stormWorkspaceNotes));
+          if (hasLegacyShape && restoredActiveSectionId) {
+            parsed.stormWorkspaceNotes = {
+              [restoredActiveSectionId]: {
+                ...buildEmptyStormWorkspace(),
+                ...parsed.stormWorkspaceNotes,
+              },
+            };
+          }
         }
+        restoreStudioSnapshot(parsed);
       }
-      if (typeof parsed?.stormWorkspaceHeight === "number") {
-        setStormWorkspaceHeight(clampDockHeight(parsed.stormWorkspaceHeight));
-      }
-      if (typeof parsed?.leftRailWidth === "number") {
-        setLeftRailWidth(clampRailWidth(parsed.leftRailWidth));
-      }
-      if (typeof parsed?.rightRailWidth === "number") {
-        setRightRailWidth(clampRailWidth(parsed.rightRailWidth));
-      }
-      if (typeof parsed?.leftRailCollapsed === "boolean") {
-        setLeftRailCollapsed(parsed.leftRailCollapsed);
-      }
-      if (typeof parsed?.rightRailCollapsed === "boolean") {
-        setRightRailCollapsed(parsed.rightRailCollapsed);
+
+      const savedProjectsState = window.localStorage.getItem(SAVED_PROJECTS_STORAGE_KEY);
+      if (savedProjectsState) {
+        setSavedProjects(normalizeSavedProjects(JSON.parse(savedProjectsState)));
       }
     } catch (error) {
       console.warn("Failed to restore StormSurge studio state", error);
@@ -680,6 +847,7 @@ export function StudioApp() {
         selectedRequirementId,
         stormWorkspaceTab,
         stormWorkspaceNotes,
+        stormWorkspacePrompts,
         stormWorkspaceHeight,
         leftRailWidth,
         rightRailWidth,
@@ -694,12 +862,24 @@ export function StudioApp() {
     selectedRequirementId,
     stormWorkspaceTab,
     stormWorkspaceNotes,
+    stormWorkspacePrompts,
     stormWorkspaceHeight,
     leftRailWidth,
     rightRailWidth,
     leftRailCollapsed,
     rightRailCollapsed,
   ]);
+
+  useEffect(() => {
+    if (!mounted) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      SAVED_PROJECTS_STORAGE_KEY,
+      JSON.stringify(savedProjects),
+    );
+  }, [mounted, savedProjects]);
 
   const leftRailDisplayWidth = leftRailCollapsed ? RAIL_COLLAPSED_WIDTH : leftRailWidth;
   const rightRailDisplayWidth = rightRailCollapsed ? RAIL_COLLAPSED_WIDTH : rightRailWidth;
@@ -795,19 +975,56 @@ export function StudioApp() {
       return;
     }
 
-    const nextRequirement = createTopLevelRequirement(activeSection.id);
-
+    let insertedRequirement = createTopLevelRequirement(activeSection.id);
     setWorkspace((current) => {
-      const siblingCount = getSectionRoots(current.requirements, activeSection.id).length;
+      const currentSelectedRequirement = selectedRequirementId
+        ? getRequirementById(current.requirements, selectedRequirementId)
+        : null;
+
+      if (
+        currentSelectedRequirement &&
+        currentSelectedRequirement.sectionId === activeSection.id
+      ) {
+        const siblingGroup = getSiblingGroup(current.requirements, currentSelectedRequirement);
+        const selectedIndex = siblingGroup.findIndex(
+          (requirement) => requirement.id === currentSelectedRequirement.id,
+        );
+        insertedRequirement = {
+          ...insertedRequirement,
+          sectionId: currentSelectedRequirement.sectionId,
+          parentId: currentSelectedRequirement.parentId,
+          kind: currentSelectedRequirement.parentId === null ? "top-level" : "child",
+        };
+
+        return {
+          ...current,
+          requirements: insertRequirementInGroup(
+            current.requirements,
+            insertedRequirement,
+            siblingGroup,
+            selectedIndex + 1,
+          ),
+        };
+      }
+
+      insertedRequirement = {
+        ...insertedRequirement,
+        sectionId: activeSection.id,
+        parentId: null,
+        kind: "top-level",
+      };
+
       return {
         ...current,
-        requirements: [
-          ...current.requirements,
-          { ...nextRequirement, position: siblingCount + 1 },
-        ],
+        requirements: insertRequirementInGroup(
+          current.requirements,
+          insertedRequirement,
+          getSectionRoots(current.requirements, activeSection.id),
+          0,
+        ),
       };
     });
-    setSelectedRequirementId(nextRequirement.id);
+    setSelectedRequirementId(insertedRequirement.id);
   }
 
   function handleCreateChildRequirement() {
@@ -1031,6 +1248,50 @@ export function StudioApp() {
     }));
   }
 
+  function handleClearStormWorkspaceTab() {
+    if (!activeSection?.id) {
+      return;
+    }
+
+    setStormWorkspaceNotes((current) => ({
+      ...current,
+      [activeSection.id]: {
+        ...buildEmptyStormWorkspace(),
+        ...(current[activeSection.id] || {}),
+        [stormWorkspaceTab]: "",
+      },
+    }));
+  }
+
+  function handleEditMtsPrompt() {
+    if (!activeSection?.id) {
+      return;
+    }
+    setMtsPromptDraft(activeSectionMtsPrompt);
+    setMtsPromptDialogOpen(true);
+  }
+
+  function handleCloseMtsPromptDialog() {
+    setMtsPromptDialogOpen(false);
+  }
+
+  function handleSaveMtsPrompt() {
+    if (!activeSection?.id) {
+      return;
+    }
+
+    const trimmedPrompt = mtsPromptDraft.trim();
+    if (!trimmedPrompt) {
+      return;
+    }
+
+    setStormWorkspacePrompts((current) => ({
+      ...current,
+      [activeSection.id]: trimmedPrompt,
+    }));
+    setMtsPromptDialogOpen(false);
+  }
+
   async function handleGenerateMtsDefinition() {
     if (!activeSection || !activeSectionRequirements.length) {
       setMtsDefinitionGenerationState({
@@ -1059,6 +1320,7 @@ export function StudioApp() {
         },
         body: JSON.stringify({
           sectionLabel: activeSection.label,
+          prompt: activeSectionMtsPrompt,
           requirements: activeSectionRequirements.map(({ requirement }) => ({
             id: requirement.sourceRef || requirement.title || requirement.id,
             section: activeSection.label,
@@ -1204,6 +1466,73 @@ export function StudioApp() {
     setUploadState({ loading: false, error: "" });
   }
 
+  function handleSaveProject() {
+    if (!sections.length) {
+      return false;
+    }
+
+    const defaultName = workspace.sourceFilename || "StormSurge Project";
+    const name = window.prompt("Save project as", defaultName);
+    if (name === null) {
+      return false;
+    }
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return false;
+    }
+
+    const snapshot = buildStudioSnapshot();
+    setSavedProjects((current) => {
+      const existing = current.find((project) => project.name === trimmedName);
+      const nextProject = {
+        id: existing?.id || `project-${Date.now()}`,
+        name: trimmedName,
+        savedAt: new Date().toISOString(),
+        snapshot,
+      };
+
+      if (existing) {
+        return current
+          .map((project) => (project.id === existing.id ? nextProject : project))
+          .sort((left, right) => right.savedAt.localeCompare(left.savedAt));
+      }
+
+      return [nextProject, ...current].sort((left, right) =>
+        right.savedAt.localeCompare(left.savedAt),
+      );
+    });
+    return true;
+  }
+
+  function handleOpenSavedProject(project) {
+    restoreStudioSnapshot(project.snapshot);
+  }
+
+  function handleGoHome() {
+    if (!sections.length && !requirements.length) {
+      resetToHomeScreen();
+      return;
+    }
+
+    setHomeDialogOpen(true);
+  }
+
+  function handleConfirmHomeWithoutSaving() {
+    setHomeDialogOpen(false);
+    resetToHomeScreen();
+  }
+
+  function handleSaveThenGoHome() {
+    const saved = handleSaveProject();
+    if (!saved) {
+      return;
+    }
+
+    setHomeDialogOpen(false);
+    resetToHomeScreen();
+  }
+
   return (
     <Box
       sx={{
@@ -1236,99 +1565,92 @@ export function StudioApp() {
               StormSurge Studio
             </Typography>
           </Box>
-          <UploadWorkspaceCard loading={uploadState.loading} onUpload={handleOutlineUpload} compact />
-          {workspace.sourceFilename ? (
-            <Chip
-              color="primary"
-              variant="outlined"
-              icon={<InsightsRounded />}
-              label={workspace.sourceFilename}
-            />
+          {!isHomeScreen ? (
+            <>
+              <Button variant="outlined" startIcon={<HomeRounded />} onClick={handleGoHome}>
+                Home
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<SaveRounded />}
+                onClick={handleSaveProject}
+                disabled={!sections.length}
+              >
+                Save Project
+              </Button>
+              {workspace.sourceFilename ? (
+                <Chip
+                  color="primary"
+                  variant="outlined"
+                  icon={<InsightsRounded />}
+                  label={workspace.sourceFilename}
+                />
+              ) : null}
+              <Chip label={`${workspaceStats.sections} tabs`} variant="outlined" />
+              <Chip label={`${workspaceStats.requirements} nodes`} variant="outlined" />
+            </>
           ) : null}
-          <Chip label={`${workspaceStats.sections} tabs`} variant="outlined" />
-          <Chip label={`${workspaceStats.requirements} nodes`} variant="outlined" />
         </Toolbar>
       </AppBar>
 
-      <RailShell
-        side="left"
-        title="Workspace"
-        subtitle="Navigation"
-        width={leftRailDisplayWidth}
-        collapsed={leftRailCollapsed}
-        onToggleCollapsed={() => setLeftRailCollapsed((current) => !current)}
-        onResizeStart={startRailResize("left")}
-      >
-        {uploadState.error ? <Alert severity="error">{uploadState.error}</Alert> : null}
+      {!isHomeScreen ? (
+        <RailShell
+          side="left"
+          title="Section Tabs"
+          subtitle=""
+          width={leftRailDisplayWidth}
+          collapsed={leftRailCollapsed}
+          onToggleCollapsed={() => setLeftRailCollapsed((current) => !current)}
+          onResizeStart={startRailResize("left")}
+        >
+          {uploadState.error ? <Alert severity="error">{uploadState.error}</Alert> : null}
 
-        <Box>
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-            <HubRounded color="primary" />
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-              Section Tabs
-            </Typography>
-          </Stack>
-          <DndContext
-            sensors={sectionTabSensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleSectionTabDragEnd}
-          >
-            <SortableContext
-              items={sections.map((section) => section.id)}
-              strategy={verticalListSortingStrategy}
+          <Box>
+            <DndContext
+              sensors={sectionTabSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleSectionTabDragEnd}
             >
-              <List
-                sx={{
-                  mt: 0.75,
-                  borderRadius: 2,
-                  p: 1.1,
-                  bgcolor: "#151A21",
-                  border: "1px solid rgba(47, 64, 90, 0.98)",
-                  boxShadow:
-                    "inset 0 1px 0 rgba(255,255,255,0.02), 0 8px 18px rgba(0,0,0,0.18)",
-                }}
+              <SortableContext
+                items={sections.map((section) => section.id)}
+                strategy={verticalListSortingStrategy}
               >
-                {sections.map((section) => (
-                  <SortableSectionTab
-                    key={section.id}
-                    section={section}
-                    selected={section.id === activeSectionId}
-                    onSelect={selectSection}
-                    onRename={handleRenameSection}
-                  />
-                ))}
-                {unassignedRequirements.length ? (
-                  <ListItemButton
-                    selected={activeSectionId === "unassigned"}
-                    onClick={() => selectSection("unassigned")}
-                    sx={{
-                      borderRadius: 1,
-                      mt: 0.5,
-                      bgcolor:
-                        activeSectionId === "unassigned"
-                          ? "rgba(110, 168, 254, 0.12)"
-                          : "transparent",
-                      border: "1px solid",
-                      borderColor:
-                        activeSectionId === "unassigned"
-                          ? "rgba(110, 168, 254, 0.24)"
-                          : "transparent",
-                      "&:hover": {
-                        bgcolor:
-                          activeSectionId === "unassigned"
-                            ? "rgba(110, 168, 254, 0.14)"
-                            : "rgba(255, 255, 255, 0.03)",
-                      },
-                    }}
-                  >
-                    <ListItemText primary={UNASSIGNED_SECTION.label} />
-                  </ListItemButton>
-                ) : null}
-              </List>
-            </SortableContext>
-          </DndContext>
-        </Box>
-      </RailShell>
+                <List
+                  sx={{
+                    mt: 0.75,
+                    p: 0,
+                    bgcolor: "transparent",
+                    border: 0,
+                    boxShadow: "none",
+                  }}
+                >
+                  {sections.map((section) => (
+                    <SortableSectionTab
+                      key={section.id}
+                      section={section}
+                      selected={section.id === activeSectionId}
+                      onSelect={selectSection}
+                      onRename={handleRenameSection}
+                    />
+                  ))}
+                  {unassignedRequirements.length ? (
+                    <ListItemButton
+                      selected={activeSectionId === "unassigned"}
+                      onClick={() => selectSection("unassigned")}
+                      sx={buildSectionBarSx(activeSectionId === "unassigned")}
+                    >
+                      <SectionTabContent
+                        section={UNASSIGNED_SECTION}
+                        selected={activeSectionId === "unassigned"}
+                      />
+                    </ListItemButton>
+                  ) : null}
+                </List>
+              </SortableContext>
+            </DndContext>
+          </Box>
+        </RailShell>
+      ) : null}
 
       <Box
         component="main"
@@ -1338,14 +1660,14 @@ export function StudioApp() {
           minHeight: 0,
           display: "flex",
           flexDirection: "column",
-          pl: { xs: 0.375, md: 0.5, xl: 0.75 },
-          pr: { xs: 0.75, md: 1, xl: 1.25 },
-          py: 2,
+          pl: isHomeScreen ? 0 : { xs: 0.375, md: 0.5, xl: 0.75 },
+          pr: isHomeScreen ? 0 : { xs: 0.75, md: 1, xl: 1.25 },
+          py: isHomeScreen ? 0 : 2,
           overflow: "hidden",
           overscrollBehavior: "contain",
-          bgcolor: "#171C24",
-          borderLeft: { xs: 0, xl: 1 },
-          borderRight: { xs: 0, xl: 1 },
+          bgcolor: isHomeScreen ? "background.default" : "#171C24",
+          borderLeft: isHomeScreen ? 0 : { xs: 0, xl: 1 },
+          borderRight: isHomeScreen ? 0 : { xs: 0, xl: 1 },
           borderColor: "rgba(69, 87, 116, 0.98)",
         }}
       >
@@ -1354,16 +1676,19 @@ export function StudioApp() {
           sx={{
             flex: "1 1 auto",
             minHeight: 0,
-            overflowY: "auto",
-            ...subtleScrollbarSx,
+            overflowY: isHomeScreen ? "hidden" : "auto",
+            ...(isHomeScreen ? {} : subtleScrollbarSx),
             overscrollBehavior: "contain",
-            px: { xs: 0.5, xl: 1.25 },
-            py: 0.75,
+            px: isHomeScreen ? 3 : { xs: 0.5, xl: 1.25 },
+            py: isHomeScreen ? 3 : 0.75,
+            display: "flex",
+            alignItems: isHomeScreen ? "center" : "stretch",
+            justifyContent: isHomeScreen ? "center" : "flex-start",
           }}
         >
-        <Stack spacing={3.25} sx={{ minHeight: "100%" }}>
+        <Stack spacing={3.25} sx={{ minHeight: "100%", width: "100%", maxWidth: isHomeScreen ? 980 : "none" }}>
           {uploadState.loading ? (
-            <Paper variant="outlined" sx={{ p: 6, borderRadius: 1 }}>
+            <Paper variant="outlined" sx={{ p: 6, borderRadius: 0.75 }}>
               <Stack spacing={2} alignItems="center">
                 <CircularProgress />
                 <Typography variant="h6">Building hierarchy from uploaded PWS</Typography>
@@ -1376,17 +1701,56 @@ export function StudioApp() {
           ) : null}
 
           {!sections.length && !uploadState.loading ? (
-            <Paper variant="outlined" sx={{ p: 6, borderRadius: 1 }}>
-              <Stack spacing={2} alignItems="flex-start">
+            <Paper variant="outlined" sx={{ p: 6, borderRadius: 0.75, width: "100%" }}>
+              <Stack spacing={3} alignItems="flex-start">
                 <CloudUploadRounded color="primary" sx={{ fontSize: 40 }} />
                 <Typography variant="h5" sx={{ fontWeight: 700 }}>
                   Upload a PWS to start
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 720 }}>
-                  Use the upload control on the left to ingest a PDF, DOCX, TXT, or
-                  Markdown PWS. StormSurge will restore the extracted hierarchy and split
-                  the top-level sections into working tabs.
+                  Upload a PDF, DOCX, TXT, or Markdown PWS to build a new workspace,
+                  or reopen one of your saved projects below.
                 </Typography>
+                <UploadWorkspaceCard loading={uploadState.loading} onUpload={handleOutlineUpload} />
+                {savedProjects.length ? (
+                  <Stack spacing={1.25} sx={{ width: "100%", maxWidth: 880 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                      Saved Projects
+                    </Typography>
+                    {savedProjects.map((project) => (
+                      <Paper
+                        key={project.id}
+                        variant="outlined"
+                        sx={{
+                          p: 1.5,
+                          width: "100%",
+                          borderRadius: 0.75,
+                          bgcolor: "#15191F",
+                          borderColor: "rgba(47, 64, 90, 0.72)",
+                        }}
+                      >
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1.5}
+                          alignItems={{ xs: "flex-start", sm: "center" }}
+                          justifyContent="space-between"
+                        >
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                              {project.name}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Saved {new Date(project.savedAt).toLocaleString()}
+                            </Typography>
+                          </Box>
+                          <Button variant="outlined" onClick={() => handleOpenSavedProject(project)}>
+                            Open
+                          </Button>
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                ) : null}
               </Stack>
             </Paper>
           ) : null}
@@ -1406,80 +1770,135 @@ export function StudioApp() {
           ) : null}
         </Stack>
         </Box>
-        <Box
-          sx={{
-            flexShrink: 0,
-            height: stormWorkspaceHeight,
-            position: "relative",
-          }}
-        >
+        {!isHomeScreen ? (
           <Box
-            onMouseDown={startDockResize}
             sx={{
-              position: "absolute",
-              top: -8,
-              left: 0,
-              right: 0,
-              height: 16,
-              cursor: "row-resize",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1,
-              "&::before": {
-                content: '""',
-                width: 72,
-                height: 6,
-                borderRadius: 999,
-                bgcolor: "rgba(148, 163, 184, 0.42)",
-              },
-              "&:hover::before": {
-                bgcolor: "rgba(148, 163, 184, 0.72)",
+              flexShrink: 0,
+              height: stormWorkspaceHeight,
+              position: "relative",
+            }}
+          >
+            <Box
+              onMouseDown={startDockResize}
+              sx={{
+                position: "absolute",
+                top: -8,
+                left: 0,
+                right: 0,
+                height: 16,
+                cursor: "row-resize",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 1,
+                "&::before": {
+                  content: '""',
+                  width: 72,
+                  height: 6,
+                  borderRadius: 999,
+                  bgcolor: "rgba(148, 163, 184, 0.42)",
+                },
+                "&:hover::before": {
+                  bgcolor: "rgba(148, 163, 184, 0.72)",
+                },
+              }}
+            />
+            <StormWorkspaceBar
+              activeTab={stormWorkspaceTab}
+              onTabChange={setStormWorkspaceTab}
+              notesByTab={activeSectionStormWorkspaceNotes}
+              onNotesChange={handleStormWorkspaceNoteChange}
+              onGenerateMtsDefinition={handleGenerateMtsDefinition}
+              onClearActiveTab={handleClearStormWorkspaceTab}
+              onEditMtsPrompt={handleEditMtsPrompt}
+              generationState={mtsDefinitionGenerationState}
+              activeSection={activeSection}
+              activeSectionRequirementCount={activeSectionRequirements.length}
+            />
+          </Box>
+        ) : null}
+      </Box>
+
+      {!isHomeScreen ? (
+        <RailShell
+          side="right"
+          title="Inspector"
+          subtitle="Selection"
+          width={rightRailDisplayWidth}
+          collapsed={rightRailCollapsed}
+          onToggleCollapsed={() => setRightRailCollapsed((current) => !current)}
+          onResizeStart={startRailResize("right")}
+        >
+          <DetailInspector
+            section={activeSection}
+            requirement={selectedRequirement}
+            allRequirements={requirements}
+            sections={sections}
+            hasCollapsibleRequirements={hasCollapsibleRequirements}
+            onSelectRequirement={selectRequirement}
+            onCreateTopLevelRequirement={handleCreateTopLevelRequirement}
+            onCreateChildRequirement={handleCreateChildRequirement}
+            onExpandAllRequirements={expandAllRequirements}
+            onCollapseAllRequirements={collapseAllRequirements}
+            onRequirementChange={handleRequirementChange}
+            onAssignToSection={handleAssignToActiveSection}
+            onMoveRequirement={handleMoveRequirement}
+            onMoveToUnassigned={handleMoveToUnassigned}
+            onPromoteRequirement={handlePromoteRequirement}
+            onDemoteRequirement={handleDemoteRequirement}
+            onCreateSectionFromRequirement={handleCreateSectionFromRequirement}
+          />
+        </RailShell>
+      ) : null}
+      <Dialog
+        open={mtsPromptDialogOpen}
+        onClose={handleCloseMtsPromptDialog}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>Edit MTS Definition Prompt</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            multiline
+            minRows={12}
+            maxRows={24}
+            margin="dense"
+            value={mtsPromptDraft}
+            onChange={(event) => setMtsPromptDraft(event.target.value)}
+            placeholder="Enter the prompt used when generating the MTS Definition."
+            InputProps={{
+              sx: {
+                alignItems: "flex-start",
+                fontSize: "0.95rem",
+                lineHeight: 1.5,
               },
             }}
           />
-          <StormWorkspaceBar
-            activeTab={stormWorkspaceTab}
-            onTabChange={setStormWorkspaceTab}
-            notesByTab={activeSectionStormWorkspaceNotes}
-            onNotesChange={handleStormWorkspaceNoteChange}
-            onGenerateMtsDefinition={handleGenerateMtsDefinition}
-            generationState={mtsDefinitionGenerationState}
-            activeSection={activeSection}
-            activeSectionRequirementCount={activeSectionRequirements.length}
-          />
-        </Box>
-      </Box>
-
-      <RailShell
-        side="right"
-        title="Inspector"
-        subtitle="Selection"
-        width={rightRailDisplayWidth}
-        collapsed={rightRailCollapsed}
-        onToggleCollapsed={() => setRightRailCollapsed((current) => !current)}
-        onResizeStart={startRailResize("right")}
-      >
-        <DetailInspector
-          section={activeSection}
-          requirement={selectedRequirement}
-          allRequirements={requirements}
-          sections={sections}
-          hasCollapsibleRequirements={hasCollapsibleRequirements}
-          onSelectRequirement={selectRequirement}
-          onCreateTopLevelRequirement={handleCreateTopLevelRequirement}
-          onCreateChildRequirement={handleCreateChildRequirement}
-          onExpandAllRequirements={expandAllRequirements}
-          onCollapseAllRequirements={collapseAllRequirements}
-          onRequirementChange={handleRequirementChange}
-          onAssignToSection={handleAssignToActiveSection}
-          onMoveRequirement={handleMoveRequirement}
-          onMoveToUnassigned={handleMoveToUnassigned}
-          onPromoteRequirement={handlePromoteRequirement}
-          onDemoteRequirement={handleDemoteRequirement}
-          onCreateSectionFromRequirement={handleCreateSectionFromRequirement}
-        />
-      </RailShell>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseMtsPromptDialog}>Cancel</Button>
+          <Button onClick={handleSaveMtsPrompt} variant="contained">
+            Save Prompt
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={homeDialogOpen} onClose={() => setHomeDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Return Home</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Do you want to save this project before going back to the home screen?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setHomeDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleConfirmHomeWithoutSaving}>Go Home Without Saving</Button>
+          <Button onClick={handleSaveThenGoHome} variant="contained">
+            Save First
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

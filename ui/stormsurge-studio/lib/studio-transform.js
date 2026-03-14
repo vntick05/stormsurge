@@ -21,6 +21,26 @@ function formatDisplayLabel(rawId, fallback) {
   return cleaned || fallback;
 }
 
+function formatSectionLabel(sectionNumber, sectionTitle) {
+  const number = String(sectionNumber || "").trim();
+  const title = String(sectionTitle || "").trim();
+
+  if (!number) {
+    return title;
+  }
+
+  if (!title) {
+    return number;
+  }
+
+  // Preserve extracted titles that already carry a fuller section marker such as "3.1 ...".
+  if (/^\d+(?:\.\d+)*\b/.test(title)) {
+    return title;
+  }
+
+  return `${number} ${title}`.trim();
+}
+
 function convertNode(node, sectionId, parentId, position, bucket) {
   if (node.type === "paragraph") {
     const paragraphId = node.id || `para-${sectionId}-${position}`;
@@ -89,7 +109,7 @@ export function transformOutlineToWorkspace(payload) {
   const rootSections = payload.root_sections || [];
   const sections = rootSections.map((section, index) => ({
     id: makeSectionId(section),
-    label: `${section.section_number || ""} ${section.section_title || ""}`.trim(),
+    label: formatSectionLabel(section.section_number, section.section_title),
     shortLabel: section.section_number || `S${index + 1}`,
     prompt: "Drag the extracted hierarchy and reshape it into proposal-ready structure.",
     description:

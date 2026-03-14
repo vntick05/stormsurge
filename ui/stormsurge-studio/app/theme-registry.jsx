@@ -26,7 +26,7 @@ const theme = createTheme({
     divider: "#24324A",
   },
   shape: {
-    borderRadius: 10,
+    borderRadius: 6,
   },
   typography: {
     fontFamily: '"IBM Plex Sans", "Bahnschrift", "Trebuchet MS", sans-serif',
@@ -78,7 +78,7 @@ const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 10,
+          borderRadius: 6,
           textTransform: "none",
           fontWeight: 600,
           boxShadow: "none",
@@ -114,7 +114,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundColor: "#1A1F27",
-          borderRadius: 10,
+          borderRadius: 6,
           "& .MuiOutlinedInput-notchedOutline": {
             borderColor: "#343B46",
           },
@@ -153,7 +153,7 @@ const theme = createTheme({
           fontWeight: 600,
           minHeight: 46,
           color: "#7D8AA3",
-          borderRadius: 10,
+          borderRadius: 6,
           marginRight: 4,
           "&.Mui-selected": {
             color: "#F3F6FC",

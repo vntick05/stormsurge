@@ -63,7 +63,7 @@ export function DetailInspector({
 
   if (!requirement) {
     return (
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 0.75 }}>
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           Inspector
         </Typography>
@@ -76,32 +76,57 @@ export function DetailInspector({
 
   return (
     <Stack spacing={2}>
+      <Box
+        sx={{
+          px: 0.75,
+          py: 0.75,
+          border: "1px solid rgba(47, 64, 90, 0.92)",
+          bgcolor: "#151B22",
+        }}
+      >
+        <Tabs
+          value={activeTab}
+          onChange={(_, value) => setActiveTab(value)}
+          variant="fullWidth"
+          sx={{
+            minHeight: 38,
+            "& .MuiTabs-flexContainer": {
+              gap: 0.75,
+            },
+            "& .MuiTab-root": {
+              minHeight: 38,
+              minWidth: 0,
+              px: 1.1,
+              border: "1px solid rgba(54, 69, 93, 0.82)",
+              bgcolor: "rgba(19, 24, 31, 0.92)",
+              color: "#93A0B5",
+              borderRadius: 0.5,
+            },
+            "& .MuiTab-root.Mui-selected": {
+              color: "#F3F6FC",
+              bgcolor: "#202B39",
+              borderColor: "rgba(110, 168, 254, 0.34)",
+            },
+            "& .MuiTabs-indicator": {
+              display: "none",
+            },
+          }}
+        >
+          {INSPECTOR_TABS.map((label) => (
+            <Tab key={label} value={label} label={label} />
+          ))}
+        </Tabs>
+      </Box>
       <Paper
         variant="outlined"
         sx={{
           p: 2.5,
-          borderRadius: 1.5,
+          borderRadius: 1,
           bgcolor: "#1A2028",
           borderColor: "rgba(47, 64, 90, 0.86)",
         }}
       >
         <Stack spacing={2}>
-          <Tabs
-            value={activeTab}
-            onChange={(_, value) => setActiveTab(value)}
-            variant="fullWidth"
-            sx={{
-              minHeight: 42,
-              "& .MuiTab-root": {
-                minHeight: 42,
-              },
-            }}
-          >
-            {INSPECTOR_TABS.map((label) => (
-              <Tab key={label} value={label} label={label} />
-            ))}
-          </Tabs>
-
           {activeTab === "Edit" ? (
             <Stack spacing={1.5}>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -111,7 +136,7 @@ export function DetailInspector({
                   startIcon={<PlaylistAddRounded />}
                   onClick={onCreateTopLevelRequirement}
                 >
-                  Add top-level
+                  Add new req
                 </Button>
                 <Button size="small" variant="contained" onClick={onCreateChildRequirement}>
                   Add child
@@ -146,22 +171,7 @@ export function DetailInspector({
                   },
                 }}
               />
-              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                Section Controls
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                The active tab is <strong>{section?.label || "None"}</strong>. Send the selected
-                node into that tab or move it back to the holding area.
-              </Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Button
-                  size="small"
-                  variant="contained"
-                  color="secondary"
-                  onClick={onAssignToSection}
-                >
-                  Move to active tab
-                </Button>
                 <Button size="small" variant="outlined" onClick={onMoveToUnassigned}>
                   Send to holding area
                 </Button>
@@ -197,7 +207,7 @@ export function DetailInspector({
                     onClick={() => onSelectRequirement(candidate.id)}
                     sx={{
                       p: 1.25,
-                      borderRadius: 1.25,
+                      borderRadius: 0.75,
                       cursor: "pointer",
                       bgcolor: candidate.id === requirement.id ? "#243552" : "#15191F",
                       borderColor:
@@ -283,49 +293,6 @@ export function DetailInspector({
               </Typography>
             </Stack>
           ) : null}
-        </Stack>
-      </Paper>
-
-      <Paper
-        variant="outlined"
-        sx={{
-          p: 2.5,
-          borderRadius: 1.5,
-          bgcolor: "#1A2028",
-          borderColor: "rgba(47, 64, 90, 0.86)",
-        }}
-      >
-        <Stack spacing={1.5}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            Provenance
-          </Typography>
-          <TextField
-            label="Source reference"
-            fullWidth
-            value={requirement.sourceRef || ""}
-            onChange={(event) => onRequirementChange("sourceRef", event.target.value)}
-          />
-          <TextField
-            select
-            label="Intent"
-            fullWidth
-            value={requirement.intent}
-            onChange={(event) => onRequirementChange("intent", event.target.value)}
-          >
-            {[
-              "Extracted paragraph",
-              "Extracted section",
-              "Extracted bullet",
-              "Service continuity",
-              "Engineering delivery",
-              "Draft",
-              "Sub-requirement",
-            ].map((value) => (
-              <MenuItem key={value} value={value}>
-                {value}
-              </MenuItem>
-            ))}
-          </TextField>
         </Stack>
       </Paper>
     </Stack>
