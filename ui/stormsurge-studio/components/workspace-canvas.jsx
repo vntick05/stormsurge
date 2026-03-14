@@ -56,14 +56,18 @@ function RequirementCard({
         sx={{
           position: "relative",
           overflow: "hidden",
-          pl: 1.75,
-          pr: 1.25,
-          py: 1.25,
-          borderRadius: 1,
+          pl: 2,
+          pr: 1.5,
+          py: 1.4,
+          borderRadius: 1.5,
           cursor: "pointer",
-          borderColor: selected ? "primary.main" : "divider",
-          bgcolor: selected ? "rgba(108,182,255,0.16)" : "rgba(8, 15, 28, 0.88)",
-          transition: "border-color 120ms ease, background-color 120ms ease",
+          borderColor: selected ? "rgba(110, 168, 254, 0.62)" : "rgba(36, 50, 74, 0.72)",
+          bgcolor: selected ? "#243552" : "#15191F",
+          boxShadow: selected ? "0 14px 28px rgba(5, 11, 22, 0.32)" : "none",
+          transition: "border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease",
+          "&:hover": {
+            bgcolor: selected ? "#243552" : "#1A2028",
+          },
         }}
       >
         <Box
@@ -76,7 +80,7 @@ function RequirementCard({
             bottom: 0,
             width: 8,
             bgcolor: selected ? "primary.light" : "primary.main",
-            opacity: selected ? 0.95 : 0.8,
+            opacity: selected ? 1 : 0.5,
             cursor: "grab",
           }}
         />
@@ -90,7 +94,7 @@ function RequirementCard({
               alignItems: "center",
               justifyContent: "center",
               borderRight: 1,
-              borderColor: "divider",
+              borderColor: "rgba(43, 58, 85, 0.92)",
               pl: 0.25,
               pr: 0.5,
             }}
@@ -295,8 +299,17 @@ export function WorkspaceCanvas({
   }
 
   return (
-    <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-        <Stack spacing={1.5}>
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 2.75,
+        borderRadius: 1.5,
+        bgcolor: "#1D232C",
+        borderColor: "rgba(47, 64, 90, 0.9)",
+        boxShadow: "0 10px 22px rgba(3, 8, 18, 0.18)",
+      }}
+    >
+      <Stack spacing={1.5}>
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               {section.label}

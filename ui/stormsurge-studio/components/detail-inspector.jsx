@@ -38,12 +38,11 @@ export function DetailInspector({
       <Paper
         variant="outlined"
         sx={{
-          p: 2,
-          borderRadius: 1,
-          position: "sticky",
-          top: 0,
-          zIndex: 2,
-          bgcolor: "background.paper",
+          p: 2.25,
+          borderRadius: 1.5,
+          bgcolor: "#1A2028",
+          borderColor: "rgba(47, 64, 90, 0.9)",
+          boxShadow: "0 12px 28px rgba(4, 10, 20, 0.24)",
         }}
       >
         <Stack spacing={1.5}>
@@ -99,7 +98,15 @@ export function DetailInspector({
         </Stack>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 2.5,
+          borderRadius: 1.5,
+          bgcolor: "#1A2028",
+          borderColor: "rgba(47, 64, 90, 0.86)",
+        }}
+      >
         <Stack spacing={1.5}>
           <TextField
             label="Requirement title"
@@ -145,7 +152,15 @@ export function DetailInspector({
         </Stack>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 2.5,
+          borderRadius: 1.5,
+          bgcolor: "#1A2028",
+          borderColor: "rgba(47, 64, 90, 0.86)",
+        }}
+      >
         <Stack spacing={1.5}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             Provenance

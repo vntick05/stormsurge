@@ -81,7 +81,7 @@ const UNASSIGNED_SECTION = {
 };
 const subtleScrollbarSx = {
   scrollbarWidth: "thin",
-  scrollbarColor: "rgba(96, 109, 128, 0.22) transparent",
+  scrollbarColor: "rgba(87, 104, 132, 0.34) transparent",
   "&::-webkit-scrollbar": {
     width: 8,
     height: 8,
@@ -90,13 +90,13 @@ const subtleScrollbarSx = {
     background: "transparent",
   },
   "&::-webkit-scrollbar-thumb": {
-    backgroundColor: "rgba(96, 109, 128, 0.18)",
+    backgroundColor: "rgba(87, 104, 132, 0.24)",
     borderRadius: 999,
     border: "2px solid transparent",
     backgroundClip: "padding-box",
   },
   "&:hover::-webkit-scrollbar-thumb": {
-    backgroundColor: "rgba(96, 109, 128, 0.28)",
+    backgroundColor: "rgba(97, 118, 149, 0.4)",
   },
 };
 
@@ -150,6 +150,14 @@ function SortableSectionTab({ section, selected, onSelect, onRename }) {
         mb: 0.5,
         transform: CSS.Transform.toString(transform),
         transition,
+        px: 1,
+        py: 0.45,
+        bgcolor: selected ? "rgba(110, 168, 254, 0.12)" : "transparent",
+        border: "1px solid",
+        borderColor: selected ? "rgba(110, 168, 254, 0.24)" : "transparent",
+        "&:hover": {
+          bgcolor: selected ? "rgba(110, 168, 254, 0.14)" : "rgba(255, 255, 255, 0.03)",
+        },
       }}
     >
       <Box
@@ -163,7 +171,7 @@ function SortableSectionTab({ section, selected, onSelect, onRename }) {
           ml: -0.5,
           borderRadius: 0.5,
           bgcolor: selected ? "primary.light" : "primary.main",
-          opacity: selected ? 0.95 : 0.7,
+          opacity: selected ? 0.9 : 0.38,
           cursor: "grab",
           flexShrink: 0,
         }}
@@ -211,9 +219,10 @@ function RailShell({
         borderLeft: { xs: 0, xl: isLeft ? 0 : 1 },
         borderBottom: { xs: 1, xl: 0 },
         borderColor: "divider",
-        bgcolor: "background.paper",
-        backgroundImage: (theme) =>
-          `linear-gradient(180deg, ${theme.palette.background.paper}, rgba(15,23,42,0.96))`,
+        bgcolor: isLeft ? "#0E1116" : "#11151B",
+        backgroundImage: isLeft
+          ? "linear-gradient(180deg, rgba(14,17,22,0.98), rgba(12,15,20,0.98))"
+          : "linear-gradient(180deg, rgba(17,21,27,0.98), rgba(14,18,24,0.98))",
         transition: "width 180ms ease",
         overflow: "hidden",
         overscrollBehavior: "contain",
@@ -223,11 +232,13 @@ function RailShell({
       <Box
         sx={{
           px: 1.5,
-          py: 1,
+          py: 1.25,
           display: "flex",
           justifyContent: collapsed ? "center" : "space-between",
           alignItems: "center",
           flexShrink: 0,
+          borderBottom: 1,
+          borderColor: "rgba(36, 50, 74, 0.95)",
         }}
       >
         {collapsed ? null : (
@@ -275,14 +286,15 @@ function RailShell({
       ) : (
         <Box
           sx={{
-            p: 2,
-            pt: 1,
+            p: 2.25,
+            pt: 1.5,
             display: "grid",
             gap: 2,
             overflowY: "auto",
             minHeight: 0,
             flex: "1 1 auto",
             ...subtleScrollbarSx,
+            overscrollBehavior: "contain",
           }}
         >
           {children}
@@ -304,13 +316,13 @@ function RailShell({
           justifyContent: "center",
           "&::before": {
             content: '""',
-            width: 4,
+            width: 5,
             height: 56,
             borderRadius: 999,
-            bgcolor: "rgba(148, 163, 184, 0.18)",
+            bgcolor: "rgba(61, 79, 106, 0.62)",
           },
           "&:hover::before": {
-            bgcolor: "rgba(148, 163, 184, 0.34)",
+            bgcolor: "rgba(110, 168, 254, 0.5)",
           },
         }}
       >
@@ -353,9 +365,9 @@ function StormWorkspaceBar({ activeTab, onTabChange, notesByTab, onNotesChange }
         flexDirection: "column",
         overflow: "hidden",
         height: "100%",
-        bgcolor: "#0b1220",
+        bgcolor: "#141920",
         backgroundImage: "none",
-        boxShadow: { xs: "0 22px 44px rgba(2, 6, 23, 0.46)", xl: "none" },
+        boxShadow: { xs: "0 18px 34px rgba(2, 6, 23, 0.36)", xl: "none" },
         borderTop: 1,
         borderLeft: { xs: 1, xl: 0 },
         borderRight: { xs: 1, xl: 0 },
@@ -367,9 +379,8 @@ function StormWorkspaceBar({ activeTab, onTabChange, notesByTab, onNotesChange }
         sx={{
           borderBottom: 1,
           borderColor: "divider",
-          px: 1,
-          background:
-            "linear-gradient(180deg, #172033 0%, #101827 100%)",
+          px: 1.25,
+          background: "linear-gradient(180deg, #161B23 0%, #12171E 100%)",
         }}
       >
         <Tabs
@@ -384,9 +395,7 @@ function StormWorkspaceBar({ activeTab, onTabChange, notesByTab, onNotesChange }
             "& .MuiTab-root": {
               minHeight: 54,
               alignItems: "flex-start",
-              textTransform: "none",
-              fontWeight: 700,
-              color: "text.secondary",
+              px: 1.5,
             },
           }}
         >
@@ -413,10 +422,6 @@ function StormWorkspaceBar({ activeTab, onTabChange, notesByTab, onNotesChange }
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               {activeTab}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 920 }}>
-              Use this working area to draft the section narrative, supporting points,
-              discriminators, and capture decisions while the hierarchy evolves above.
-            </Typography>
           </Box>
           <TextField
             multiline
@@ -430,7 +435,7 @@ function StormWorkspaceBar({ activeTab, onTabChange, notesByTab, onNotesChange }
                 alignItems: "flex-start",
                 fontSize: "0.95rem",
                 lineHeight: 1.5,
-                bgcolor: "#111827",
+                bgcolor: "#1A1F27",
                 overscrollBehavior: "contain",
               },
             }}
@@ -967,15 +972,15 @@ export function StudioApp() {
           left: 0,
           right: 0,
           borderBottom: 1,
-          borderColor: "divider",
-          backdropFilter: "blur(14px)",
-          bgcolor: "rgba(11, 18, 32, 0.78)",
+          borderColor: "rgba(36, 50, 74, 0.95)",
+          backdropFilter: "blur(16px)",
+          bgcolor: "rgba(10, 15, 26, 0.92)",
           pl: 2,
           pr: 2,
           transition: "padding 180ms ease",
         }}
       >
-        <Toolbar sx={{ gap: 2, minHeight: 80, pl: 0 }}>
+        <Toolbar sx={{ gap: 2, minHeight: 76, pl: 0 }}>
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
               StormSurge Studio
@@ -1022,7 +1027,17 @@ export function StudioApp() {
               items={sections.map((section) => section.id)}
               strategy={verticalListSortingStrategy}
             >
-              <List sx={{ mt: 1, border: 1, borderColor: "divider", borderRadius: 1, p: 1 }}>
+              <List
+                sx={{
+                  mt: 0.75,
+                  borderRadius: 2,
+                  p: 1.1,
+                  bgcolor: "#151A21",
+                  border: "1px solid rgba(47, 64, 90, 0.98)",
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255,255,255,0.02), 0 8px 18px rgba(0,0,0,0.18)",
+                }}
+              >
                 {sections.map((section) => (
                   <SortableSectionTab
                     key={section.id}
@@ -1036,7 +1051,25 @@ export function StudioApp() {
                   <ListItemButton
                     selected={activeSectionId === "unassigned"}
                     onClick={() => selectSection("unassigned")}
-                    sx={{ borderRadius: 1, mt: 0.5 }}
+                    sx={{
+                      borderRadius: 1,
+                      mt: 0.5,
+                      bgcolor:
+                        activeSectionId === "unassigned"
+                          ? "rgba(110, 168, 254, 0.12)"
+                          : "transparent",
+                      border: "1px solid",
+                      borderColor:
+                        activeSectionId === "unassigned"
+                          ? "rgba(110, 168, 254, 0.24)"
+                          : "transparent",
+                      "&:hover": {
+                        bgcolor:
+                          activeSectionId === "unassigned"
+                            ? "rgba(110, 168, 254, 0.14)"
+                            : "rgba(255, 255, 255, 0.03)",
+                      },
+                    }}
                   >
                     <ListItemText primary={UNASSIGNED_SECTION.label} />
                   </ListItemButton>
@@ -1060,9 +1093,13 @@ export function StudioApp() {
           py: 2,
           overflow: "hidden",
           overscrollBehavior: "contain",
+          bgcolor: "#171C24",
+          borderLeft: { xs: 0, xl: 1 },
+          borderRight: { xs: 0, xl: 1 },
+          borderColor: "rgba(69, 87, 116, 0.98)",
         }}
       >
-        <Toolbar sx={{ minHeight: 80 }} />
+        <Toolbar sx={{ minHeight: 76 }} />
         <Box
           sx={{
             flex: "1 1 auto",
@@ -1070,9 +1107,11 @@ export function StudioApp() {
             overflowY: "auto",
             ...subtleScrollbarSx,
             overscrollBehavior: "contain",
+            px: { xs: 0.5, xl: 1.25 },
+            py: 0.75,
           }}
         >
-        <Stack spacing={3} sx={{ minHeight: "100%" }}>
+        <Stack spacing={3.25} sx={{ minHeight: "100%" }}>
           {uploadState.loading ? (
             <Paper variant="outlined" sx={{ p: 6, borderRadius: 1 }}>
               <Stack spacing={2} alignItems="center">
@@ -1115,14 +1154,6 @@ export function StudioApp() {
               />
             </Box>
           ) : null}
-
-          <Divider />
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip label="MUI shell" variant="outlined" />
-            <Chip label="dnd-kit ordering" variant="outlined" />
-            <Chip label="PWS outline upload" variant="outlined" />
-            <Chip label="Single shared LLM preserved" variant="outlined" />
-          </Stack>
         </Stack>
         </Box>
         <Box
