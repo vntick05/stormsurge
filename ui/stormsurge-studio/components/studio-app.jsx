@@ -6,6 +6,7 @@ import ChevronRightRounded from "@mui/icons-material/ChevronRightRounded";
 import CloudUploadRounded from "@mui/icons-material/CloudUploadRounded";
 import CreateNewFolderRounded from "@mui/icons-material/CreateNewFolderRounded";
 import DragIndicatorRounded from "@mui/icons-material/DragIndicatorRounded";
+import EditRounded from "@mui/icons-material/EditRounded";
 import HubRounded from "@mui/icons-material/HubRounded";
 import InsightsRounded from "@mui/icons-material/InsightsRounded";
 import {
@@ -86,19 +87,24 @@ function clampRailWidth(width) {
   return Math.min(Math.max(width, RAIL_MIN_WIDTH), RAIL_MAX_WIDTH);
 }
 
-function buildCustomSection(label, sectionCount) {
-  const trimmedLabel = label.trim() || `Custom Section ${sectionCount + 1}`;
-  const shortLabel = trimmedLabel
+function buildSectionShortLabel(label, fallback = "CUST") {
+  const shortLabel = label
     .split(/\s+/)
     .map((token) => token[0])
     .join("")
     .slice(0, 4)
     .toUpperCase();
 
+  return shortLabel || fallback;
+}
+
+function buildCustomSection(label, sectionCount) {
+  const trimmedLabel = label.trim() || `Custom Section ${sectionCount + 1}`;
+
   return {
     id: `custom-${Date.now()}`,
     label: trimmedLabel,
-    shortLabel: shortLabel || "CUST",
+    shortLabel: buildSectionShortLabel(trimmedLabel),
     prompt: "Use this lane for custom grouped requirements and solution framing.",
     description:
       "Custom sections let you reorganize extracted material outside the original PWS shape.",
@@ -107,7 +113,7 @@ function buildCustomSection(label, sectionCount) {
   };
 }
 
-function SortableSectionTab({ section, selected, onSelect }) {
+function SortableSectionTab({ section, selected, onSelect, onRename }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: section.id,
   });
@@ -117,6 +123,7 @@ function SortableSectionTab({ section, selected, onSelect }) {
       ref={setNodeRef}
       selected={selected}
       onClick={() => onSelect(section.id)}
+      onDoubleClick={() => onRename(section.id)}
       sx={{
         borderRadius: 1,
         mb: 0.5,
@@ -141,6 +148,19 @@ function SortableSectionTab({ section, selected, onSelect }) {
         }}
       />
       <ListItemText primary={section.label} />
+      <Tooltip title="Rename section tab">
+        <IconButton
+          size="small"
+          edge="end"
+          onClick={(event) => {
+            event.stopPropagation();
+            onRename(section.id);
+          }}
+          sx={{ ml: 0.5 }}
+        >
+          <EditRounded fontSize="small" />
+        </IconButton>
+      </Tooltip>
     </ListItemButton>
   );
 }
@@ -694,6 +714,39 @@ export function StudioApp() {
     setNewSectionLabel("");
   }
 
+  function handleRenameSection(sectionId) {
+    const section = sections.find((entry) => entry.id === sectionId);
+    if (!section) {
+      return;
+    }
+
+    const label = window.prompt("Rename section tab", section.label);
+    if (label === null) {
+      return;
+    }
+
+    const trimmedLabel = label.trim();
+    if (!trimmedLabel || trimmedLabel === section.label) {
+      return;
+    }
+
+    setWorkspace((current) => ({
+      ...current,
+      sections: current.sections.map((entry) =>
+        entry.id === sectionId
+          ? {
+              ...entry,
+              label: trimmedLabel,
+              shortLabel:
+                entry.sourceKind === "manual" || !entry.shortLabel
+                  ? buildSectionShortLabel(trimmedLabel)
+                  : entry.shortLabel,
+            }
+          : entry,
+      ),
+    }));
+  }
+
   async function handleOutlineUpload(file) {
     setUploadState({ loading: true, error: "" });
 
@@ -836,6 +889,7 @@ export function StudioApp() {
                     section={section}
                     selected={section.id === activeSectionId}
                     onSelect={selectSection}
+                    onRename={handleRenameSection}
                   />
                 ))}
               </List>
