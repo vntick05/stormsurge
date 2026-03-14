@@ -1041,6 +1041,15 @@ export function StudioApp() {
     }
 
     setMtsDefinitionGenerationState({ loading: true, error: "" });
+    setStormWorkspaceTab("MTS Definition");
+    setStormWorkspaceNotes((current) => ({
+      ...current,
+      [activeSection.id]: {
+        ...buildEmptyStormWorkspace(),
+        ...(current[activeSection.id] || {}),
+        ["MTS Definition"]: "",
+      },
+    }));
 
     try {
       const response = await fetch("/api/storm/mts-definition", {
@@ -1058,20 +1067,98 @@ export function StudioApp() {
         }),
       });
 
-      const payload = await response.json().catch(() => null);
       if (!response.ok) {
+        const payload = await response.json().catch(() => null);
         throw new Error(payload?.detail || "MTS definition generation failed");
       }
 
-      setStormWorkspaceNotes((current) => ({
-        ...current,
-        [activeSection.id]: {
-          ...buildEmptyStormWorkspace(),
-          ...(current[activeSection.id] || {}),
-          ["MTS Definition"]: payload?.definition || "",
-        },
-      }));
-      setStormWorkspaceTab("MTS Definition");
+      if (!response.body) {
+        throw new Error("MTS definition stream was unavailable");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let eventType = "message";
+      let streamedDefinition = "";
+
+      const applyDefinition = (nextDefinition) => {
+        setStormWorkspaceNotes((current) => ({
+          ...current,
+          [activeSection.id]: {
+            ...buildEmptyStormWorkspace(),
+            ...(current[activeSection.id] || {}),
+            ["MTS Definition"]: nextDefinition,
+          },
+        }));
+      };
+
+      const processEventBlock = (block) => {
+        const lines = block.split("\n");
+        let nextEventType = "message";
+        const dataLines = [];
+
+        for (const line of lines) {
+          if (line.startsWith("event:")) {
+            nextEventType = line.slice(6).trim();
+          } else if (line.startsWith("data:")) {
+            dataLines.push(line.slice(5).trim());
+          }
+        }
+
+        const dataText = dataLines.join("\n");
+        if (!dataText) {
+          return;
+        }
+
+        let parsed;
+        try {
+          parsed = JSON.parse(dataText);
+        } catch {
+          return;
+        }
+
+        if (nextEventType === "token") {
+          streamedDefinition += String(parsed?.delta || "");
+          applyDefinition(streamedDefinition);
+          return;
+        }
+
+        if (nextEventType === "error") {
+          let detail = String(parsed?.detail || "").trim();
+          try {
+            const nested = JSON.parse(detail);
+            detail = String(nested?.detail || detail).trim();
+          } catch {}
+          throw new Error(detail || "MTS definition generation failed");
+        }
+
+        eventType = nextEventType;
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split("\n\n");
+        buffer = blocks.pop() ?? "";
+
+        for (const block of blocks) {
+          processEventBlock(block);
+        }
+      }
+
+      if (buffer.trim()) {
+        processEventBlock(buffer);
+      }
+
+      if (!streamedDefinition.trim() && eventType !== "done") {
+        throw new Error("MTS definition generation returned no content");
+      }
+
       setMtsDefinitionGenerationState({ loading: false, error: "" });
     } catch (error) {
       setMtsDefinitionGenerationState({

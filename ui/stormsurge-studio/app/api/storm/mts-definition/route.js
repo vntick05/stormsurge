@@ -47,7 +47,7 @@ export async function POST(request) {
     );
   }
 
-  const upstreamResponse = await fetch(`${serviceUrl}/v1/pws/llm-companion`, {
+  const upstreamResponse = await fetch(`${serviceUrl}/v1/pws/llm-companion/stream`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -61,33 +61,32 @@ export async function POST(request) {
     }),
   });
 
-  const text = await upstreamResponse.text();
+  if (!upstreamResponse.ok || !upstreamResponse.body) {
+    const text = await upstreamResponse.text().catch(() => "");
+    let detail = "MTS definition generation failed";
 
-  try {
-    const upstreamPayload = JSON.parse(text);
-    if (!upstreamResponse.ok) {
+    try {
+      const upstreamPayload = JSON.parse(text);
       const upstreamDetail = String(upstreamPayload?.detail || "").trim();
-      return Response.json(
-        {
-          detail:
-            upstreamDetail === "Internal Server Error"
-              ? "The MTS definition service is reachable, but the LLM backend behind it is not available right now."
-              : upstreamDetail || "MTS definition generation failed",
-        },
-        { status: upstreamResponse.status },
-      );
+      detail =
+        upstreamDetail === "Internal Server Error"
+          ? "The MTS definition service is reachable, but the LLM backend behind it is not available right now."
+          : upstreamDetail || detail;
+    } catch {
+      if (text.trim()) {
+        detail = text.trim();
+      }
     }
 
-    return Response.json(
-      {
-        definition: String(upstreamPayload?.answer || "").trim(),
-      },
-      { status: 200 },
-    );
-  } catch {
-    return Response.json(
-      { detail: "The MTS definition service returned an invalid response." },
-      { status: upstreamResponse.ok ? 502 : upstreamResponse.status },
-    );
+    return Response.json({ detail }, { status: upstreamResponse.status || 502 });
   }
+
+  return new Response(upstreamResponse.body, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
+  });
 }
