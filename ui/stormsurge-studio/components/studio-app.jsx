@@ -232,9 +232,6 @@ function RailShell({
       >
         {collapsed ? null : (
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="overline" color="text.secondary">
-              {subtitle}
-            </Typography>
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
               {title}
             </Typography>

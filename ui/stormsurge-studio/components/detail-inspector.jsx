@@ -1,16 +1,7 @@
 "use client";
 
 import PlaylistAddRounded from "@mui/icons-material/PlaylistAddRounded";
-import {
-  Box,
-  Button,
-  Chip,
-  MenuItem,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Box, Button, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 
 export function DetailInspector({
   section,
@@ -42,57 +33,8 @@ export function DetailInspector({
     );
   }
 
-  const sectionLabel =
-    requirement.sectionId === "unassigned"
-      ? "Unassigned"
-      : sections.find((entry) => entry.id === requirement.sectionId)?.label || "Unknown";
-
   return (
     <Stack spacing={2}>
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-        <Stack spacing={1.5}>
-          <Box>
-            <Typography variant="overline" color="text.secondary">
-              Inspector
-            </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-              {requirement.title}
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip label={requirement.kind} />
-            <Chip label={requirement.sourceType} variant="outlined" />
-            <Chip label={sectionLabel} color="primary" variant="outlined" />
-          </Stack>
-          <TextField
-            label="Requirement title"
-            fullWidth
-            value={requirement.title}
-            onChange={(event) => onRequirementChange("title", event.target.value)}
-          />
-          <TextField
-            label="Working text"
-            fullWidth
-            multiline
-            minRows={8}
-            value={requirement.text}
-            onChange={(event) => onRequirementChange("text", event.target.value)}
-            InputLabelProps={{
-              sx: {
-                fontSize: "0.875rem",
-              },
-            }}
-            InputProps={{
-              sx: {
-                fontSize: "0.875rem",
-                lineHeight: 1.4,
-                alignItems: "flex-start",
-              },
-            }}
-          />
-        </Stack>
-      </Paper>
-
       <Paper
         variant="outlined"
         sx={{
@@ -159,6 +101,32 @@ export function DetailInspector({
 
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack spacing={1.5}>
+          <TextField
+            label="Requirement title"
+            fullWidth
+            value={requirement.title}
+            onChange={(event) => onRequirementChange("title", event.target.value)}
+          />
+          <TextField
+            label="Working text"
+            fullWidth
+            multiline
+            minRows={8}
+            value={requirement.text}
+            onChange={(event) => onRequirementChange("text", event.target.value)}
+            InputLabelProps={{
+              sx: {
+                fontSize: "0.875rem",
+              },
+            }}
+            InputProps={{
+              sx: {
+                fontSize: "0.875rem",
+                lineHeight: 1.4,
+                alignItems: "flex-start",
+              },
+            }}
+          />
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             Section Controls
           </Typography>
