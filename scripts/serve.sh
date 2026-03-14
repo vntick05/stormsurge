@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${MODEL_HANDLE:=nvidia/Llama-3.1-8B-Instruct-FP4}"
+: "${MODEL_HANDLE:=openai/gpt-oss-120b}"
 : "${LLM_PORT:=8455}"
 : "${MAX_BATCH_SIZE:=32}"
 : "${FREE_GPU_MEMORY_FRACTION:=0.90}"

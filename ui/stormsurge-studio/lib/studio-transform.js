@@ -131,5 +131,6 @@ export function transformOutlineToWorkspace(payload) {
     requirements,
     sourceFilename: payload.filename || null,
     sourceFormat: payload.format || null,
+    projectId: payload.project_id || null,
   };
 }

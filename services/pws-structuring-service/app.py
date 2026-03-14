@@ -282,6 +282,7 @@ def build_companion_system_prompt(
     checked_requirements: list[CompanionRequirement],
     evidence: list[dict[str, Any]],
     persona: str = "solution_architect",
+    use_project_evidence: bool = True,
 ) -> str:
     mode_instruction = (
         "Help the user develop a shared solution approach for the checked requirements."
@@ -291,7 +292,11 @@ def build_companion_system_prompt(
     lines = [
         "You are StormSurge for a PWS review workspace.",
         mode_instruction,
-        "Ground your response in the checked requirements and the retrieved project evidence.",
+        (
+            "Ground your response in the checked requirements and the retrieved project evidence."
+            if use_project_evidence
+            else "Ground your response only in the checked requirements provided in this request."
+        ),
         "Write in clear, human prose.",
         "Do not dump raw tables, OCR fragments, line noise, or copied chunk text.",
         "Synthesize the evidence into readable sentences and short bullets only when useful.",
@@ -305,6 +310,7 @@ def build_companion_system_prompt(
         "Be concrete and concise.",
         "Cite filenames and section headings when using evidence.",
         "If evidence is weak or missing, say so clearly.",
+        "Do not mention prompt mechanics, checked-requirement counts, truncation, missing hidden context, or source-retrieval limitations unless the user explicitly asks about them.",
         "",
         f"Response persona: {persona}",
     ]
@@ -323,6 +329,8 @@ def build_companion_system_prompt(
             [
                 "Act like a proposal manager organizing a response strategy.",
                 "Focus on compliance coverage, response themes, risks, assumptions, and win strategy alignment.",
+                "Treat the checked requirements included below as the complete working requirement set for this answer.",
+                "Synthesize across the full set instead of disclaiming that only some requirements were expanded.",
                 "",
             ]
         )
@@ -337,7 +345,12 @@ def build_companion_system_prompt(
     lines.extend([
         "Checked requirements:",
     ])
-    trimmed_requirements = checked_requirements[:COMPANION_MAX_REQUIREMENTS]
+    max_requirements = (
+        len(checked_requirements)
+        if persona == "proposal_manager" and not use_project_evidence
+        else COMPANION_MAX_REQUIREMENTS
+    )
+    trimmed_requirements = checked_requirements[:max_requirements]
     for index, requirement in enumerate(trimmed_requirements, start=1):
         lines.extend(
             [
@@ -347,7 +360,7 @@ def build_companion_system_prompt(
                 "",
             ]
         )
-    if len(checked_requirements) > len(trimmed_requirements):
+    if len(checked_requirements) > len(trimmed_requirements) and use_project_evidence:
         lines.append(
             f"Additional checked requirements not expanded here: {len(checked_requirements) - len(trimmed_requirements)}"
         )
@@ -374,7 +387,13 @@ def build_companion_upstream_payload(
     evidence: list[dict[str, Any]],
     stream: bool,
 ) -> dict[str, Any]:
-    system_prompt = build_companion_system_prompt(request.mode, checked, evidence, request.persona)
+    system_prompt = build_companion_system_prompt(
+        request.mode,
+        checked,
+        evidence,
+        request.persona,
+        request.use_project_evidence,
+    )
     model_id = fetch_gateway_model_id()
     return {
         "model": model_id,
@@ -511,14 +530,19 @@ async def stage1_upload(file: UploadFile = File(...)) -> dict[str, Any]:
 
 
 @app.post("/v1/pws/outline/upload")
-async def outline_upload(file: UploadFile = File(...)) -> dict[str, Any]:
+async def outline_upload(
+    file: UploadFile = File(...),
+    project_id: str | None = Form(default=None),
+) -> dict[str, Any]:
     content = await file.read()
     filename = file.filename or "uploaded-pws.bin"
     if not content:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
     try:
         markdown, _ = normalize_with_docling(filename, content)
-        return build_outline_payload(filename, markdown)
+        payload = build_outline_payload(filename, markdown)
+        payload["project_id"] = project_id.strip() if project_id else None
+        return payload
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Unable to build outline: {exc}") from exc
 

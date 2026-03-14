@@ -46,6 +46,14 @@ function formatRequirementMarker(requirement) {
 function getRequirementAccent(requirement) {
   const isManualDraft =
     requirement.sourceType === "manual" || String(requirement.sourceRef || "").trim() === "New Req";
+  const isImported = requirement.sourceType === "imported";
+
+  if (isImported) {
+    return {
+      text: "#E3B341",
+      dots: "rgba(227, 179, 65, 0.95)",
+    };
+  }
 
   return isManualDraft
     ? {

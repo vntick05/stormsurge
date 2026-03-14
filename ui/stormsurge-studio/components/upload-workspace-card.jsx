@@ -2,9 +2,16 @@
 
 import { useRef } from "react";
 import UploadFileRounded from "@mui/icons-material/UploadFileRounded";
-import { Button, Paper } from "@mui/material";
+import { Button, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 
-export function UploadWorkspaceCard({ loading, onUpload, compact = false }) {
+export function UploadWorkspaceCard({
+  loading,
+  onUpload,
+  compact = false,
+  selectedProjectId = "",
+  projects = [],
+  onProjectChange,
+}) {
   const inputRef = useRef(null);
 
   async function handleFileChange(event) {
@@ -55,14 +62,54 @@ export function UploadWorkspaceCard({ loading, onUpload, compact = false }) {
         boxShadow: "0 18px 28px rgba(0, 0, 0, 0.22)",
       }}
     >
-      <input
-        hidden
-        ref={inputRef}
-        type="file"
-        accept=".pdf,.doc,.docx,.txt,.md"
-        onChange={handleFileChange}
-      />
-      {button}
+      <Stack spacing={2}>
+        <input
+          hidden
+          ref={inputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.txt,.md"
+          onChange={handleFileChange}
+        />
+        <Stack spacing={0.75}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            Upload PWS
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Build the editable hierarchy from a PWS file and optionally attach it to an indexed
+            project so search and AI tools can use the rest of the package.
+          </Typography>
+        </Stack>
+        <TextField
+          select
+          fullWidth
+          value={selectedProjectId}
+          onChange={(event) => onProjectChange?.(event.target.value)}
+          helperText={
+            selectedProjectId
+              ? "This workspace will use the selected project as its package data source."
+              : "No project selected. The workspace will be file-only until you attach a project."
+          }
+          InputProps={{
+            sx: {
+              bgcolor: "#0d1117",
+            },
+          }}
+        >
+          <MenuItem value="">No project attached</MenuItem>
+          {projects.map((project) => {
+            const value = String(project?.project_id || "").trim();
+            if (!value) {
+              return null;
+            }
+            return (
+              <MenuItem key={value} value={value}>
+                {String(project?.display_name || value).trim()}
+              </MenuItem>
+            );
+          })}
+        </TextField>
+        {button}
+      </Stack>
     </Paper>
   );
 }

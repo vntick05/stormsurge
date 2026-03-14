@@ -39,6 +39,7 @@ import {
   DialogTitle,
   Divider,
   IconButton,
+  LinearProgress,
   List,
   ListItemButton,
   Menu,
@@ -51,6 +52,8 @@ import {
   Typography,
 } from "@mui/material";
 import { DetailInspector } from "@/components/detail-inspector";
+import { PackageProjectCard } from "@/components/package-project-card";
+import { RequirementImportDialog } from "@/components/requirement-import-dialog";
 import { UploadWorkspaceCard } from "@/components/upload-workspace-card";
 import { WorkspaceCanvas } from "@/components/workspace-canvas";
 import {
@@ -71,10 +74,11 @@ import { transformOutlineToWorkspace } from "@/lib/studio-transform";
 
 const LEFT_RAIL_DEFAULT_WIDTH = 360;
 const RIGHT_RAIL_DEFAULT_WIDTH = 320;
-const RAIL_COLLAPSED_WIDTH = 72;
+const RAIL_COLLAPSED_WIDTH = 56;
 const LEFT_RAIL_MIN_WIDTH = 240;
-const RIGHT_RAIL_MIN_WIDTH = 120;
-const RAIL_MAX_WIDTH = 520;
+const RIGHT_RAIL_MIN_WIDTH = 64;
+const LEFT_RAIL_MAX_WIDTH = 520;
+const RIGHT_RAIL_MAX_WIDTH = 900;
 const BOTTOM_DOCK_DEFAULT_HEIGHT = 340;
 const BOTTOM_DOCK_MIN_HEIGHT = 220;
 const BOTTOM_DOCK_MAX_HEIGHT = 520;
@@ -107,6 +111,22 @@ const GITHUB_PANEL_HOVER = "#1c2128";
 const GITHUB_BORDER = "#30363d";
 const GITHUB_BORDER_MUTED = "#21262d";
 const GITHUB_TEXT_MUTED = "#7d8590";
+const TOPBAR_BUTTON_SX = {
+  height: 22,
+  minHeight: 24,
+  px: 0.9,
+  py: 0,
+  borderRadius: 1,
+  fontSize: "0.71rem",
+  lineHeight: 1,
+  alignSelf: "center",
+  "& .MuiButton-startIcon": {
+    mr: 0.35,
+    "& > *:nth-of-type(1)": {
+      fontSize: 14,
+    },
+  },
+};
 const subtleScrollbarSx = {
   scrollbarWidth: "thin",
   scrollbarColor: "#30363d transparent",
@@ -128,8 +148,8 @@ const subtleScrollbarSx = {
   },
 };
 
-function clampRailWidth(width, minWidth) {
-  return Math.min(Math.max(width, minWidth), RAIL_MAX_WIDTH);
+function clampRailWidth(width, minWidth, maxWidth) {
+  return Math.min(Math.max(width, minWidth), maxWidth);
 }
 
 function clampDockHeight(height) {
@@ -384,8 +404,8 @@ function RailShell({
       {collapsed ? (
         <Box
           sx={{
-            px: 1,
-            py: 1,
+            px: 0.35,
+            py: 0.6,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -398,9 +418,16 @@ function RailShell({
           <Typography
             variant="overline"
             color="text.secondary"
-            sx={{ writingMode: "vertical-rl", transform: "rotate(180deg)", letterSpacing: 2 }}
+            sx={{
+              writingMode: "vertical-rl",
+              transform: "rotate(180deg)",
+              letterSpacing: 1.2,
+              fontSize: "0.68rem",
+              lineHeight: 1,
+              whiteSpace: "nowrap",
+            }}
           >
-            {isLeft ? "SS" : "REQ"}
+            {isLeft ? "Section Titles" : "REQ"}
           </Typography>
         </Box>
       ) : (
@@ -469,6 +496,7 @@ function buildEmptyWorkspace() {
     requirements: [],
     sourceFilename: null,
     sourceFormat: null,
+    projectId: null,
   };
 }
 
@@ -485,6 +513,7 @@ function buildDefaultMtsDefinitionPrompt(sectionLabel) {
     `Draft an MTS Definition for ${scopedSection}.`,
     "MTS means Meets the Standard.",
     "Read the requirements as a group.",
+    "Treat the checked requirements in this request as the full working requirement set for the response.",
     "Identify the common baseline expectation across them.",
     "Define the minimum credible, compliant, and executable approach.",
     "Focus on what would make a government evaluator conclude the offeror understands the work and can perform it with acceptable risk.",
@@ -495,6 +524,7 @@ function buildDefaultMtsDefinitionPrompt(sectionLabel) {
     "Write in practical evaluator-facing language.",
     "Use 2 to 3 short paragraphs.",
     "Do not use headings, bullets, markdown emphasis, or labels.",
+    "Do not mention requirement counts, source expansion limits, hidden context, or that additional information could be retrieved later.",
     "Do not mention source metadata, internal tooling, or the phrase 'Meets the Standard' in the response body.",
   ].join(" ");
 }
@@ -602,14 +632,26 @@ function StormWorkspaceBar({
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             Section Solution
           </Typography>
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{
+              ml: { xs: 0, md: "auto" },
+              width: { xs: "100%", md: "auto" },
+              justifyContent: { xs: "space-between", md: "flex-end" },
+            }}
+          >
             {!collapsed ? (
               <Box
                 sx={{
                   display: "inline-flex",
                   alignItems: "stretch",
+                  justifyContent: "flex-end",
+                  flexWrap: "wrap",
                   gap: { xs: 1.6, md: 2.8 },
-                  minWidth: { xs: "100%", md: 720 },
+                  width: { xs: "100%", md: "auto" },
+                  minWidth: 0,
                 }}
               >
                 {STORM_WORKSPACE_TABS.map((label) => {
@@ -756,6 +798,15 @@ export function StudioApp() {
   const [stormWorkspaceNotes, setStormWorkspaceNotes] = useState({});
   const [stormWorkspacePrompts, setStormWorkspacePrompts] = useState({});
   const [savedProjects, setSavedProjects] = useState([]);
+  const [availablePackageProjects, setAvailablePackageProjects] = useState([]);
+  const [selectedPackageProjectId, setSelectedPackageProjectId] = useState("");
+  const [projectSetupState, setProjectSetupState] = useState({
+    loading: false,
+    error: "",
+    jobId: "",
+    message: "",
+  });
+  const [projectSetupProgress, setProjectSetupProgress] = useState(0);
   const [mtsPromptDialogOpen, setMtsPromptDialogOpen] = useState(false);
   const [mtsPromptDraft, setMtsPromptDraft] = useState("");
   const [homeDialogOpen, setHomeDialogOpen] = useState(false);
@@ -778,6 +829,14 @@ export function StudioApp() {
   const [collapsedRequirementIds, setCollapsedRequirementIds] = useState(() => new Set());
   const [sectionMenuAnchorEl, setSectionMenuAnchorEl] = useState(null);
   const [sectionMenuSectionId, setSectionMenuSectionId] = useState("");
+  const [reqImportDialogOpen, setReqImportDialogOpen] = useState(false);
+  const [reqImportWorkspace, setReqImportWorkspace] = useState(buildEmptyWorkspace);
+  const [reqImportSectionId, setReqImportSectionId] = useState("");
+  const [reqImportCheckedIds, setReqImportCheckedIds] = useState(() => new Set());
+  const [reqImportState, setReqImportState] = useState({
+    loading: false,
+    error: "",
+  });
 
   const sections = workspace.sections;
   const requirements = workspace.requirements;
@@ -847,6 +906,9 @@ export function StudioApp() {
     setStormWorkspaceCollapsed(false);
     setCollapsedRequirementIds(new Set());
     setUploadState({ loading: false, error: "" });
+    setSelectedPackageProjectId("");
+    setProjectSetupState({ loading: false, error: "", jobId: "", message: "" });
+    setProjectSetupProgress(0);
     setMtsDefinitionGenerationState({ loading: false, error: "" });
   }
 
@@ -878,13 +940,13 @@ export function StudioApp() {
     );
     setStormWorkspaceCollapsed(false);
     setLeftRailWidth(
-      typeof snapshot?.leftRailWidth === "number"
-        ? clampRailWidth(snapshot.leftRailWidth, LEFT_RAIL_MIN_WIDTH)
+        typeof snapshot?.leftRailWidth === "number"
+        ? clampRailWidth(snapshot.leftRailWidth, LEFT_RAIL_MIN_WIDTH, LEFT_RAIL_MAX_WIDTH)
         : LEFT_RAIL_DEFAULT_WIDTH,
     );
     setRightRailWidth(
       typeof snapshot?.rightRailWidth === "number"
-        ? clampRailWidth(snapshot.rightRailWidth, RIGHT_RAIL_MIN_WIDTH)
+        ? clampRailWidth(snapshot.rightRailWidth, RIGHT_RAIL_MIN_WIDTH, RIGHT_RAIL_MAX_WIDTH)
         : RIGHT_RAIL_DEFAULT_WIDTH,
     );
     setLeftRailCollapsed(
@@ -895,6 +957,11 @@ export function StudioApp() {
     );
     setCollapsedRequirementIds(new Set());
     setUploadState({ loading: false, error: "" });
+    setSelectedPackageProjectId(
+      typeof snapshot?.workspace?.projectId === "string" ? snapshot.workspace.projectId : "",
+    );
+    setProjectSetupState({ loading: false, error: "", jobId: "", message: "" });
+    setProjectSetupProgress(0);
     setMtsDefinitionGenerationState({ loading: false, error: "" });
   }
 
@@ -931,6 +998,112 @@ export function StudioApp() {
       console.warn("Failed to restore StormSurge studio state", error);
     }
   }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadAvailableProjects() {
+      try {
+        const response = await fetch("/api/storm/active-projects", {
+          cache: "no-store",
+        });
+        const payload = await response.json().catch(() => ({ projects: [] }));
+        if (!response.ok || ignore) {
+          return;
+        }
+        setAvailablePackageProjects(Array.isArray(payload?.projects) ? payload.projects : []);
+      } catch {
+        if (!ignore) {
+          setAvailablePackageProjects([]);
+        }
+      }
+    }
+
+    loadAvailableProjects();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!projectSetupState.loading || !projectSetupState.jobId) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    async function pollJobStatus() {
+      try {
+        const response = await fetch(
+          `/api/storm/package-project/status?jobId=${encodeURIComponent(projectSetupState.jobId)}`,
+          { cache: "no-store" },
+        );
+        const payload = await response.json().catch(() => null);
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(payload?.detail || "Project setup status failed");
+        }
+
+        setProjectSetupProgress(Number(payload?.progress) || 0);
+        setProjectSetupState((current) => ({
+          ...current,
+          message: String(payload?.message || "").trim(),
+        }));
+
+        if (!payload?.done) {
+          return;
+        }
+
+        if (payload?.stage === "completed") {
+          const nextProject = {
+            project_id: payload?.projectId,
+            display_name: payload?.displayName || payload?.projectId,
+          };
+
+          setAvailablePackageProjects((current) => {
+            const remaining = current.filter(
+              (project) => String(project?.project_id || "").trim() !== nextProject.project_id,
+            );
+            return [nextProject, ...remaining];
+          });
+          setSelectedPackageProjectId(nextProject.project_id || "");
+          setProjectSetupProgress(100);
+          setProjectSetupState({
+            loading: false,
+            error: "",
+            jobId: "",
+            message: "Package project is ready",
+          });
+          return;
+        }
+
+        throw new Error(payload?.error || "Project setup failed");
+      } catch (error) {
+        if (!cancelled) {
+          setProjectSetupState({
+            loading: false,
+            error: error instanceof Error ? error.message : "Project setup failed",
+            jobId: "",
+            message: "",
+          });
+        }
+      }
+    }
+
+    void pollJobStatus();
+    const intervalId = window.setInterval(() => {
+      void pollJobStatus();
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [projectSetupState.loading, projectSetupState.jobId]);
 
   useEffect(() => {
     if (!mounted) {
@@ -1018,13 +1191,19 @@ export function StudioApp() {
       const handleMove = (moveEvent) => {
         if (side === "left") {
           setLeftRailCollapsed(false);
-          setLeftRailWidth(clampRailWidth(moveEvent.clientX, LEFT_RAIL_MIN_WIDTH));
+          setLeftRailWidth(
+            clampRailWidth(moveEvent.clientX, LEFT_RAIL_MIN_WIDTH, LEFT_RAIL_MAX_WIDTH),
+          );
           return;
         }
 
         setRightRailCollapsed(false);
         setRightRailWidth(
-          clampRailWidth(window.innerWidth - moveEvent.clientX, RIGHT_RAIL_MIN_WIDTH),
+          clampRailWidth(
+            window.innerWidth - moveEvent.clientX,
+            RIGHT_RAIL_MIN_WIDTH,
+            RIGHT_RAIL_MAX_WIDTH,
+          ),
         );
       };
 
@@ -1458,6 +1637,138 @@ export function StudioApp() {
     setSectionMenuSectionId("");
   }
 
+  function handleOpenReqImportDialog() {
+    setReqImportDialogOpen(true);
+    setReqImportState({ loading: false, error: "" });
+  }
+
+  function handleCloseReqImportDialog() {
+    setReqImportDialogOpen(false);
+    setReqImportState({ loading: false, error: "" });
+    setReqImportWorkspace(buildEmptyWorkspace());
+    setReqImportSectionId("");
+    setReqImportCheckedIds(new Set());
+  }
+
+  async function handleReqImportUpload(file) {
+    setReqImportState({ loading: true, error: "" });
+
+    try {
+      const body = new FormData();
+      body.append("file", file);
+
+      const response = await fetch("/api/pws/outline-upload", {
+        method: "POST",
+        body,
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.detail || "PWS import failed");
+      }
+
+      const payload = await response.json();
+      const nextWorkspace = transformOutlineToWorkspace(payload);
+      setReqImportWorkspace(nextWorkspace);
+      setReqImportSectionId(nextWorkspace.sections[0]?.id || "");
+      setReqImportCheckedIds(new Set());
+      setReqImportState({ loading: false, error: "" });
+    } catch (error) {
+      setReqImportState({
+        loading: false,
+        error: error instanceof Error ? error.message : "PWS import failed",
+      });
+    }
+  }
+
+  function handleToggleReqImportChecked(requirementId) {
+    setReqImportCheckedIds((current) => {
+      const next = new Set(current);
+      if (next.has(requirementId)) {
+        next.delete(requirementId);
+      } else {
+        next.add(requirementId);
+      }
+      return next;
+    });
+  }
+
+  function handleImportSelectedRequirements() {
+    if ((!selectedRequirement && !activeSection) || !reqImportCheckedIds.size) {
+      return;
+    }
+
+    const sourceRequirements = reqImportWorkspace.requirements;
+    const selectedRoots = sourceRequirements
+      .filter((requirement) => reqImportCheckedIds.has(requirement.id))
+      .filter((requirement) => {
+        let parentId = requirement.parentId;
+        while (parentId) {
+          if (reqImportCheckedIds.has(parentId)) {
+            return false;
+          }
+          parentId = getRequirementById(sourceRequirements, parentId)?.parentId || null;
+        }
+        return true;
+      });
+
+    if (!selectedRoots.length) {
+      return;
+    }
+
+    let idCounter = Date.now();
+    applyWorkspaceChange((current) => {
+      const targetRequirement = selectedRequirement
+        ? getRequirementById(current.requirements, selectedRequirement.id)
+        : null;
+      const targetSectionId = targetRequirement?.sectionId || activeSection?.id;
+      if (!targetSectionId || targetSectionId === "unassigned") {
+        return current;
+      }
+
+      const existingSiblings = targetRequirement
+        ? getChildren(current.requirements, targetRequirement.id)
+        : getSectionRoots(current.requirements, targetSectionId);
+      const insertedRequirements = [];
+
+      function cloneSubtree(sourceRequirement, parentId, position) {
+        const cloneId = `import-${idCounter++}`;
+        const clone = {
+          ...sourceRequirement,
+          id: cloneId,
+          sectionId: targetSectionId,
+          parentId,
+          position,
+          sourceType: "imported",
+          kind: parentId ? "child" : "top-level",
+          summary:
+            sourceRequirement.summary ||
+            String(sourceRequirement.text || "").replace(/\s+/g, " ").trim().slice(0, 160),
+        };
+        insertedRequirements.push(clone);
+
+        getChildren(sourceRequirements, sourceRequirement.id).forEach((child, index) => {
+          cloneSubtree(child, cloneId, index + 1);
+        });
+      }
+
+      selectedRoots.forEach((rootRequirement, index) => {
+        cloneSubtree(
+          rootRequirement,
+          targetRequirement?.id || null,
+          existingSiblings.length + index + 1,
+        );
+      });
+
+      return {
+        ...current,
+        requirements: [...current.requirements, ...insertedRequirements],
+      };
+    });
+
+    handleCloseReqImportDialog();
+  }
+
   function handleRenameSectionFromMenu() {
     if (!sectionMenuSectionId) {
       return;
@@ -1671,6 +1982,9 @@ export function StudioApp() {
     try {
       const body = new FormData();
       body.append("file", file);
+      if (selectedPackageProjectId) {
+        body.append("projectId", selectedPackageProjectId);
+      }
 
       const response = await fetch("/api/pws/outline-upload", {
         method: "POST",
@@ -1685,6 +1999,7 @@ export function StudioApp() {
       const payload = await response.json();
       const nextWorkspace = transformOutlineToWorkspace(payload);
       setWorkspace(nextWorkspace);
+      setSelectedPackageProjectId(nextWorkspace.projectId || selectedPackageProjectId);
       setUndoHistory([]);
       setRedoHistory([]);
       setActiveSectionId(nextWorkspace.sections[0]?.id ?? "");
@@ -1701,6 +2016,49 @@ export function StudioApp() {
     }
 
     setUploadState({ loading: false, error: "" });
+  }
+
+  async function handleCreatePackageProject({ projectName, files }) {
+    setProjectSetupState({
+      loading: true,
+      error: "",
+      jobId: "",
+      message: "Starting package job",
+    });
+    setProjectSetupProgress(2);
+
+    try {
+      const body = new FormData();
+      body.append("projectName", projectName);
+      files.forEach((file) => body.append("files", file, file.name));
+
+      const response = await fetch("/api/storm/package-project/start", {
+        method: "POST",
+        body,
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.detail || "Project setup failed");
+      }
+
+      setProjectSetupProgress(Number(payload?.progress) || 2);
+      setProjectSetupState({
+        loading: true,
+        error: "",
+        jobId: String(payload?.jobId || ""),
+        message: String(payload?.message || "").trim() || "Uploading files",
+      });
+      return true;
+    } catch (error) {
+      setProjectSetupState({
+        loading: false,
+        error: error instanceof Error ? error.message : "Project setup failed",
+        jobId: "",
+        message: "",
+      });
+      return false;
+    }
   }
 
   function handleSaveProject() {
@@ -1793,14 +2151,24 @@ export function StudioApp() {
           borderBottom: "1px solid rgba(255, 255, 255, 0.22)",
           backdropFilter: "none",
           bgcolor: "#000000",
-          pl: { xs: 2, xl: 3 },
-          pr: { xs: 1, xl: 1.5 },
+          pl: { xs: 0.9, xl: 1.2 },
+          pr: { xs: 0.45, xl: 0.6 },
+          py: 0,
           transition: "padding 180ms ease",
           boxShadow: "none",
           flexShrink: 0,
         }}
       >
-        <Toolbar sx={{ minHeight: 76, pl: 0, pr: 0 }}>
+        <Toolbar
+          disableGutters
+          sx={{
+            minHeight: "34px !important",
+            height: 34,
+            py: 0,
+            pl: 0,
+            pr: 0,
+          }}
+        >
           <Box sx={{ flexGrow: 1 }}>
             <Typography
               variant="h5"
@@ -1809,6 +2177,7 @@ export function StudioApp() {
                 fontWeight: 700,
                 letterSpacing: -0.03,
                 lineHeight: 1,
+                fontSize: "1.08rem",
               }}
             >
               StormSurge
@@ -1819,7 +2188,8 @@ export function StudioApp() {
               sx={{
                 display: "flex",
                 alignItems: "center",
-                gap: 1.25,
+                height: 34,
+                gap: 0.85,
                 ml: "auto",
               }}
             >
@@ -1828,6 +2198,7 @@ export function StudioApp() {
                 startIcon={<UndoRounded />}
                 onClick={handleUndo}
                 disabled={!undoHistory.length}
+                sx={TOPBAR_BUTTON_SX}
               >
                 Undo
               </Button>
@@ -1836,6 +2207,7 @@ export function StudioApp() {
                 startIcon={<RedoRounded />}
                 onClick={handleRedo}
                 disabled={!redoHistory.length}
+                sx={TOPBAR_BUTTON_SX}
               >
                 Redo
               </Button>
@@ -1844,10 +2216,16 @@ export function StudioApp() {
                 startIcon={<SaveRounded />}
                 onClick={handleSaveProject}
                 disabled={!sections.length}
+                sx={TOPBAR_BUTTON_SX}
               >
                 Save Project
               </Button>
-              <Button variant="outlined" startIcon={<HomeRounded />} onClick={handleGoHome}>
+              <Button
+                variant="outlined"
+                startIcon={<HomeRounded />}
+                onClick={handleGoHome}
+                sx={TOPBAR_BUTTON_SX}
+              >
                 Home
               </Button>
             </Box>
@@ -1886,6 +2264,23 @@ export function StudioApp() {
             {uploadState.error ? <Alert severity="error">{uploadState.error}</Alert> : null}
 
             <Box>
+              <Stack spacing={1.1} sx={{ mb: 1.2 }}>
+                <Button
+                  variant="outlined"
+                  onClick={handleOpenReqImportDialog}
+                  sx={{
+                    justifyContent: "flex-start",
+                    borderColor: GITHUB_BORDER,
+                    color: "#e6edf3",
+                    textTransform: "none",
+                  }}
+                >
+                  Add Reqs
+                </Button>
+                <Typography variant="caption" color="text.secondary" sx={{ px: 0.4 }}>
+                  Imports attach under the selected req, or to the top of the active section if none is selected.
+                </Typography>
+              </Stack>
               <DndContext
                 sensors={sectionTabSensors}
                 collisionDetection={closestCenter}
@@ -2030,13 +2425,43 @@ export function StudioApp() {
                     <CloudUploadRounded color="primary" sx={{ fontSize: 30 }} />
                   </Box>
                 <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  Upload a PWS to start
+                  Start a workspace or build a package project
                 </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 720 }}>
-                  Upload a PDF, DOCX, TXT, or Markdown PWS to build a new workspace,
-                  or reopen one of your saved projects below.
+                <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 780 }}>
+                  Create a package project first if you want search and AI tools to use the full
+                  document set, then upload the PWS and attach that workspace to the project.
                 </Typography>
-                <UploadWorkspaceCard loading={uploadState.loading} onUpload={handleOutlineUpload} />
+                <Stack
+                  direction={{ xs: "column", xl: "row" }}
+                  spacing={2}
+                  sx={{ width: "100%", maxWidth: 980, alignItems: "stretch" }}
+                >
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <PackageProjectCard
+                      loading={projectSetupState.loading}
+                      onCreateProject={handleCreatePackageProject}
+                    />
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <UploadWorkspaceCard
+                      loading={uploadState.loading}
+                      onUpload={handleOutlineUpload}
+                      projects={availablePackageProjects}
+                      selectedProjectId={selectedPackageProjectId}
+                      onProjectChange={setSelectedPackageProjectId}
+                    />
+                  </Box>
+                </Stack>
+                {projectSetupState.error ? (
+                  <Alert severity="error" sx={{ width: "100%", maxWidth: 980 }}>
+                    {projectSetupState.error}
+                  </Alert>
+                ) : null}
+                {projectSetupState.loading ? (
+                  <Alert severity="info" sx={{ width: "100%", maxWidth: 980 }}>
+                    {projectSetupState.message || "Running package ingest pipeline"}
+                  </Alert>
+                ) : null}
                 {savedProjects.length ? (
                   <Stack spacing={1.25} sx={{ width: "100%", maxWidth: 880 }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
@@ -2172,8 +2597,10 @@ export function StudioApp() {
             }}
           >
             <DetailInspector
+              projectId={workspace.projectId}
               section={activeSection}
               requirement={selectedRequirement}
+              sectionRequirements={activeSectionRequirements}
               allRequirements={requirements}
               sections={sections}
               hasCollapsibleRequirements={hasCollapsibleRequirements}
@@ -2261,6 +2688,57 @@ export function StudioApp() {
       >
         <MenuItem onClick={handleRenameSectionFromMenu}>Rename</MenuItem>
       </Menu>
+      <RequirementImportDialog
+        open={reqImportDialogOpen}
+        targetRequirement={selectedRequirement}
+        sourceWorkspace={reqImportWorkspace}
+        activeSectionId={reqImportSectionId}
+        checkedIds={reqImportCheckedIds}
+        loading={reqImportState.loading}
+        error={reqImportState.error}
+        onClose={handleCloseReqImportDialog}
+        onUpload={handleReqImportUpload}
+        onSelectSection={setReqImportSectionId}
+        onToggleChecked={handleToggleReqImportChecked}
+        onImport={handleImportSelectedRequirements}
+      />
+      {projectSetupState.loading ? (
+        <Paper
+          elevation={8}
+          sx={{
+            position: "fixed",
+            left: 20,
+            right: 20,
+            bottom: 20,
+            zIndex: 1600,
+            px: 2,
+            py: 1.5,
+            bgcolor: GITHUB_PANEL,
+            border: `1px solid ${GITHUB_BORDER}`,
+            borderRadius: 1,
+          }}
+        >
+          <Stack spacing={1}>
+            <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
+              <Typography variant="body2" sx={{ fontWeight: 600, color: "#e6edf3" }}>
+                {projectSetupState.message || "Running package ingest pipeline"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {projectSetupProgress}%
+              </Typography>
+            </Stack>
+            <LinearProgress
+              variant="determinate"
+              value={projectSetupProgress}
+              sx={{
+                height: 8,
+                borderRadius: 999,
+                bgcolor: "rgba(255, 255, 255, 0.08)",
+              }}
+            />
+          </Stack>
+        </Paper>
+      ) : null}
     </Box>
   );
 }

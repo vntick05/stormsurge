@@ -1004,6 +1004,28 @@ def index_project(request: ProjectIndexRequest) -> dict[str, Any]:
     }
 
 
+@app.get("/v1/projects/{project_id}/status")
+def project_index_status(project_id: str) -> dict[str, Any]:
+    client = get_qdrant_client()
+    count_result = client.count(
+        collection_name=QDRANT_COLLECTION,
+        count_filter=models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="project_id",
+                    match=models.MatchValue(value=project_id),
+                )
+            ]
+        ),
+        exact=True,
+    )
+    return {
+        "project_id": project_id,
+        "collection": QDRANT_COLLECTION,
+        "indexed_points": int(count_result.count or 0),
+    }
+
+
 @app.post("/v1/seed/setup")
 async def seed_setup(request: SeedSetupRequest) -> dict[str, Any]:
     ingest_result = await ingest_folder(

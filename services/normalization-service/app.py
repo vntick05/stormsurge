@@ -2622,6 +2622,93 @@ def projects() -> dict[str, Any]:
     return {"count": len(projects), "projects": projects}
 
 
+@app.get("/v1/projects/{project_id}/documents/status")
+def project_document_status(project_id: str) -> dict[str, Any]:
+    sql = """
+    WITH latest_normalizations AS (
+      SELECT DISTINCT ON (document_id)
+        document_id,
+        normalization_status,
+        error_message,
+        updated_at
+      FROM document_normalizations
+      WHERE provider = %(provider)s
+      ORDER BY document_id, updated_at DESC
+    )
+    SELECT
+      d.id AS document_id,
+      d.project_id,
+      d.filename,
+      d.extraction_status,
+      d.created_at,
+      ln.normalization_status,
+      ln.error_message,
+      ln.updated_at AS normalization_updated_at
+    FROM documents d
+    LEFT JOIN latest_normalizations ln
+      ON ln.document_id = d.id
+    WHERE d.project_id = %(project_id)s
+      AND d.extraction_status = 'extracted'
+      AND d.filename <> ALL(%(ignored_filenames)s)
+    ORDER BY d.filename ASC, d.created_at DESC
+    """
+    with psycopg.connect(postgres_dsn(), row_factory=dict_row) as conn:
+        rows = conn.execute(
+            sql,
+            {
+                "project_id": project_id,
+                "provider": NORMALIZATION_PROVIDER,
+                "ignored_filenames": list(IGNORED_NORMALIZATION_FILENAMES),
+            },
+        ).fetchall()
+
+    documents = []
+    for row in rows:
+        item = dict(row)
+        item["normalization_status"] = item.get("normalization_status") or "pending"
+        documents.append(item)
+
+    return {"project_id": project_id, "count": len(documents), "documents": documents}
+
+
+@app.get("/v1/projects/{project_id}/status")
+def project_status(project_id: str) -> dict[str, Any]:
+    totals_sql = """
+    SELECT COUNT(*) AS total_documents
+    FROM documents
+    WHERE project_id = %(project_id)s
+    """
+    normalization_sql = """
+    SELECT
+      COUNT(DISTINCT CASE WHEN dn.normalization_status = 'normalized' THEN dn.document_id END) AS normalized_documents,
+      COUNT(DISTINCT CASE WHEN dn.normalization_status = 'failed' THEN dn.document_id END) AS failed_documents
+    FROM documents d
+    LEFT JOIN document_normalizations dn
+      ON dn.document_id = d.id
+     AND dn.provider = %(provider)s
+    WHERE d.project_id = %(project_id)s
+    """
+    with psycopg.connect(postgres_dsn(), row_factory=dict_row) as conn:
+        total_row = conn.execute(totals_sql, {"project_id": project_id}).fetchone()
+        normalization_row = conn.execute(
+            normalization_sql,
+            {"project_id": project_id, "provider": NORMALIZATION_PROVIDER},
+        ).fetchone()
+
+    total_documents = int((total_row or {}).get("total_documents") or 0)
+    normalized_documents = int((normalization_row or {}).get("normalized_documents") or 0)
+    failed_documents = int((normalization_row or {}).get("failed_documents") or 0)
+    pending_documents = max(total_documents - normalized_documents - failed_documents, 0)
+    return {
+        "project_id": project_id,
+        "provider": NORMALIZATION_PROVIDER,
+        "total_documents": total_documents,
+        "normalized_documents": normalized_documents,
+        "failed_documents": failed_documents,
+        "pending_documents": pending_documents,
+    }
+
+
 @app.get("/v1/projects/{project_id}/requirements")
 def project_requirements(project_id: str) -> dict[str, Any]:
     requirements = fetch_project_requirements(project_id)

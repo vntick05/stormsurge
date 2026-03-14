@@ -2,6 +2,59 @@ export const runtime = "nodejs";
 
 const serviceUrl =
   process.env.PWS_STRUCTURING_SERVICE_URL || "http://pws-structuring-service:8193";
+const MAX_REQUIREMENT_COUNT = 16;
+const MAX_REQUIREMENT_TEXT_CHARS = 180;
+const MAX_TOTAL_REQUIREMENT_TEXT_CHARS = 2200;
+
+function cleanRequirementText(value) {
+  return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function truncateText(value, limit) {
+  if (value.length <= limit) {
+    return value;
+  }
+  return `${value.slice(0, Math.max(0, limit - 3)).trimEnd()}...`;
+}
+
+function compactRequirements(requirements) {
+  const compacted = [];
+  let totalChars = 0;
+
+  for (const requirement of requirements) {
+    if (compacted.length >= MAX_REQUIREMENT_COUNT) {
+      break;
+    }
+
+    const id = String(requirement?.id || "").trim();
+    const section = String(requirement?.section || "").trim() || null;
+    const text = truncateText(
+      cleanRequirementText(requirement?.text),
+      MAX_REQUIREMENT_TEXT_CHARS,
+    );
+
+    if (!id || !text) {
+      continue;
+    }
+
+    if (totalChars >= MAX_TOTAL_REQUIREMENT_TEXT_CHARS) {
+      break;
+    }
+
+    const remainingChars = MAX_TOTAL_REQUIREMENT_TEXT_CHARS - totalChars;
+    const finalText =
+      text.length > remainingChars ? truncateText(text, remainingChars) : text;
+
+    if (!finalText) {
+      break;
+    }
+
+    compacted.push({ id, section, text: finalText });
+    totalChars += finalText.length;
+  }
+
+  return compacted;
+}
 
 function buildPrompt(sectionLabel) {
   const scopedSection = String(sectionLabel || "this section").trim();
@@ -9,6 +62,7 @@ function buildPrompt(sectionLabel) {
     `Draft an MTS Definition for ${scopedSection}.`,
     "MTS means Meets the Standard.",
     "Read the requirements as a group.",
+    "Treat the checked requirements in this request as the full working requirement set for the response.",
     "Identify the common baseline expectation across them.",
     "Define the minimum credible, compliant, and executable approach.",
     "Focus on what would make a government evaluator conclude the offeror understands the work and can perform it with acceptable risk.",
@@ -19,6 +73,7 @@ function buildPrompt(sectionLabel) {
     "Write in practical evaluator-facing language.",
     "Use 2 to 3 short paragraphs.",
     "Do not use headings, bullets, markdown emphasis, or labels.",
+    "Do not mention requirement counts, source expansion limits, hidden context, or that additional information could be retrieved later.",
     "Do not mention source metadata, internal tooling, or the phrase 'Meets the Standard' in the response body.",
   ].join(" ");
 }
@@ -33,13 +88,7 @@ export async function POST(request) {
     return Response.json({ detail: "requirements are required" }, { status: 400 });
   }
 
-  const checkedRequirements = requirements
-    .map((requirement) => ({
-      id: String(requirement?.id || "").trim(),
-      section: String(requirement?.section || "").trim() || null,
-      text: String(requirement?.text || "").trim(),
-    }))
-    .filter((requirement) => requirement.id && requirement.text);
+  const checkedRequirements = compactRequirements(requirements);
 
   if (!checkedRequirements.length) {
     return Response.json(
