@@ -100,7 +100,6 @@ const UNASSIGNED_SECTION = {
   sourceKind: "system",
   sectionNumber: null,
 };
-const STORMSURGE_LOGO_SRC = "/stormsurge-studio-logo.png";
 const GITHUB_BASE = "#010409";
 const GITHUB_SURFACE = "#0d1117";
 const GITHUB_PANEL = "#161b22";
@@ -1803,18 +1802,17 @@ export function StudioApp() {
       >
         <Toolbar sx={{ minHeight: 76, pl: 0, pr: 0 }}>
           <Box sx={{ flexGrow: 1 }}>
-            <Box
-              component="img"
-              src={STORMSURGE_LOGO_SRC}
-              alt="StormSurge"
+            <Typography
+              variant="h5"
               sx={{
-                display: "block",
-                width: 220,
-                height: "auto",
-                maxHeight: 54,
-                mixBlendMode: "lighten",
+                color: "#ffffff",
+                fontWeight: 700,
+                letterSpacing: -0.03,
+                lineHeight: 1,
               }}
-            />
+            >
+              StormSurge
+            </Typography>
           </Box>
           {!isHomeScreen ? (
             <Box

@@ -15,7 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 
-const INSPECTOR_TABS = ["Edit", "Search", "Structure"];
+const INSPECTOR_TABS = ["Edit", "Search", "AI Helper", "Structure"];
 const GITHUB_BASE = "#010409";
 const GITHUB_SURFACE = "#0d1117";
 const GITHUB_PANEL = "#161b22";
@@ -286,6 +286,40 @@ export function DetailInspector({
                     No requirements matched that search.
                   </Typography>
                 ) : null}
+              </Stack>
+            </Stack>
+          ) : null}
+
+          {activeTab === "AI Helper" ? (
+            <Stack spacing={1.5}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                AI Helper
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Use this space for AI-assisted requirement drafting, rewrite prompts, and
+                requirement-specific guidance.
+              </Typography>
+              <TextField
+                fullWidth
+                multiline
+                minRows={6}
+                placeholder="Ask the AI helper about the selected requirement..."
+                InputProps={{
+                  sx: {
+                    fontSize: "0.875rem",
+                    lineHeight: 1.4,
+                    alignItems: "flex-start",
+                    bgcolor: GITHUB_SURFACE,
+                  },
+                }}
+              />
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Button size="small" variant="outlined">
+                  Draft Response
+                </Button>
+                <Button size="small" variant="outlined">
+                  Rewrite Requirement
+                </Button>
               </Stack>
             </Stack>
           ) : null}
