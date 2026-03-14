@@ -7,7 +7,6 @@ import {
   Alert,
   Box,
   Button,
-  Divider,
   Paper,
   Stack,
   Typography,
@@ -36,6 +35,21 @@ function formatRequirementMarker(requirement) {
   return source || requirement.title;
 }
 
+function getRequirementAccent(requirement) {
+  const isManualDraft =
+    requirement.sourceType === "manual" || String(requirement.sourceRef || "").trim() === "New Req";
+
+  return isManualDraft
+    ? {
+        text: "#F29B5C",
+        dots: "rgba(242, 155, 92, 0.95)",
+      }
+    : {
+        text: "#8FB7FF",
+        dots: "rgba(143, 183, 255, 0.95)",
+      };
+}
+
 function RequirementCard({
   requirement,
   selected,
@@ -48,15 +62,7 @@ function RequirementCard({
   style,
   children,
 }) {
-  const isManualRequirement = requirement.sourceType === "manual";
-  const accentColor = isManualRequirement
-    ? selected
-      ? "#F2B36D"
-      : "#D8892F"
-    : selected
-      ? "#9BC0FF"
-      : "#74A3FF";
-  const markerColor = accentColor;
+  const accent = getRequirementAccent(requirement);
 
   return (
     <Box ref={setNodeRef} style={style} sx={{ mb: 0.85 }}>
@@ -64,42 +70,65 @@ function RequirementCard({
         onClick={() => onSelect(requirement.id)}
         sx={{
           position: "relative",
-          pl: 1.5,
           pr: 1,
-          py: 0.7,
-          minHeight: 0,
+          pl: 0.55,
+          py: 0.6,
+          minHeight: 48,
           cursor: "pointer",
-          bgcolor: selected ? "rgba(26, 22, 18, 0.8)" : "rgba(7, 9, 13, 0.96)",
-          borderBottom: "1px solid rgba(255,255,255,0.04)",
+          borderRadius: 2.4,
+          bgcolor: selected ? "rgba(255, 255, 255, 0.14)" : "rgba(255, 255, 255, 0.09)",
+          boxShadow: "none",
           transition: "background-color 120ms ease",
           "&:hover": {
-            bgcolor: selected ? "rgba(31, 26, 20, 0.84)" : "rgba(10, 12, 16, 0.98)",
+            bgcolor: selected ? "rgba(255, 255, 255, 0.16)" : "rgba(255, 255, 255, 0.12)",
           },
         }}
       >
-        <Box
-          {...dragHandleProps}
-          onClick={(event) => event.stopPropagation()}
-          sx={{
-            position: "absolute",
-            left: 0,
-            top: 10,
-            bottom: 10,
-            width: 6,
-            bgcolor: accentColor,
-            opacity: selected ? 0.95 : 0.55,
-            cursor: "grab",
-            borderRadius: 999,
-          }}
-        />
-        <Stack direction="row" spacing={1.15} alignItems="center">
-          <Box sx={{ flexGrow: 1, minWidth: 0, pr: 0.15, py: 0.2, pl: 0.05 }}>
+        <Stack direction="row" spacing={1.2} alignItems="center">
+          <Box
+            {...dragHandleProps}
+            onClick={(event) => event.stopPropagation()}
+            sx={{
+              width: 14,
+              height: 22,
+              flexShrink: 0,
+              cursor: "grab",
+              opacity: 0.52,
+              ml: 0.25,
+              mr: 0.35,
+              position: "relative",
+              "&::before": {
+                content: '""',
+                position: "absolute",
+                left: 2,
+                top: 5,
+                width: 3,
+                height: 3,
+                borderRadius: 999,
+                bgcolor: accent.dots,
+                boxShadow:
+                  `0 7px 0 ${accent.dots}, 6px 0 0 ${accent.dots}, 6px 7px 0 ${accent.dots}`,
+              },
+            }}
+          />
+          <Box
+            sx={{
+              flexGrow: 1,
+              minWidth: 0,
+              pr: 0.15,
+              py: 0.02,
+              display: "flex",
+              alignItems: "center",
+              minHeight: 36,
+            }}
+          >
             <Typography
               variant="body2"
               color="text.primary"
               sx={{
                 fontSize: "0.89rem",
                 lineHeight: 1.28,
+                width: "100%",
                 display: "-webkit-box",
                 WebkitLineClamp: 3,
                 WebkitBoxOrient: "vertical",
@@ -109,18 +138,25 @@ function RequirementCard({
               <Box
                 component="span"
                 sx={{
-                  color: markerColor,
-                  fontSize: "0.89rem",
-                  fontWeight: 700,
-                  letterSpacing: 0.12,
-                  mr: 0.9,
+                  color: accent.text,
+                  fontSize: "0.84rem",
+                  fontWeight: 600,
+                  letterSpacing: 0.08,
+                  mr: 0.7,
                   verticalAlign: "baseline",
                   textTransform: "uppercase",
                 }}
               >
                 {formatRequirementMarker(requirement)}
               </Box>
-              {requirement.text || requirement.summary}
+              <Box
+                component="span"
+                sx={{
+                  color: "#FFFFFF",
+                }}
+              >
+                {requirement.text || requirement.summary}
+              </Box>
             </Typography>
           </Box>
           <Button
@@ -134,7 +170,7 @@ function RequirementCard({
               px: 0.25,
               mt: 0,
               ml: 0.1,
-              color: hasChildren ? "text.secondary" : "transparent",
+              color: hasChildren ? "#FFFFFF" : "transparent",
               visibility: hasChildren ? "visible" : "hidden",
               alignSelf: "center",
             }}
@@ -304,8 +340,8 @@ export function WorkspaceCanvas({
     <Paper
       variant="outlined"
       sx={{
-        p: 2.75,
-        borderRadius: 0.5,
+        p: 2.25,
+        borderRadius: 0,
         bgcolor: "transparent",
         borderColor: "transparent",
         boxShadow: "none",

@@ -50,9 +50,9 @@ export function UploadWorkspaceCard({ loading, onUpload, compact = false }) {
       sx={{
         p: 3,
         borderRadius: 1,
-        bgcolor: "rgba(20, 23, 30, 0.82)",
-        borderColor: "rgba(132, 121, 111, 0.08)",
-        boxShadow: "0 18px 28px rgba(0, 0, 0, 0.14)",
+        bgcolor: "rgba(95, 102, 115, 0.22)",
+        borderColor: "rgba(208, 220, 243, 0.08)",
+        boxShadow: "0 18px 28px rgba(8, 10, 12, 0.14)",
       }}
     >
       <input

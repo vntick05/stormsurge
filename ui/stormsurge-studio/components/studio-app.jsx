@@ -7,8 +7,8 @@ import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
 import CloudUploadRounded from "@mui/icons-material/CloudUploadRounded";
 import DragIndicatorRounded from "@mui/icons-material/DragIndicatorRounded";
-import EditRounded from "@mui/icons-material/EditRounded";
 import HomeRounded from "@mui/icons-material/HomeRounded";
+import MoreHorizRounded from "@mui/icons-material/MoreHorizRounded";
 import RedoRounded from "@mui/icons-material/RedoRounded";
 import SaveRounded from "@mui/icons-material/SaveRounded";
 import UndoRounded from "@mui/icons-material/UndoRounded";
@@ -41,7 +41,8 @@ import {
   IconButton,
   List,
   ListItemButton,
-  ListItemText,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -94,7 +95,7 @@ const UNASSIGNED_SECTION = {
 };
 const subtleScrollbarSx = {
   scrollbarWidth: "thin",
-  scrollbarColor: "rgba(58, 72, 96, 0.1) transparent",
+  scrollbarColor: "rgba(255, 255, 255, 0.12) transparent",
   "&::-webkit-scrollbar": {
     width: 8,
     height: 8,
@@ -103,13 +104,13 @@ const subtleScrollbarSx = {
     background: "transparent",
   },
   "&::-webkit-scrollbar-thumb": {
-    backgroundColor: "rgba(58, 72, 96, 0.08)",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 999,
     border: "2px solid transparent",
     backgroundClip: "padding-box",
   },
   "&:hover::-webkit-scrollbar-thumb": {
-    backgroundColor: "rgba(72, 88, 116, 0.14)",
+    backgroundColor: "rgba(255, 255, 255, 0.14)",
   },
 };
 
@@ -152,24 +153,26 @@ function buildSectionBarSx(selected) {
     position: "relative",
     overflow: "hidden",
     alignItems: "stretch",
-    borderRadius: 0.75,
-    mb: 0.9,
-    px: 1.25,
-    py: 0.2,
-    minHeight: 54,
-    bgcolor: selected ? "rgba(42, 34, 26, 0.98)" : "rgba(27, 30, 38, 0.68)",
+    borderRadius: 2.2,
+    mb: 0.35,
+    px: 1,
+    py: 0.1,
+    minHeight: 40,
+    bgcolor: selected ? "rgba(255, 255, 255, 0.09)" : "transparent",
     border: "1px solid transparent",
-    borderColor: selected ? "rgba(116, 163, 255, 0.14)" : "transparent",
-    boxShadow: selected ? "0 14px 24px rgba(0, 0, 0, 0.14)" : "0 8px 14px rgba(0, 0, 0, 0.06)",
-    transition: "border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease",
+    borderColor: "transparent",
+    boxShadow: "none",
+    transition: "background-color 120ms ease",
     "&:hover": {
-      bgcolor: selected ? "rgba(48, 39, 30, 0.98)" : "rgba(31, 35, 43, 0.82)",
-      borderColor: selected ? "rgba(116, 163, 255, 0.2)" : "transparent",
+      bgcolor: selected ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.06)",
+      "& .section-tab-menu": {
+        opacity: 1,
+      },
     },
   };
 }
 
-function SectionTabContent({ section, selected, dragHandleProps, onRename }) {
+function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
   return (
     <>
       <Box
@@ -180,41 +183,45 @@ function SectionTabContent({ section, selected, dragHandleProps, onRename }) {
           left: 0,
           top: 0,
           bottom: 0,
-          width: 6,
-          bgcolor: selected ? "#9BC0FF" : "#5B86D9",
-          opacity: selected ? 0.9 : 0.42,
+          width: 5,
+          bgcolor: selected ? "#ECECEC" : "#B4B4B4",
+          opacity: selected ? 0.78 : 0.22,
           cursor: dragHandleProps ? "grab" : "default",
         }}
       />
       <Stack direction="row" spacing={1.1} alignItems="center" sx={{ width: "100%" }}>
-        <Box sx={{ flexGrow: 1, minWidth: 0, py: 0.7, pl: 0.8 }}>
+        <Box sx={{ flexGrow: 1, minWidth: 0, py: 0.52, pl: 0.8 }}>
           <Typography
             variant="body2"
             sx={{
-              fontWeight: selected ? 700 : 600,
-              lineHeight: 1.2,
+              fontWeight: selected ? 600 : 500,
+              fontSize: "0.82rem",
+              lineHeight: 1.15,
               color: "text.primary",
             }}
           >
             {section.label}
           </Typography>
         </Box>
-        {onRename ? (
-          <Tooltip title="Rename section tab">
+        {onOpenMenu ? (
+          <Tooltip title="Section actions">
             <IconButton
+              className="section-tab-menu"
               size="small"
               edge="end"
               onClick={(event) => {
                 event.stopPropagation();
-                onRename(section.id);
+                onOpenMenu(event.currentTarget, section.id);
               }}
               sx={{
                 alignSelf: "center",
                 color: "text.secondary",
-                opacity: selected ? 0.92 : 0.66,
+                opacity: selected ? 0.72 : 0,
+                transition: "opacity 120ms ease",
+                p: 0.35,
               }}
             >
-              <EditRounded fontSize="small" />
+              <MoreHorizRounded fontSize="small" />
             </IconButton>
           </Tooltip>
         ) : null}
@@ -223,7 +230,7 @@ function SectionTabContent({ section, selected, dragHandleProps, onRename }) {
   );
 }
 
-function SortableSectionTab({ section, selected, onSelect, onRename }) {
+function SortableSectionTab({ section, selected, onSelect, onRename, onOpenMenu }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: section.id,
   });
@@ -244,7 +251,7 @@ function SortableSectionTab({ section, selected, onSelect, onRename }) {
         section={section}
         selected={selected}
         dragHandleProps={{ ...attributes, ...listeners }}
-        onRename={onRename}
+        onOpenMenu={onOpenMenu}
       />
     </ListItemButton>
   );
@@ -276,36 +283,52 @@ function RailShell({
         borderLeft: 0,
         borderBottom: 0,
         borderColor: "transparent",
-        bgcolor: isLeft ? "rgba(16, 18, 24, 0.72)" : "rgba(18, 21, 28, 0.74)",
-        backgroundImage: isLeft
-          ? "linear-gradient(180deg, rgba(17,19,25,0.94), rgba(13,15,20,0.96))"
-          : "linear-gradient(180deg, rgba(20,23,30,0.94), rgba(15,17,23,0.96))",
-        boxShadow: "0 26px 40px rgba(0, 0, 0, 0.16)",
+        bgcolor: "#161618",
+        backgroundImage: "none",
+        boxShadow: "none",
         transition: "width 180ms ease",
         overflow: "hidden",
         overscrollBehavior: "contain",
-        backdropFilter: "blur(18px)",
-        borderRadius: { xs: 0, xl: 1.25 },
-        mt: { xs: 0, xl: 8.5 },
-        mb: { xs: 0, xl: 2.5 },
+        backdropFilter: "blur(10px)",
+        borderRadius: 0,
+        mt: { xs: 0, xl: 0 },
+        mb: { xs: 0, xl: 0 },
+        ml: { xs: 0, xl: isLeft ? -2.5 : 0 },
+        mr: { xs: 0, xl: isLeft ? 0 : -2.5 },
+        pt: 0,
         ...sx,
       }}
     >
       <Box
         sx={{
-          px: 1.5,
-          py: 1.25,
+          px: isLeft ? 2 : 1.75,
+          py: isLeft ? 1.1 : 1.1,
           display: "flex",
           justifyContent: collapsed ? "center" : "space-between",
-          alignItems: "center",
+          alignItems: collapsed ? "center" : "flex-start",
           flexShrink: 0,
           borderBottom: 0,
-          background: "linear-gradient(180deg, rgba(255,255,255,0.02), transparent)",
+          background: "transparent",
+          minHeight: 76,
+          position: "relative",
+          zIndex: 3,
         }}
       >
-        {collapsed ? null : (
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+        {collapsed ? (
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, letterSpacing: -0.02 }}>
+            {isLeft ? "SS" : "REQ"}
+          </Typography>
+        ) : (
+          <Box
+            sx={{
+              minWidth: 0,
+              pt: 0.15,
+            }}
+          >
+            <Typography
+              variant={isLeft ? "h6" : "subtitle1"}
+              sx={{ fontWeight: 700, letterSpacing: isLeft ? -0.02 : -0.01 }}
+            >
               {title}
             </Typography>
           </Box>
@@ -342,63 +365,78 @@ function RailShell({
             color="text.secondary"
             sx={{ writingMode: "vertical-rl", transform: "rotate(180deg)", letterSpacing: 2 }}
           >
-            {title}
+            {isLeft ? "SS" : "REQ"}
           </Typography>
         </Box>
       ) : (
         <Box
           sx={{
-            p: 2.25,
-            pt: 1.5,
+            p: isLeft ? 2 : 1.75,
+            pt: 0.1,
             display: "grid",
-            gap: 2,
+            gap: isLeft ? 0.1 : 1.25,
             overflowY: "auto",
             minHeight: 0,
             flex: "1 1 auto",
             ...subtleScrollbarSx,
             overscrollBehavior: "contain",
-            background: "linear-gradient(180deg, rgba(255,255,255,0.015), transparent 22%)",
+            background: "transparent",
           }}
         >
+          {isLeft && subtitle ? (
+            <Typography
+              variant="overline"
+              color="text.secondary"
+              sx={{
+                px: 0.1,
+                pb: 0.6,
+                letterSpacing: "0.12em",
+                lineHeight: 1,
+              }}
+            >
+              {subtitle}
+            </Typography>
+          ) : null}
           {children}
         </Box>
       )}
 
-      <Box
-        onMouseDown={onResizeStart}
-        sx={{
-          position: "absolute",
-          top: 80,
-          bottom: 0,
-          [isLeft ? "right" : "left"]: -5,
-          width: 10,
-          cursor: "col-resize",
-          zIndex: 10,
-          display: { xs: "none", xl: "flex" },
-          alignItems: "center",
-          justifyContent: "center",
-          "&::before": {
-            content: '""',
-            width: 5,
-            height: 56,
-            borderRadius: 999,
-            bgcolor: "rgba(61, 79, 106, 0.62)",
-            bgcolor: "rgba(84, 104, 148, 0.22)",
-          },
-          "&:hover::before": {
-            bgcolor: "rgba(116, 163, 255, 0.34)",
-          },
-        }}
-      >
-        <DragIndicatorRounded
+      {!isLeft ? (
+        <Box
+          onMouseDown={onResizeStart}
           sx={{
             position: "absolute",
-            color: "rgba(213, 194, 176, 0.18)",
-            fontSize: 18,
-            transform: "rotate(90deg)",
+            top: 80,
+            bottom: 0,
+            left: -5,
+            width: 10,
+            cursor: "col-resize",
+            zIndex: 10,
+            display: { xs: "none", xl: "flex" },
+            alignItems: "center",
+            justifyContent: "center",
+            "&::before": {
+              content: '""',
+              width: 5,
+              height: 56,
+              borderRadius: 999,
+              bgcolor: "rgba(255, 255, 255, 0.08)",
+            },
+            "&:hover::before": {
+              bgcolor: "rgba(255, 255, 255, 0.14)",
+            },
           }}
-        />
-      </Box>
+        >
+          <DragIndicatorRounded
+            sx={{
+              position: "absolute",
+              color: "rgba(255, 255, 255, 0.12)",
+              fontSize: 18,
+              transform: "rotate(90deg)",
+            }}
+          />
+        </Box>
+      ) : null}
     </Box>
   );
 }
@@ -513,7 +551,7 @@ function StormWorkspaceBar({
         flexDirection: "column",
         overflow: "hidden",
         height: "100%",
-        bgcolor: "rgba(18, 21, 28, 0.92)",
+        bgcolor: "#232327",
         backgroundImage: "none",
         boxShadow: { xs: "0 18px 32px rgba(0, 0, 0, 0.12)", xl: "none" },
         borderTop: 0,
@@ -528,8 +566,7 @@ function StormWorkspaceBar({
           borderBottom: 0,
           px: 1.35,
           py: 0.8,
-          background:
-            "linear-gradient(180deg, rgba(25, 28, 36, 0.98) 0%, rgba(18, 21, 28, 0.98) 100%)",
+          background: "#232327",
         }}
       >
         <Stack
@@ -548,8 +585,8 @@ function StormWorkspaceBar({
                   display: "inline-grid",
                   gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, minmax(0, 1fr))" },
                   p: 0.35,
-                  bgcolor: "rgba(12, 14, 19, 0.82)",
-                  border: "1px solid rgba(132, 121, 111, 0.06)",
+                  bgcolor: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.06)",
                   borderRadius: 1,
                   minWidth: { xs: "100%", md: 720 },
                   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
@@ -566,17 +603,17 @@ function StormWorkspaceBar({
                         minHeight: 32,
                         px: 1.6,
                         borderRadius: 0.5,
-                        color: selected ? "#F5EFE6" : "#8D8891",
-                        bgcolor: selected ? "rgba(116, 163, 255, 0.2)" : "transparent",
+                        color: selected ? "#ECECEC" : "#B4B4B4",
+                        bgcolor: selected ? "rgba(255, 255, 255, 0.08)" : "transparent",
                         border: "1px solid",
-                        borderColor: selected ? "rgba(116, 163, 255, 0.16)" : "transparent",
-                        boxShadow: selected ? "inset 0 1px 0 rgba(255,255,255,0.03)" : "none",
+                        borderColor: selected ? "rgba(255, 255, 255, 0.12)" : "transparent",
+                        boxShadow: "none",
                         fontSize: "0.86rem",
                         lineHeight: 1.05,
                         justifyContent: "center",
                         "&:hover": {
-                          bgcolor: selected ? "rgba(116, 163, 255, 0.24)" : "rgba(255,255,255,0.02)",
-                          borderColor: selected ? "rgba(116, 163, 255, 0.2)" : "transparent",
+                          bgcolor: selected ? "rgba(255, 255, 255, 0.1)" : "rgba(255,255,255,0.03)",
+                          borderColor: selected ? "rgba(255, 255, 255, 0.14)" : "transparent",
                         },
                       }}
                     >
@@ -602,7 +639,7 @@ function StormWorkspaceBar({
           minHeight: 0,
           overflowY: "auto",
           overscrollBehavior: "contain",
-          backgroundColor: "#181C24",
+          backgroundColor: "#232327",
           ...subtleScrollbarSx,
         }}
       >
@@ -666,7 +703,7 @@ function StormWorkspaceBar({
                 alignItems: "flex-start",
                 fontSize: "0.95rem",
                 lineHeight: 1.5,
-                bgcolor: "#1A1F27",
+                bgcolor: "rgba(255, 255, 255, 0.04)",
                 overscrollBehavior: "contain",
               },
             }}
@@ -707,6 +744,8 @@ export function StudioApp() {
   const [leftRailCollapsed, setLeftRailCollapsed] = useState(false);
   const [rightRailCollapsed, setRightRailCollapsed] = useState(false);
   const [collapsedRequirementIds, setCollapsedRequirementIds] = useState(() => new Set());
+  const [sectionMenuAnchorEl, setSectionMenuAnchorEl] = useState(null);
+  const [sectionMenuSectionId, setSectionMenuSectionId] = useState("");
 
   const sections = workspace.sections;
   const requirements = workspace.requirements;
@@ -1375,6 +1414,26 @@ export function StudioApp() {
     }));
   }
 
+  function handleOpenSectionMenu(anchorEl, sectionId) {
+    setSectionMenuAnchorEl(anchorEl);
+    setSectionMenuSectionId(sectionId);
+  }
+
+  function handleCloseSectionMenu() {
+    setSectionMenuAnchorEl(null);
+    setSectionMenuSectionId("");
+  }
+
+  function handleRenameSectionFromMenu() {
+    if (!sectionMenuSectionId) {
+      return;
+    }
+
+    const sectionId = sectionMenuSectionId;
+    handleCloseSectionMenu();
+    handleRenameSection(sectionId);
+  }
+
   function handleStormWorkspaceNoteChange(tab, value) {
     if (!activeSection?.id) {
       return;
@@ -1685,7 +1744,7 @@ export function StudioApp() {
         height: "100vh",
         bgcolor: "background.default",
         overflow: "hidden",
-        gap: 2.5,
+        gap: { xs: 0, xl: 0 },
         px: 2.5,
         "@media (max-width: 1600px)": {
           flexDirection: "column",
@@ -1699,12 +1758,13 @@ export function StudioApp() {
         color="transparent"
         elevation={0}
         sx={{
-          left: 0,
-          right: 0,
+          display: { xs: "flex", xl: isHomeScreen ? "flex" : "none" },
+          left: { xs: 0, xl: isHomeScreen ? 0 : leftRailDisplayWidth },
+          right: { xs: 0, xl: isHomeScreen ? 0 : rightRailDisplayWidth },
           borderBottom: 0,
-          backdropFilter: "blur(16px)",
-          bgcolor: "rgba(9, 11, 15, 0.82)",
-          pl: { xs: 2, xl: 5 },
+          backdropFilter: "none",
+          bgcolor: "#232327",
+          pl: { xs: 2, xl: isHomeScreen ? 5 : 3 },
           pr: { xs: 1, xl: 1.5 },
           transition: "padding 180ms ease",
           boxShadow: "none",
@@ -1712,12 +1772,25 @@ export function StudioApp() {
       >
         <Toolbar sx={{ minHeight: 76, pl: 0, pr: 0 }}>
           <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 700,
+                display: { xs: "block", xl: isHomeScreen ? "block" : "none" },
+              }}
+            >
               StormSurge Studio
             </Typography>
           </Box>
           {!isHomeScreen ? (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, ml: "auto" }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.25,
+                ml: "auto",
+              }}
+            >
               <Button
                 variant="outlined"
                 startIcon={<UndoRounded />}
@@ -1753,8 +1826,8 @@ export function StudioApp() {
       {!isHomeScreen ? (
         <RailShell
           side="left"
-          title="Section Tabs"
-          subtitle=""
+          title="StormSurge Studio"
+          subtitle="Section Titles"
           width={leftRailDisplayWidth}
           collapsed={leftRailCollapsed}
           onToggleCollapsed={() => setLeftRailCollapsed((current) => !current)}
@@ -1780,7 +1853,7 @@ export function StudioApp() {
               >
                 <List
                   sx={{
-                    mt: 0.75,
+                    mt: 0.2,
                     p: 0,
                     bgcolor: "transparent",
                     border: 0,
@@ -1794,6 +1867,7 @@ export function StudioApp() {
                       selected={section.id === activeSectionId}
                       onSelect={selectSection}
                       onRename={handleRenameSection}
+                      onOpenMenu={handleOpenSectionMenu}
                     />
                   ))}
                   {unassignedRequirements.length ? (
@@ -1826,10 +1900,10 @@ export function StudioApp() {
           flexDirection: "column",
           pl: 0,
           pr: 0,
-          py: isHomeScreen ? 0 : { xs: 0, xl: 0.75 },
+          py: isHomeScreen ? 0 : { xs: 0, xl: 0 },
           overflow: "hidden",
           overscrollBehavior: "contain",
-          bgcolor: "transparent",
+          bgcolor: "#232327",
           borderLeft: 0,
           borderRight: 0,
           borderColor: "transparent",
@@ -1838,7 +1912,62 @@ export function StudioApp() {
           },
         }}
       >
-        <Toolbar sx={{ minHeight: 76 }} />
+        <Toolbar sx={{ minHeight: 76, display: { xs: "flex", xl: isHomeScreen ? "flex" : "none" } }} />
+        {!isHomeScreen ? (
+          <Box
+            sx={{
+              minHeight: 56,
+              px: { xs: 0, xl: 1.5 },
+              py: 0.35,
+              display: { xs: "none", xl: "flex" },
+              alignItems: "center",
+              justifyContent: "flex-end",
+              gap: 0.8,
+              bgcolor: "#2A2A2E",
+              flexShrink: 0,
+            }}
+          >
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<UndoRounded />}
+              onClick={handleUndo}
+              disabled={!undoHistory.length}
+              sx={{ minHeight: 30, px: 1.15, fontSize: "0.82rem" }}
+            >
+              Undo
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<RedoRounded />}
+              onClick={handleRedo}
+              disabled={!redoHistory.length}
+              sx={{ minHeight: 30, px: 1.15, fontSize: "0.82rem" }}
+            >
+              Redo
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<SaveRounded />}
+              onClick={handleSaveProject}
+              disabled={!sections.length}
+              sx={{ minHeight: 30, px: 1.15, fontSize: "0.82rem" }}
+            >
+              Save Project
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<HomeRounded />}
+              onClick={handleGoHome}
+              sx={{ minHeight: 30, px: 1.15, fontSize: "0.82rem" }}
+            >
+              Home
+            </Button>
+          </Box>
+        ) : null}
         <Box
           sx={{
             flex: "1 1 auto",
@@ -1846,14 +1975,22 @@ export function StudioApp() {
             overflowY: isHomeScreen ? "hidden" : "auto",
             ...(isHomeScreen ? {} : subtleScrollbarSx),
             overscrollBehavior: "contain",
-            px: isHomeScreen ? 3 : { xs: 0.5, xl: 0.5 },
-            py: isHomeScreen ? 3 : { xs: 0.35, xl: 0.15 },
+            px: isHomeScreen ? 3 : { xs: 0.75, xl: 0.9 },
+            py: isHomeScreen ? 3 : { xs: 0.5, xl: 0.35 },
             display: "flex",
             alignItems: isHomeScreen ? "center" : "stretch",
             justifyContent: isHomeScreen ? "center" : "flex-start",
+            bgcolor: isHomeScreen ? "transparent" : "#232327",
           }}
         >
-        <Stack spacing={3.25} sx={{ minHeight: "100%", width: "100%", maxWidth: isHomeScreen ? 980 : "none" }}>
+        <Stack
+          spacing={3.25}
+          sx={{
+            minHeight: "100%",
+            width: "100%",
+            maxWidth: isHomeScreen ? 980 : "none",
+          }}
+        >
           {uploadState.loading ? (
             <Paper variant="outlined" sx={{ p: 6, borderRadius: 0.5 }}>
               <Stack spacing={2} alignItems="center">
@@ -1892,8 +2029,8 @@ export function StudioApp() {
                           p: 1.5,
                           width: "100%",
                           borderRadius: 0.5,
-                          bgcolor: "#15191F",
-                          borderColor: "rgba(47, 64, 90, 0.72)",
+                          bgcolor: "rgba(42, 41, 44, 0.72)",
+                          borderColor: "rgba(255, 255, 255, 0.08)",
                         }}
                       >
                         <Stack
@@ -1964,10 +2101,10 @@ export function StudioApp() {
                     width: 72,
                     height: 6,
                     borderRadius: 999,
-                    bgcolor: "rgba(148, 163, 184, 0.42)",
+                    bgcolor: "rgba(169, 181, 203, 0.3)",
                   },
                   "&:hover::before": {
-                    bgcolor: "rgba(148, 163, 184, 0.72)",
+                    bgcolor: "rgba(255, 255, 255, 0.18)",
                   },
                 }}
               />
@@ -1994,7 +2131,7 @@ export function StudioApp() {
         <RailShell
           side="right"
           title="Requirements"
-          subtitle="Selection"
+          subtitle=""
           width={rightRailDisplayWidth}
           collapsed={rightRailCollapsed}
           onToggleCollapsed={() => setRightRailCollapsed((current) => !current)}
@@ -2077,6 +2214,24 @@ export function StudioApp() {
           </Button>
         </DialogActions>
       </Dialog>
+      <Menu
+        anchorEl={sectionMenuAnchorEl}
+        open={Boolean(sectionMenuAnchorEl)}
+        onClose={handleCloseSectionMenu}
+        transformOrigin={{ horizontal: "right", vertical: "top" }}
+        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+        PaperProps={{
+          sx: {
+            bgcolor: "#232327",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            borderRadius: 2,
+            minWidth: 160,
+            boxShadow: "0 16px 36px rgba(0, 0, 0, 0.32)",
+          },
+        }}
+      >
+        <MenuItem onClick={handleRenameSectionFromMenu}>Rename</MenuItem>
+      </Menu>
     </Box>
   );
 }

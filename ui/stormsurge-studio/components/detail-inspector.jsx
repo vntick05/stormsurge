@@ -69,8 +69,8 @@ export function DetailInspector({
         sx={{
           p: 2.5,
           borderRadius: 0.75,
-          bgcolor: "rgba(22, 25, 32, 0.86)",
-          borderColor: "rgba(132, 121, 111, 0.08)",
+          bgcolor: "rgba(255, 255, 255, 0.03)",
+          borderColor: "rgba(255, 255, 255, 0.06)",
         }}
       >
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -87,11 +87,11 @@ export function DetailInspector({
     <Stack spacing={2}>
       <Box
         sx={{
-          px: 0.7,
-          py: 0.55,
-          border: "1px solid rgba(132, 121, 111, 0.08)",
-          bgcolor: "rgba(21, 24, 31, 0.82)",
-          borderRadius: 0.75,
+          px: 0,
+          py: 0,
+          border: "none",
+          bgcolor: "transparent",
+          borderRadius: 0,
         }}
       >
         <Tabs
@@ -108,17 +108,17 @@ export function DetailInspector({
               minWidth: 0,
               px: 0.95,
               py: 0.2,
-              border: "1px solid rgba(132, 121, 111, 0.06)",
-              bgcolor: "rgba(24, 27, 34, 0.86)",
-              color: "#8D8891",
-              borderRadius: 0.75,
+              border: "1px solid transparent",
+              bgcolor: "transparent",
+              color: "#A9B5CB",
+              borderRadius: 1.1,
               fontSize: "0.82rem",
               lineHeight: 1,
             },
             "& .MuiTab-root.Mui-selected": {
-              color: "#F5EFE6",
-              bgcolor: "rgba(53, 43, 34, 0.92)",
-              borderColor: "rgba(116, 163, 255, 0.18)",
+              color: "#ECECEC",
+              bgcolor: "rgba(255, 255, 255, 0.08)",
+              borderColor: "transparent",
             },
             "& .MuiTabs-indicator": {
               display: "none",
@@ -133,13 +133,14 @@ export function DetailInspector({
       <Paper
         variant="outlined"
         sx={{
-          p: 2.5,
-          borderRadius: 0.75,
-          bgcolor: "rgba(22, 25, 32, 0.86)",
-          borderColor: "rgba(132, 121, 111, 0.08)",
+          p: 0,
+          borderRadius: 0,
+          bgcolor: "transparent",
+          borderColor: "transparent",
+          boxShadow: "none",
         }}
       >
-        <Stack spacing={2}>
+        <Stack spacing={2} sx={{ pt: 0.25 }}>
           {activeTab === "Edit" ? (
             <Stack spacing={1.5}>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -227,13 +228,19 @@ export function DetailInspector({
                       p: 1.25,
                       borderRadius: 0.75,
                       cursor: "pointer",
-                      bgcolor: candidate.id === requirement.id ? "rgba(53, 43, 34, 0.96)" : "rgba(20, 23, 30, 0.88)",
+                      bgcolor:
+                        candidate.id === requirement.id
+                          ? "rgba(208, 220, 243, 0.12)"
+                          : "rgba(8, 10, 12, 0.68)",
                       borderColor:
                         candidate.id === requirement.id
-                          ? "rgba(116, 163, 255, 0.18)"
-                          : "rgba(132, 121, 111, 0.08)",
+                          ? "rgba(208, 220, 243, 0.16)"
+                          : "rgba(208, 220, 243, 0.08)",
                       "&:hover": {
-                        bgcolor: candidate.id === requirement.id ? "rgba(53, 43, 34, 0.96)" : "rgba(25, 28, 36, 0.96)",
+                        bgcolor:
+                          candidate.id === requirement.id
+                            ? "rgba(208, 220, 243, 0.14)"
+                            : "rgba(95, 102, 115, 0.24)",
                       },
                     }}
                   >
