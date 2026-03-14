@@ -6,27 +6,27 @@ const theme = createTheme({
   palette: {
     mode: "dark",
     primary: {
-      main: "#A9B5CB",
-      light: "#D0DCF3",
-      dark: "#747F8B",
+      main: "#238636",
+      light: "#2ea043",
+      dark: "#1a7f37",
     },
     secondary: {
-      main: "#919BAC",
-      light: "#D0DCF3",
-      dark: "#5F6673",
+      main: "#2f81f7",
+      light: "#58a6ff",
+      dark: "#1f6feb",
     },
     background: {
-      default: "#1E1D1F",
-      paper: "#2A292C",
+      default: "#010409",
+      paper: "#0d1117",
     },
     text: {
-      primary: "#FFFFFF",
-      secondary: "#FFFFFF",
+      primary: "#e6edf3",
+      secondary: "#7d8590",
     },
-    divider: "rgba(255, 255, 255, 0.08)",
+    divider: "#30363d",
   },
   shape: {
-    borderRadius: 3,
+    borderRadius: 8,
   },
   typography: {
     fontFamily: '"Sora", "IBM Plex Sans", "Trebuchet MS", sans-serif',
@@ -54,7 +54,8 @@ const theme = createTheme({
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          background: "linear-gradient(180deg, #1e1d1f 0%, #151518 100%)",
+          background:
+            "radial-gradient(circle at top, rgba(31, 111, 235, 0.12), transparent 28%), linear-gradient(180deg, #0d1117 0%, #010409 100%)",
         },
       },
     },
@@ -62,8 +63,8 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: "none",
-          backgroundColor: "rgba(36, 35, 38, 0.88)",
-          backdropFilter: "blur(14px)",
+          backgroundColor: "#010409",
+          borderBottom: "1px solid #21262d",
           boxShadow: "none",
         },
       },
@@ -72,7 +73,8 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: "none",
-          borderColor: "rgba(255, 255, 255, 0.06)",
+          backgroundColor: "#0d1117",
+          borderColor: "#30363d",
           boxShadow: "none",
         },
       },
@@ -80,22 +82,27 @@ const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 3,
+          borderRadius: 6,
           textTransform: "none",
           fontWeight: 600,
           boxShadow: "none",
         },
         containedPrimary: {
-          color: "#080A0C",
-          backgroundColor: "#D0DCF3",
+          color: "#ffffff",
+          backgroundColor: "#238636",
           "&:hover": {
             boxShadow: "none",
-            backgroundColor: "#A9B5CB",
+            backgroundColor: "#2ea043",
           },
         },
         outlined: {
-          borderColor: "rgba(255, 255, 255, 0.08)",
-          backgroundColor: "rgba(255, 255, 255, 0.04)",
+          color: "#e6edf3",
+          borderColor: "#30363d",
+          backgroundColor: "#161b22",
+          "&:hover": {
+            borderColor: "#8b949e",
+            backgroundColor: "#1c2128",
+          },
         },
       },
     },
@@ -103,40 +110,40 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 999,
-          backgroundColor: "rgba(255, 255, 255, 0.05)",
-          color: "#ECECEC",
+          backgroundColor: "#161b22",
+          color: "#e6edf3",
           fontWeight: 600,
         },
         outlined: {
-          borderColor: "rgba(255, 255, 255, 0.08)",
+          borderColor: "#30363d",
         },
       },
     },
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
-          backgroundColor: "rgba(42, 41, 44, 0.88)",
-          borderRadius: 3,
+          backgroundColor: "#0d1117",
+          borderRadius: 8,
           "& .MuiOutlinedInput-notchedOutline": {
-            borderColor: "rgba(255, 255, 255, 0.08)",
+            borderColor: "#30363d",
           },
           "&:hover .MuiOutlinedInput-notchedOutline": {
-            borderColor: "rgba(255, 255, 255, 0.12)",
+            borderColor: "#8b949e",
           },
           "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-            borderColor: "#A9B5CB",
+            borderColor: "#2f81f7",
             borderWidth: 1,
           },
         },
         input: {
-          color: "#ECECEC",
+          color: "#e6edf3",
         },
       },
     },
     MuiInputLabel: {
       styleOverrides: {
         root: {
-          color: "#FFFFFF",
+          color: "#7d8590",
         },
       },
     },
@@ -154,12 +161,12 @@ const theme = createTheme({
           textTransform: "none",
           fontWeight: 600,
           minHeight: 46,
-          color: "#FFFFFF",
-          borderRadius: 3,
+          color: "#7d8590",
+          borderRadius: 6,
           marginRight: 4,
           "&.Mui-selected": {
-            color: "#FFFFFF",
-            backgroundColor: "rgba(255, 255, 255, 0.08)",
+            color: "#e6edf3",
+            backgroundColor: "#161b22",
           },
         },
       },

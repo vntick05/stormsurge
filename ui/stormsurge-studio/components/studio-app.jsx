@@ -8,7 +8,7 @@ import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
 import CloudUploadRounded from "@mui/icons-material/CloudUploadRounded";
 import DragIndicatorRounded from "@mui/icons-material/DragIndicatorRounded";
 import HomeRounded from "@mui/icons-material/HomeRounded";
-import MoreHorizRounded from "@mui/icons-material/MoreHorizRounded";
+import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
 import RedoRounded from "@mui/icons-material/RedoRounded";
 import SaveRounded from "@mui/icons-material/SaveRounded";
 import UndoRounded from "@mui/icons-material/UndoRounded";
@@ -72,7 +72,8 @@ import { transformOutlineToWorkspace } from "@/lib/studio-transform";
 const LEFT_RAIL_DEFAULT_WIDTH = 360;
 const RIGHT_RAIL_DEFAULT_WIDTH = 320;
 const RAIL_COLLAPSED_WIDTH = 72;
-const RAIL_MIN_WIDTH = 240;
+const LEFT_RAIL_MIN_WIDTH = 240;
+const RIGHT_RAIL_MIN_WIDTH = 120;
 const RAIL_MAX_WIDTH = 520;
 const BOTTOM_DOCK_DEFAULT_HEIGHT = 340;
 const BOTTOM_DOCK_MIN_HEIGHT = 220;
@@ -86,6 +87,12 @@ const STORM_WORKSPACE_TABS = [
   "Exceeds the Standard",
   "Risks",
 ];
+const STORM_WORKSPACE_TAB_ACCENTS = {
+  "MTS Definition": "#f78166",
+  "MTS Solution": "#58a6ff",
+  "Exceeds the Standard": "#3fb950",
+  Risks: "#d29922",
+};
 const UNASSIGNED_SECTION = {
   id: "unassigned",
   label: "Unassigned Requirements",
@@ -93,10 +100,17 @@ const UNASSIGNED_SECTION = {
   sourceKind: "system",
   sectionNumber: null,
 };
-const STORMSURGE_LOGO_SRC = "/stormsurge-logo.png";
+const STORMSURGE_LOGO_SRC = "/stormsurge-studio-logo.png";
+const GITHUB_BASE = "#010409";
+const GITHUB_SURFACE = "#0d1117";
+const GITHUB_PANEL = "#161b22";
+const GITHUB_PANEL_HOVER = "#1c2128";
+const GITHUB_BORDER = "#30363d";
+const GITHUB_BORDER_MUTED = "#21262d";
+const GITHUB_TEXT_MUTED = "#7d8590";
 const subtleScrollbarSx = {
   scrollbarWidth: "thin",
-  scrollbarColor: "rgba(255, 255, 255, 0.12) transparent",
+  scrollbarColor: "#30363d transparent",
   "&::-webkit-scrollbar": {
     width: 8,
     height: 8,
@@ -105,18 +119,18 @@ const subtleScrollbarSx = {
     background: "transparent",
   },
   "&::-webkit-scrollbar-thumb": {
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: "#30363d",
     borderRadius: 999,
     border: "2px solid transparent",
     backgroundClip: "padding-box",
   },
   "&:hover::-webkit-scrollbar-thumb": {
-    backgroundColor: "rgba(255, 255, 255, 0.14)",
+    backgroundColor: "#484f58",
   },
 };
 
-function clampRailWidth(width) {
-  return Math.min(Math.max(width, RAIL_MIN_WIDTH), RAIL_MAX_WIDTH);
+function clampRailWidth(width, minWidth) {
+  return Math.min(Math.max(width, minWidth), RAIL_MAX_WIDTH);
 }
 
 function clampDockHeight(height) {
@@ -153,15 +167,15 @@ function buildSectionBarSx(selected) {
   return {
     position: "relative",
     overflow: "hidden",
-    alignItems: "stretch",
-    borderRadius: 2.2,
-    mb: 0.35,
+    alignItems: "center",
+    borderRadius: 1,
+    mb: 0.55,
     px: 1,
-    py: 0.1,
-    minHeight: 40,
-    bgcolor: selected ? "rgba(255, 255, 255, 0.09)" : "transparent",
-    border: "1px solid transparent",
-    borderColor: "transparent",
+    py: 0.2,
+    minHeight: 48,
+    maxHeight: 48,
+    bgcolor: selected ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.035)",
+    border: "none",
     boxShadow: "none",
     transition: "background-color 120ms ease",
     "&:hover": {
@@ -180,25 +194,42 @@ function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
         {...dragHandleProps}
         onClick={(event) => event.stopPropagation()}
         sx={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: 5,
-          bgcolor: selected ? "#ECECEC" : "#B4B4B4",
-          opacity: selected ? 0.78 : 0.22,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          alignSelf: "stretch",
+          width: 22,
+          flexShrink: 0,
+          color: GITHUB_TEXT_MUTED,
           cursor: dragHandleProps ? "grab" : "default",
         }}
-      />
+      >
+        <MoreVertRounded sx={{ fontSize: 15 }} />
+      </Box>
       <Stack direction="row" spacing={1.1} alignItems="center" sx={{ width: "100%" }}>
-        <Box sx={{ flexGrow: 1, minWidth: 0, py: 0.52, pl: 0.8 }}>
+        <Box
+          sx={{
+            flexGrow: 1,
+            minWidth: 0,
+            minHeight: 40,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            px: 0.4,
+          }}
+        >
           <Typography
             variant="body2"
             sx={{
               fontWeight: selected ? 600 : 500,
-              fontSize: "0.82rem",
+              fontSize: "0.88rem",
               lineHeight: 1.15,
-              color: "text.primary",
+              color: selected ? "#e6edf3" : GITHUB_TEXT_MUTED,
+              textAlign: "left",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
             }}
           >
             {section.label}
@@ -216,13 +247,13 @@ function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
               }}
               sx={{
                 alignSelf: "center",
-                color: "text.secondary",
+                color: GITHUB_TEXT_MUTED,
                 opacity: selected ? 0.72 : 0,
                 transition: "opacity 120ms ease",
                 p: 0.35,
               }}
             >
-              <MoreHorizRounded fontSize="small" />
+              <MoreVertRounded fontSize="small" />
             </IconButton>
           </Tooltip>
         ) : null}
@@ -283,8 +314,8 @@ function RailShell({
         borderRight: 0,
         borderLeft: 0,
         borderBottom: 0,
-        borderColor: "transparent",
-        bgcolor: "#161618",
+        borderColor: isLeft ? GITHUB_BORDER_MUTED : GITHUB_BORDER,
+        bgcolor: GITHUB_BASE,
         backgroundImage: "none",
         boxShadow: "none",
         transition: "width 180ms ease",
@@ -292,64 +323,52 @@ function RailShell({
         overscrollBehavior: "contain",
         backdropFilter: "blur(10px)",
         borderRadius: 0,
+        borderRight: isLeft ? "1px solid" : 0,
+        borderLeft: !isLeft ? "1px solid" : 0,
         mt: { xs: 0, xl: 0 },
         mb: { xs: 0, xl: 0 },
-        ml: { xs: 0, xl: isLeft ? -2.5 : 0 },
-        mr: { xs: 0, xl: isLeft ? 0 : -2.5 },
+        ml: { xs: 0, xl: isLeft ? 1.5 : 0 },
+        mr: { xs: 0, xl: isLeft ? 0 : 1.5 },
         pt: 0,
         ...sx,
       }}
     >
       <Box
         sx={{
-          px: isLeft ? 2 : 1.75,
-          py: isLeft ? 1.1 : 1.1,
+          px: isLeft ? 1.4 : 1.2,
+          py: 0.9,
           display: "flex",
-          justifyContent: collapsed ? "center" : "space-between",
-          alignItems: collapsed ? "center" : "flex-start",
+          justifyContent: isLeft ? "flex-end" : "flex-start",
+          alignItems: "center",
+          flexDirection: "row",
           flexShrink: 0,
           borderBottom: 0,
           background: "transparent",
-          minHeight: 76,
+          minHeight: collapsed ? 0 : 44,
           position: "relative",
           zIndex: 3,
         }}
       >
-        {collapsed ? (
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, letterSpacing: -0.02 }}>
-            {isLeft ? "SS" : "REQ"}
-          </Typography>
-        ) : (
-          <Box
+        {collapsed ? null : title ? (
+          <Typography
+            variant="subtitle1"
             sx={{
-              minWidth: 0,
-              pt: 0.15,
+              position: "absolute",
+              left: "50%",
+              transform: "translateX(-50%)",
+              color: "#ffffff",
+              fontWeight: 700,
+              fontSize: "1rem",
+              letterSpacing: -0.01,
+              lineHeight: 1.1,
+              textAlign: "center",
+              pointerEvents: "none",
+              whiteSpace: "nowrap",
             }}
           >
-            {isLeft ? (
-              <Box
-                component="img"
-                src={STORMSURGE_LOGO_SRC}
-                alt="StormSurge"
-                sx={{
-                  display: "block",
-                  width: 220,
-                  height: 54,
-                  objectFit: "cover",
-                  objectPosition: "center 43%",
-                  borderRadius: 1,
-                }}
-              />
-            ) : (
-              <Typography
-                variant="subtitle1"
-                sx={{ fontWeight: 700, letterSpacing: -0.01 }}
-              >
-                {title}
-              </Typography>
-            )}
-          </Box>
-        )}
+            {title}
+          </Typography>
+        ) : null}
         <Tooltip title={collapsed ? `Expand ${title}` : `Collapse ${title}`}>
           <IconButton onClick={onToggleCollapsed} size="small">
             {isLeft ? (
@@ -367,7 +386,7 @@ function RailShell({
         <Box
           sx={{
             px: 1,
-            py: 2,
+            py: 1,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -400,20 +419,6 @@ function RailShell({
             background: "transparent",
           }}
         >
-          {isLeft && subtitle ? (
-            <Typography
-              variant="overline"
-              color="text.secondary"
-              sx={{
-                px: 0.1,
-                pb: 0.6,
-                letterSpacing: "0.12em",
-                lineHeight: 1,
-              }}
-            >
-              {subtitle}
-            </Typography>
-          ) : null}
           {children}
         </Box>
       )}
@@ -438,16 +443,17 @@ function RailShell({
               height: 56,
               borderRadius: 999,
               bgcolor: "rgba(255, 255, 255, 0.08)",
+              bgcolor: GITHUB_BORDER,
             },
             "&:hover::before": {
-              bgcolor: "rgba(255, 255, 255, 0.14)",
+              bgcolor: "#484f58",
             },
           }}
         >
           <DragIndicatorRounded
             sx={{
               position: "absolute",
-              color: "rgba(255, 255, 255, 0.12)",
+              color: GITHUB_TEXT_MUTED,
               fontSize: 18,
               transform: "rotate(90deg)",
             }}
@@ -569,21 +575,23 @@ function StormWorkspaceBar({
         overflow: "hidden",
         height: "100%",
         bgcolor: "#232327",
+        bgcolor: GITHUB_SURFACE,
         backgroundImage: "none",
         boxShadow: { xs: "0 18px 32px rgba(0, 0, 0, 0.12)", xl: "none" },
         borderTop: 0,
         borderLeft: 0,
         borderRight: 0,
         borderBottom: 0,
-        borderColor: "transparent",
+        borderColor: GITHUB_BORDER,
       }}
     >
       <Box
         sx={{
-          borderBottom: 0,
+          borderBottom: "1px solid",
+          borderColor: GITHUB_BORDER,
           px: 1.35,
           py: 0.8,
-          background: "#232327",
+          background: GITHUB_BASE,
         }}
       >
         <Stack
@@ -599,38 +607,49 @@ function StormWorkspaceBar({
             {!collapsed ? (
               <Box
                 sx={{
-                  display: "inline-grid",
-                  gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, minmax(0, 1fr))" },
-                  p: 0.35,
-                  bgcolor: "rgba(255, 255, 255, 0.03)",
-                  border: "1px solid rgba(255, 255, 255, 0.06)",
-                  borderRadius: 1,
+                  display: "inline-flex",
+                  alignItems: "stretch",
+                  gap: { xs: 1.6, md: 2.8 },
                   minWidth: { xs: "100%", md: 720 },
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
                 }}
               >
                 {STORM_WORKSPACE_TABS.map((label) => {
                   const selected = activeTab === label;
+                  const accentColor = STORM_WORKSPACE_TAB_ACCENTS[label] || "#f78166";
                   return (
                     <Button
                       key={label}
                       onClick={() => onTabChange(label)}
                       variant="text"
                       sx={{
-                        minHeight: 32,
-                        px: 1.6,
-                        borderRadius: 0.5,
-                        color: selected ? "#ECECEC" : "#B4B4B4",
-                        bgcolor: selected ? "rgba(255, 255, 255, 0.08)" : "transparent",
-                        border: "1px solid",
-                        borderColor: selected ? "rgba(255, 255, 255, 0.12)" : "transparent",
+                        position: "relative",
+                        minHeight: 40,
+                        px: 0.4,
+                        borderRadius: 0,
+                        color: selected ? "#e6edf3" : GITHUB_TEXT_MUTED,
+                        bgcolor: "transparent",
+                        border: 0,
                         boxShadow: "none",
-                        fontSize: "0.86rem",
+                        fontSize: "0.94rem",
                         lineHeight: 1.05,
+                        fontWeight: selected ? 600 : 500,
                         justifyContent: "center",
+                        "&::after": {
+                          content: '""',
+                          position: "absolute",
+                          left: 0,
+                          right: 0,
+                          bottom: -9,
+                          height: 2,
+                          bgcolor: selected ? accentColor : "transparent",
+                          borderRadius: 999,
+                        },
                         "&:hover": {
-                          bgcolor: selected ? "rgba(255, 255, 255, 0.1)" : "rgba(255,255,255,0.03)",
-                          borderColor: selected ? "rgba(255, 255, 255, 0.14)" : "transparent",
+                          bgcolor: "transparent",
+                          color: "#e6edf3",
+                          "&::after": {
+                            bgcolor: selected ? accentColor : "rgba(255, 255, 255, 0.2)",
+                          },
                         },
                       }}
                     >
@@ -656,7 +675,7 @@ function StormWorkspaceBar({
           minHeight: 0,
           overflowY: "auto",
           overscrollBehavior: "contain",
-          backgroundColor: "#232327",
+          backgroundColor: GITHUB_SURFACE,
           ...subtleScrollbarSx,
         }}
       >
@@ -668,11 +687,8 @@ function StormWorkspaceBar({
             justifyContent="space-between"
           >
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                {activeTab}
-              </Typography>
               {activeSection ? (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                <Typography variant="body2" color="text.secondary">
                   {activeSection.label} · {activeSectionRequirementCount} requirement
                   {activeSectionRequirementCount === 1 ? "" : "s"}
                 </Typography>
@@ -720,7 +736,7 @@ function StormWorkspaceBar({
                 alignItems: "flex-start",
                 fontSize: "0.95rem",
                 lineHeight: 1.5,
-                bgcolor: "rgba(255, 255, 255, 0.04)",
+                bgcolor: GITHUB_PANEL,
                 overscrollBehavior: "contain",
               },
             }}
@@ -864,12 +880,12 @@ export function StudioApp() {
     setStormWorkspaceCollapsed(false);
     setLeftRailWidth(
       typeof snapshot?.leftRailWidth === "number"
-        ? clampRailWidth(snapshot.leftRailWidth)
+        ? clampRailWidth(snapshot.leftRailWidth, LEFT_RAIL_MIN_WIDTH)
         : LEFT_RAIL_DEFAULT_WIDTH,
     );
     setRightRailWidth(
       typeof snapshot?.rightRailWidth === "number"
-        ? clampRailWidth(snapshot.rightRailWidth)
+        ? clampRailWidth(snapshot.rightRailWidth, RIGHT_RAIL_MIN_WIDTH)
         : RIGHT_RAIL_DEFAULT_WIDTH,
     );
     setLeftRailCollapsed(
@@ -1003,12 +1019,14 @@ export function StudioApp() {
       const handleMove = (moveEvent) => {
         if (side === "left") {
           setLeftRailCollapsed(false);
-          setLeftRailWidth(clampRailWidth(moveEvent.clientX));
+          setLeftRailWidth(clampRailWidth(moveEvent.clientX, LEFT_RAIL_MIN_WIDTH));
           return;
         }
 
         setRightRailCollapsed(false);
-        setRightRailWidth(clampRailWidth(window.innerWidth - moveEvent.clientX));
+        setRightRailWidth(
+          clampRailWidth(window.innerWidth - moveEvent.clientX, RIGHT_RAIL_MIN_WIDTH),
+        );
       };
 
       const handleUp = () => {
@@ -1757,34 +1775,30 @@ export function StudioApp() {
     <Box
       sx={{
         display: "flex",
-        flexDirection: "row",
+        flexDirection: "column",
         height: "100vh",
         bgcolor: "background.default",
         overflow: "hidden",
-        gap: { xs: 0, xl: 0 },
-        px: 2.5,
-        "@media (max-width: 1600px)": {
-          flexDirection: "column",
-          gap: 0,
-          px: 0,
-        },
+        gap: 0,
+        px: 0,
       }}
     >
       <AppBar
-        position="fixed"
+        position="relative"
         color="transparent"
         elevation={0}
         sx={{
-          display: { xs: "flex", xl: isHomeScreen ? "flex" : "none" },
-          left: { xs: 0, xl: isHomeScreen ? 0 : leftRailDisplayWidth },
-          right: { xs: 0, xl: isHomeScreen ? 0 : rightRailDisplayWidth },
-          borderBottom: 0,
+          display: "flex",
+          left: 0,
+          right: 0,
+          borderBottom: "1px solid rgba(255, 255, 255, 0.22)",
           backdropFilter: "none",
-          bgcolor: "#232327",
-          pl: { xs: 2, xl: isHomeScreen ? 5 : 3 },
+          bgcolor: "#000000",
+          pl: { xs: 2, xl: 3 },
           pr: { xs: 1, xl: 1.5 },
           transition: "padding 180ms ease",
           boxShadow: "none",
+          flexShrink: 0,
         }}
       >
         <Toolbar sx={{ minHeight: 76, pl: 0, pr: 0 }}>
@@ -1794,12 +1808,11 @@ export function StudioApp() {
               src={STORMSURGE_LOGO_SRC}
               alt="StormSurge"
               sx={{
-                display: { xs: "block", xl: isHomeScreen ? "block" : "none" },
+                display: "block",
                 width: 220,
-                height: 54,
-                objectFit: "cover",
-                objectPosition: "center 43%",
-                borderRadius: 1,
+                height: "auto",
+                maxHeight: 54,
+                mixBlendMode: "lighten",
               }}
             />
           </Box>
@@ -1844,151 +1857,107 @@ export function StudioApp() {
         </Toolbar>
       </AppBar>
 
-      {!isHomeScreen ? (
-        <RailShell
-          side="left"
-          title="StormSurge Studio"
-          subtitle="Section Titles"
-          width={leftRailDisplayWidth}
-          collapsed={leftRailCollapsed}
-          onToggleCollapsed={() => setLeftRailCollapsed((current) => !current)}
-          onResizeStart={startRailResize("left")}
-          sx={{
-            order: 1,
-            "@media (max-width: 1600px)": {
-              display: "none",
-            },
-          }}
-        >
-          {uploadState.error ? <Alert severity="error">{uploadState.error}</Alert> : null}
-
-          <Box>
-            <DndContext
-              sensors={sectionTabSensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleSectionTabDragEnd}
-            >
-              <SortableContext
-                items={sections.map((section) => section.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <List
-                  sx={{
-                    mt: 0.2,
-                    p: 0,
-                    bgcolor: "transparent",
-                    border: 0,
-                    boxShadow: "none",
-                  }}
-                >
-                  {sections.map((section) => (
-                    <SortableSectionTab
-                      key={section.id}
-                      section={section}
-                      selected={section.id === activeSectionId}
-                      onSelect={selectSection}
-                      onRename={handleRenameSection}
-                      onOpenMenu={handleOpenSectionMenu}
-                    />
-                  ))}
-                  {unassignedRequirements.length ? (
-                    <ListItemButton
-                      selected={activeSectionId === "unassigned"}
-                      onClick={() => selectSection("unassigned")}
-                      sx={buildSectionBarSx(activeSectionId === "unassigned")}
-                    >
-                      <SectionTabContent
-                        section={UNASSIGNED_SECTION}
-                        selected={activeSectionId === "unassigned"}
-                      />
-                    </ListItemButton>
-                  ) : null}
-                </List>
-              </SortableContext>
-            </DndContext>
-          </Box>
-        </RailShell>
-      ) : null}
-
       <Box
-        component="main"
         sx={{
-          order: 2,
-          flexGrow: 1,
-          minWidth: 0,
-          minHeight: 0,
           display: "flex",
-          flexDirection: "column",
-          pl: 0,
-          pr: 0,
-          py: isHomeScreen ? 0 : { xs: 0, xl: 0 },
+          flexDirection: "row",
+          flex: "1 1 auto",
+          minHeight: 0,
           overflow: "hidden",
-          overscrollBehavior: "contain",
-          bgcolor: "#232327",
-          borderLeft: 0,
-          borderRight: 0,
-          borderColor: "transparent",
           "@media (max-width: 1600px)": {
-            order: 1,
+            flexDirection: "column",
           },
         }}
       >
-        <Toolbar sx={{ minHeight: 76, display: { xs: "flex", xl: isHomeScreen ? "flex" : "none" } }} />
         {!isHomeScreen ? (
-          <Box
+          <RailShell
+            side="left"
+            title="Section Titles"
+            subtitle=""
+            width={leftRailDisplayWidth}
+            collapsed={leftRailCollapsed}
+            onToggleCollapsed={() => setLeftRailCollapsed((current) => !current)}
+            onResizeStart={startRailResize("left")}
             sx={{
-              minHeight: 56,
-              px: { xs: 0, xl: 1.5 },
-              py: 0.35,
-              display: { xs: "none", xl: "flex" },
-              alignItems: "center",
-              justifyContent: "flex-end",
-              gap: 0.8,
-              bgcolor: "#2A2A2E",
-              flexShrink: 0,
+              order: 1,
+              "@media (max-width: 1600px)": {
+                display: "none",
+              },
             }}
           >
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<UndoRounded />}
-              onClick={handleUndo}
-              disabled={!undoHistory.length}
-              sx={{ minHeight: 30, px: 1.15, fontSize: "0.82rem" }}
-            >
-              Undo
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<RedoRounded />}
-              onClick={handleRedo}
-              disabled={!redoHistory.length}
-              sx={{ minHeight: 30, px: 1.15, fontSize: "0.82rem" }}
-            >
-              Redo
-            </Button>
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<SaveRounded />}
-              onClick={handleSaveProject}
-              disabled={!sections.length}
-              sx={{ minHeight: 30, px: 1.15, fontSize: "0.82rem" }}
-            >
-              Save Project
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<HomeRounded />}
-              onClick={handleGoHome}
-              sx={{ minHeight: 30, px: 1.15, fontSize: "0.82rem" }}
-            >
-              Home
-            </Button>
-          </Box>
+            {uploadState.error ? <Alert severity="error">{uploadState.error}</Alert> : null}
+
+            <Box>
+              <DndContext
+                sensors={sectionTabSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleSectionTabDragEnd}
+              >
+                <SortableContext
+                  items={sections.map((section) => section.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <List
+                    sx={{
+                      mt: 0.2,
+                      p: 0,
+                      bgcolor: "transparent",
+                      border: 0,
+                      boxShadow: "none",
+                    }}
+                  >
+                    {sections.map((section) => (
+                      <SortableSectionTab
+                        key={section.id}
+                        section={section}
+                        selected={section.id === activeSectionId}
+                        onSelect={selectSection}
+                        onRename={handleRenameSection}
+                        onOpenMenu={handleOpenSectionMenu}
+                      />
+                    ))}
+                    {unassignedRequirements.length ? (
+                      <ListItemButton
+                        selected={activeSectionId === "unassigned"}
+                        onClick={() => selectSection("unassigned")}
+                        sx={buildSectionBarSx(activeSectionId === "unassigned")}
+                      >
+                        <SectionTabContent
+                          section={UNASSIGNED_SECTION}
+                          selected={activeSectionId === "unassigned"}
+                        />
+                      </ListItemButton>
+                    ) : null}
+                  </List>
+                </SortableContext>
+              </DndContext>
+            </Box>
+          </RailShell>
         ) : null}
+
+        <Box
+          component="main"
+          sx={{
+            order: 2,
+            flexGrow: 1,
+            minWidth: 0,
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+            pl: 0,
+            pr: 0,
+            py: isHomeScreen ? 0 : { xs: 0, xl: 0 },
+            overflow: "hidden",
+            overscrollBehavior: "contain",
+            bgcolor: GITHUB_SURFACE,
+            borderLeft: 0,
+            borderRight: 0,
+            borderColor: GITHUB_BORDER,
+            "@media (max-width: 1600px)": {
+              order: 1,
+            },
+          }}
+        >
         <Box
           sx={{
             flex: "1 1 auto",
@@ -2001,19 +1970,29 @@ export function StudioApp() {
             display: "flex",
             alignItems: isHomeScreen ? "center" : "stretch",
             justifyContent: isHomeScreen ? "center" : "flex-start",
-            bgcolor: isHomeScreen ? "transparent" : "#232327",
+            bgcolor: isHomeScreen ? "transparent" : GITHUB_SURFACE,
           }}
         >
-        <Stack
-          spacing={3.25}
-          sx={{
-            minHeight: "100%",
-            width: "100%",
-            maxWidth: isHomeScreen ? 980 : "none",
-          }}
-        >
-          {uploadState.loading ? (
-            <Paper variant="outlined" sx={{ p: 6, borderRadius: 0.5 }}>
+          <Stack
+            spacing={3.25}
+            sx={{
+              minHeight: "100%",
+              width: "100%",
+              maxWidth: isHomeScreen ? 980 : "none",
+            }}
+          >
+            {uploadState.loading ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 6,
+                  borderRadius: 1,
+                  borderColor: GITHUB_BORDER,
+                  bgcolor: GITHUB_PANEL,
+                  backgroundImage:
+                    "linear-gradient(180deg, rgba(47,129,247,0.08) 0%, rgba(13,17,23,0) 22%)",
+                }}
+              >
               <Stack spacing={2} alignItems="center">
                 <CircularProgress />
                 <Typography variant="h6">Building hierarchy from uploaded PWS</Typography>
@@ -2022,13 +2001,36 @@ export function StudioApp() {
                   into editable workspace objects.
                 </Typography>
               </Stack>
-            </Paper>
-          ) : null}
+              </Paper>
+            ) : null}
 
-          {!sections.length && !uploadState.loading ? (
-            <Paper variant="outlined" sx={{ p: 6, borderRadius: 0.5, width: "100%" }}>
-              <Stack spacing={3} alignItems="flex-start">
-                <CloudUploadRounded color="primary" sx={{ fontSize: 40 }} />
+            {!sections.length && !uploadState.loading ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 6,
+                  borderRadius: 1,
+                  width: "100%",
+                  borderColor: GITHUB_BORDER,
+                  bgcolor: GITHUB_PANEL,
+                  backgroundImage:
+                    "linear-gradient(180deg, rgba(47,129,247,0.12) 0%, rgba(13,17,23,0) 18%)",
+                }}
+              >
+                <Stack spacing={3} alignItems="flex-start">
+                  <Box
+                    sx={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 2,
+                      display: "grid",
+                      placeItems: "center",
+                      bgcolor: GITHUB_SURFACE,
+                      border: `1px solid ${GITHUB_BORDER}`,
+                    }}
+                  >
+                    <CloudUploadRounded color="primary" sx={{ fontSize: 30 }} />
+                  </Box>
                 <Typography variant="h5" sx={{ fontWeight: 700 }}>
                   Upload a PWS to start
                 </Typography>
@@ -2049,9 +2051,9 @@ export function StudioApp() {
                         sx={{
                           p: 1.5,
                           width: "100%",
-                          borderRadius: 0.5,
-                          bgcolor: "rgba(42, 41, 44, 0.72)",
-                          borderColor: "rgba(255, 255, 255, 0.08)",
+                          borderRadius: 1,
+                          bgcolor: GITHUB_PANEL,
+                          borderColor: GITHUB_BORDER,
                         }}
                       >
                         <Stack
@@ -2076,24 +2078,31 @@ export function StudioApp() {
                     ))}
                   </Stack>
                 ) : null}
-              </Stack>
-            </Paper>
-          ) : null}
+                </Stack>
+              </Paper>
+            ) : null}
 
-          {sections.length && mounted ? (
-            <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>
-              <WorkspaceCanvas
-                section={activeSection}
-                allRequirements={requirements}
-                selectedRequirementId={selectedRequirementId}
-                onReorderRequirements={handleReorderRequirements}
-                onSelectRequirement={selectRequirement}
-                collapsedIds={collapsedRequirementIds}
-                onToggleCollapsed={toggleCollapsedRequirement}
-              />
-            </Box>
-          ) : null}
-        </Stack>
+            {sections.length && mounted ? (
+              <Box
+                sx={{
+                  flex: "1 1 auto",
+                  minWidth: 0,
+                  borderRadius: 1,
+                  bgcolor: GITHUB_SURFACE,
+                }}
+              >
+                <WorkspaceCanvas
+                  section={activeSection}
+                  allRequirements={requirements}
+                  selectedRequirementId={selectedRequirementId}
+                  onReorderRequirements={handleReorderRequirements}
+                  onSelectRequirement={selectRequirement}
+                  collapsedIds={collapsedRequirementIds}
+                  onToggleCollapsed={toggleCollapsedRequirement}
+                />
+              </Box>
+            ) : null}
+          </Stack>
         </Box>
         {!isHomeScreen ? (
           <Box
@@ -2122,10 +2131,10 @@ export function StudioApp() {
                     width: 72,
                     height: 6,
                     borderRadius: 999,
-                    bgcolor: "rgba(169, 181, 203, 0.3)",
+                    bgcolor: GITHUB_BORDER,
                   },
                   "&:hover::before": {
-                    bgcolor: "rgba(255, 255, 255, 0.18)",
+                    bgcolor: "#8b949e",
                   },
                 }}
               />
@@ -2146,46 +2155,47 @@ export function StudioApp() {
             />
           </Box>
         ) : null}
-      </Box>
+        </Box>
 
-      {!isHomeScreen ? (
-        <RailShell
-          side="right"
-          title="Requirements"
-          subtitle=""
-          width={rightRailDisplayWidth}
-          collapsed={rightRailCollapsed}
-          onToggleCollapsed={() => setRightRailCollapsed((current) => !current)}
-          onResizeStart={startRailResize("right")}
-          sx={{
-            order: 3,
-            "@media (max-width: 1600px)": {
-              display: "none",
-            },
-          }}
-        >
-          <DetailInspector
-            section={activeSection}
-            requirement={selectedRequirement}
-            allRequirements={requirements}
-            sections={sections}
-            hasCollapsibleRequirements={hasCollapsibleRequirements}
-            onSelectRequirement={selectRequirement}
-            onCreateTopLevelRequirement={handleCreateTopLevelRequirement}
-            onCreateChildRequirement={handleCreateChildRequirement}
-            onExpandAllRequirements={expandAllRequirements}
-            onCollapseAllRequirements={collapseAllRequirements}
-            onRequirementChange={handleRequirementChange}
-            onAssignToSection={handleAssignToActiveSection}
-            onMoveRequirement={handleMoveRequirement}
-            onMoveToUnassigned={handleMoveToUnassigned}
-            onPromoteRequirement={handlePromoteRequirement}
-            onDemoteRequirement={handleDemoteRequirement}
-            onCreateSectionFromRequirement={handleCreateSectionFromRequirement}
-            onDeleteRequirement={handleDeleteRequirement}
-          />
-        </RailShell>
-      ) : null}
+        {!isHomeScreen ? (
+          <RailShell
+            side="right"
+            title="Requirement Tools"
+            subtitle=""
+            width={rightRailDisplayWidth}
+            collapsed={rightRailCollapsed}
+            onToggleCollapsed={() => setRightRailCollapsed((current) => !current)}
+            onResizeStart={startRailResize("right")}
+            sx={{
+              order: 3,
+              "@media (max-width: 1600px)": {
+                display: "none",
+              },
+            }}
+          >
+            <DetailInspector
+              section={activeSection}
+              requirement={selectedRequirement}
+              allRequirements={requirements}
+              sections={sections}
+              hasCollapsibleRequirements={hasCollapsibleRequirements}
+              onSelectRequirement={selectRequirement}
+              onCreateTopLevelRequirement={handleCreateTopLevelRequirement}
+              onCreateChildRequirement={handleCreateChildRequirement}
+              onExpandAllRequirements={expandAllRequirements}
+              onCollapseAllRequirements={collapseAllRequirements}
+              onRequirementChange={handleRequirementChange}
+              onAssignToSection={handleAssignToActiveSection}
+              onMoveRequirement={handleMoveRequirement}
+              onMoveToUnassigned={handleMoveToUnassigned}
+              onPromoteRequirement={handlePromoteRequirement}
+              onDemoteRequirement={handleDemoteRequirement}
+              onCreateSectionFromRequirement={handleCreateSectionFromRequirement}
+              onDeleteRequirement={handleDeleteRequirement}
+            />
+          </RailShell>
+        ) : null}
+      </Box>
       <Dialog
         open={mtsPromptDialogOpen}
         onClose={handleCloseMtsPromptDialog}
@@ -2244,7 +2254,7 @@ export function StudioApp() {
         PaperProps={{
           sx: {
             bgcolor: "#232327",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
+            border: `1px solid ${GITHUB_BORDER}`,
             borderRadius: 2,
             minWidth: 160,
             boxShadow: "0 16px 36px rgba(0, 0, 0, 0.32)",

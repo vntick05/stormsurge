@@ -16,6 +16,12 @@ import {
 } from "@mui/material";
 
 const INSPECTOR_TABS = ["Edit", "Search", "Structure"];
+const GITHUB_BASE = "#010409";
+const GITHUB_SURFACE = "#0d1117";
+const GITHUB_PANEL = "#161b22";
+const GITHUB_PANEL_HOVER = "#1c2128";
+const GITHUB_BORDER = "#30363d";
+const GITHUB_TEXT_MUTED = "#7d8590";
 
 export function DetailInspector({
   section,
@@ -68,9 +74,9 @@ export function DetailInspector({
         variant="outlined"
         sx={{
           p: 2.5,
-          borderRadius: 0.75,
-          bgcolor: "rgba(255, 255, 255, 0.03)",
-          borderColor: "rgba(255, 255, 255, 0.06)",
+          borderRadius: 1,
+          bgcolor: GITHUB_PANEL,
+          borderColor: GITHUB_BORDER,
         }}
       >
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -108,17 +114,17 @@ export function DetailInspector({
               minWidth: 0,
               px: 0.95,
               py: 0.2,
-              border: "1px solid transparent",
-              bgcolor: "transparent",
-              color: "#A9B5CB",
+              border: `1px solid ${GITHUB_BORDER}`,
+              bgcolor: GITHUB_SURFACE,
+              color: GITHUB_TEXT_MUTED,
               borderRadius: 1.1,
               fontSize: "0.82rem",
               lineHeight: 1,
             },
             "& .MuiTab-root.Mui-selected": {
-              color: "#ECECEC",
-              bgcolor: "rgba(255, 255, 255, 0.08)",
-              borderColor: "transparent",
+              color: "#e6edf3",
+              bgcolor: GITHUB_PANEL,
+              borderColor: GITHUB_BORDER,
             },
             "& .MuiTabs-indicator": {
               display: "none",
@@ -160,18 +166,23 @@ export function DetailInspector({
                 </Button>
               </Stack>
               <TextField
-                label="Requirement label"
                 fullWidth
                 value={requirement.sourceRef || ""}
                 onChange={(event) => onRequirementChange("sourceRef", event.target.value)}
+                placeholder="Requirement title"
+                InputProps={{
+                  sx: {
+                    bgcolor: GITHUB_SURFACE,
+                  },
+                }}
               />
               <TextField
-                label="Working text"
                 fullWidth
                 multiline
                 minRows={8}
                 value={requirement.text}
                 onChange={(event) => onRequirementChange("text", event.target.value)}
+                placeholder="Requirement text"
                 InputLabelProps={{
                   sx: {
                     fontSize: "0.875rem",
@@ -182,6 +193,7 @@ export function DetailInspector({
                     fontSize: "0.875rem",
                     lineHeight: 1.4,
                     alignItems: "flex-start",
+                    bgcolor: GITHUB_SURFACE,
                   },
                 }}
               />
@@ -206,6 +218,9 @@ export function DetailInspector({
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="Search requirements"
                 InputProps={{
+                  sx: {
+                    bgcolor: GITHUB_SURFACE,
+                  },
                   startAdornment: <SearchRounded sx={{ color: "text.secondary", mr: 1 }} />,
                 }}
               />
@@ -226,21 +241,21 @@ export function DetailInspector({
                     onClick={() => onSelectRequirement(candidate.id)}
                     sx={{
                       p: 1.25,
-                      borderRadius: 0.75,
+                      borderRadius: 1,
                       cursor: "pointer",
                       bgcolor:
                         candidate.id === requirement.id
-                          ? "rgba(208, 220, 243, 0.12)"
-                          : "rgba(8, 10, 12, 0.68)",
+                          ? "#1f2937"
+                          : GITHUB_PANEL,
                       borderColor:
                         candidate.id === requirement.id
-                          ? "rgba(208, 220, 243, 0.16)"
-                          : "rgba(208, 220, 243, 0.08)",
+                          ? "#2f81f7"
+                          : GITHUB_BORDER,
                       "&:hover": {
                         bgcolor:
                           candidate.id === requirement.id
-                            ? "rgba(208, 220, 243, 0.14)"
-                            : "rgba(95, 102, 115, 0.24)",
+                            ? "#243041"
+                            : GITHUB_PANEL_HOVER,
                       },
                     }}
                   >

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
+import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
 import {
   Alert,
   Box,
@@ -29,6 +30,13 @@ import { getChildren, getRequirementById, getSectionRoots, resequenceGroup } fro
 
 const REQUIREMENT_INDENT_PX = 12;
 const REQUIREMENT_MAX_INDENT_LEVELS = 4;
+const GITHUB_BORDER = "#30363d";
+const GITHUB_PANEL = "#161b22";
+const GITHUB_PANEL_HOVER = "#1c2128";
+const GITHUB_PANEL_SELECTED = "#1f2937";
+const GITHUB_TEXT_MUTED = "#7d8590";
+const GITHUB_FONT_STACK =
+  '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
 
 function formatRequirementMarker(requirement) {
   const source = String(requirement.sourceRef || requirement.title || "").trim();
@@ -70,117 +78,116 @@ function RequirementCard({
         onClick={() => onSelect(requirement.id)}
         sx={{
           position: "relative",
-          pr: 1,
-          pl: 0.55,
-          py: 0.6,
-          minHeight: 48,
+          px: 1.1,
+          py: 0.55,
+          minHeight: 0,
           cursor: "pointer",
-          borderRadius: 2.4,
-          bgcolor: selected ? "rgba(255, 255, 255, 0.14)" : "rgba(255, 255, 255, 0.09)",
+          borderRadius: 1,
+          bgcolor: selected ? GITHUB_PANEL_SELECTED : GITHUB_PANEL,
           boxShadow: "none",
           transition: "background-color 120ms ease",
           "&:hover": {
-            bgcolor: selected ? "rgba(255, 255, 255, 0.16)" : "rgba(255, 255, 255, 0.12)",
+            bgcolor: selected ? GITHUB_PANEL_SELECTED : GITHUB_PANEL_HOVER,
           },
         }}
       >
-        <Stack direction="row" spacing={1.2} alignItems="center">
-          <Box
-            {...dragHandleProps}
-            onClick={(event) => event.stopPropagation()}
-            sx={{
-              width: 14,
-              height: 22,
-              flexShrink: 0,
-              cursor: "grab",
-              opacity: 0.52,
-              ml: 0.25,
-              mr: 0.35,
-              position: "relative",
-              "&::before": {
-                content: '""',
-                position: "absolute",
-                left: 2,
-                top: 5,
-                width: 3,
-                height: 3,
-                borderRadius: 999,
-                bgcolor: accent.dots,
-                boxShadow:
-                  `0 7px 0 ${accent.dots}, 6px 0 0 ${accent.dots}, 6px 7px 0 ${accent.dots}`,
-              },
-            }}
-          />
-          <Box
-            sx={{
-              flexGrow: 1,
-              minWidth: 0,
-              pr: 0.15,
-              py: 0.02,
-              display: "flex",
-              alignItems: "center",
-              minHeight: 36,
-            }}
-          >
-            <Typography
-              variant="body2"
-              color="text.primary"
+        <Stack spacing={0.9}>
+          <Stack direction="row" spacing={1.2} alignItems="center">
+            <Box
+              {...dragHandleProps}
+              onClick={(event) => event.stopPropagation()}
               sx={{
-                fontSize: "0.89rem",
-                lineHeight: 1.28,
-                width: "100%",
-                display: "-webkit-box",
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
+                width: 28,
+                height: 28,
+                flexShrink: 0,
+                cursor: "grab",
+                opacity: 0.9,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: GITHUB_TEXT_MUTED,
+                borderRadius: 1.25,
+                bgcolor: "transparent",
               }}
             >
-              <Box
-                component="span"
+              <MoreVertRounded sx={{ fontSize: 15 }} />
+            </Box>
+            <Box
+              sx={{
+                flexGrow: 1,
+                minWidth: 0,
+                pr: 0.15,
+                py: 0,
+                display: "flex",
+                alignItems: "center",
+                minHeight: 0,
+              }}
+            >
+              <Typography
+                variant="body2"
+                color="text.primary"
                 sx={{
-                  color: accent.text,
-                  fontSize: "0.84rem",
-                  fontWeight: 600,
-                  letterSpacing: 0.08,
-                  mr: 0.7,
-                  verticalAlign: "baseline",
-                  textTransform: "uppercase",
+                  fontFamily: GITHUB_FONT_STACK,
+                  fontSize: "0.875rem",
+                  lineHeight: 1.45,
+                  fontWeight: 400,
+                  width: "100%",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 4,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
                 }}
               >
-                {formatRequirementMarker(requirement)}
-              </Box>
-              <Box
-                component="span"
-                sx={{
-                  color: "#FFFFFF",
-                }}
-              >
-                {requirement.text || requirement.summary}
-              </Box>
-            </Typography>
-          </Box>
-          <Button
-            size="small"
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleCollapsed?.(requirement.id);
-            }}
-            sx={{
-              minWidth: 28,
-              px: 0.25,
-              mt: 0,
-              ml: 0.1,
-              color: hasChildren ? "#FFFFFF" : "transparent",
-              visibility: hasChildren ? "visible" : "hidden",
-              alignSelf: "center",
-            }}
-          >
-            {collapsed ? (
-              <ExpandMoreRounded fontSize="small" />
-            ) : (
-              <ExpandLessRounded fontSize="small" />
-            )}
-          </Button>
+                <Box
+                  component="span"
+                  sx={{
+                    fontFamily: GITHUB_FONT_STACK,
+                    color: accent.text,
+                    fontWeight: 600,
+                    letterSpacing: 0,
+                    mr: 0.45,
+                  }}
+                >
+                  {formatRequirementMarker(requirement)}
+                </Box>
+                <Box
+                  component="span"
+                  sx={{
+                    fontFamily: GITHUB_FONT_STACK,
+                    color: "#e6edf3",
+                    fontWeight: 400,
+                    letterSpacing: 0,
+                  }}
+                >
+                  {requirement.text || requirement.summary}
+                </Box>
+              </Typography>
+            </Box>
+            <Button
+              size="small"
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleCollapsed?.(requirement.id);
+              }}
+              sx={{
+                minWidth: 32,
+                px: 0.4,
+                mt: 0,
+                ml: 0.1,
+                color: hasChildren ? "#e6edf3" : "transparent",
+                visibility: hasChildren ? "visible" : "hidden",
+                alignSelf: "center",
+                borderRadius: 1.25,
+                bgcolor: "transparent",
+              }}
+            >
+              {collapsed ? (
+                <ExpandMoreRounded fontSize="small" />
+              ) : (
+                <ExpandLessRounded fontSize="small" />
+              )}
+            </Button>
+          </Stack>
         </Stack>
       </Box>
       {children ? <Box sx={{ mt: 0.85 }}>{children}</Box> : null}
@@ -348,11 +355,16 @@ export function WorkspaceCanvas({
       }}
     >
       <Stack spacing={1.5}>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              {section.label}
-            </Typography>
-          </Box>
+        <Box
+          sx={{
+            pb: 1.1,
+            borderBottom: 0,
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            {section.label}
+          </Typography>
+        </Box>
 
         {sectionRoots.length ? (
           <RequirementList
