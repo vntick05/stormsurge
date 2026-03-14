@@ -82,6 +82,8 @@ const STORM_WORKSPACE_TABS = [
   "Exceeds the Standard",
   "Risks",
 ];
+
+const SHORT_STORM_WORKSPACE_TABS = new Set(["MTS Definition", "MTS Solution"]);
 const UNASSIGNED_SECTION = {
   id: "unassigned",
   label: "Unassigned Requirements",
@@ -91,7 +93,7 @@ const UNASSIGNED_SECTION = {
 };
 const subtleScrollbarSx = {
   scrollbarWidth: "thin",
-  scrollbarColor: "rgba(87, 104, 132, 0.34) transparent",
+  scrollbarColor: "rgba(58, 72, 96, 0.16) transparent",
   "&::-webkit-scrollbar": {
     width: 8,
     height: 8,
@@ -100,13 +102,13 @@ const subtleScrollbarSx = {
     background: "transparent",
   },
   "&::-webkit-scrollbar-thumb": {
-    backgroundColor: "rgba(87, 104, 132, 0.24)",
+    backgroundColor: "rgba(58, 72, 96, 0.14)",
     borderRadius: 999,
     border: "2px solid transparent",
     backgroundClip: "padding-box",
   },
   "&:hover::-webkit-scrollbar-thumb": {
-    backgroundColor: "rgba(97, 118, 149, 0.4)",
+    backgroundColor: "rgba(72, 88, 116, 0.24)",
   },
 };
 
@@ -152,8 +154,8 @@ function buildSectionBarSx(selected) {
     borderRadius: 0.75,
     mb: 0.75,
     px: 1.1,
-    py: 0.2,
-    minHeight: 54,
+    py: 0.1,
+    minHeight: 48,
     bgcolor: selected ? "rgba(32, 44, 66, 0.96)" : "rgba(18, 23, 31, 0.92)",
     border: "1px solid",
     borderColor: selected ? "rgba(110, 168, 254, 0.3)" : "rgba(40, 53, 74, 0.9)",
@@ -184,7 +186,7 @@ function SectionTabContent({ section, selected, dragHandleProps, onRename }) {
         }}
       />
       <Stack direction="row" spacing={1.1} alignItems="center" sx={{ width: "100%" }}>
-        <Box sx={{ flexGrow: 1, minWidth: 0, py: 0.95, pl: 0.8 }}>
+        <Box sx={{ flexGrow: 1, minWidth: 0, py: 0.7, pl: 0.8 }}>
           <Typography
             variant="body2"
             sx={{
@@ -271,7 +273,7 @@ function RailShell({
         borderRight: { xs: 0, xl: isLeft ? 1 : 0 },
         borderLeft: { xs: 0, xl: isLeft ? 0 : 1 },
         borderBottom: { xs: 1, xl: 0 },
-        borderColor: "divider",
+        borderColor: "rgba(26, 35, 49, 0.42)",
         bgcolor: isLeft ? "#0E1116" : "#11151B",
         backgroundImage: isLeft
           ? "linear-gradient(180deg, rgba(14,17,22,0.98), rgba(12,15,20,0.98))"
@@ -291,7 +293,7 @@ function RailShell({
           alignItems: "center",
           flexShrink: 0,
           borderBottom: 1,
-          borderColor: "rgba(36, 50, 74, 0.95)",
+          borderColor: "rgba(28, 38, 54, 0.42)",
         }}
       >
         {collapsed ? null : (
@@ -507,15 +509,16 @@ function StormWorkspaceBar({
         borderLeft: { xs: 1, xl: 0 },
         borderRight: { xs: 1, xl: 0 },
         borderBottom: 0,
-        borderColor: "divider",
+        borderColor: "rgba(28, 38, 54, 0.38)",
       }}
     >
       <Box
         sx={{
           borderBottom: 1,
-          borderColor: "divider",
+          borderColor: "rgba(28, 38, 54, 0.32)",
           px: 1.25,
-          background: "linear-gradient(180deg, #161B23 0%, #12171E 100%)",
+          pt: 0.35,
+          background: "linear-gradient(180deg, #151A22 0%, #12171E 100%)",
         }}
       >
         <Tabs
@@ -526,16 +529,54 @@ function StormWorkspaceBar({
           textColor="primary"
           indicatorColor="primary"
           sx={{
-            minHeight: 54,
+            minHeight: 38,
+            "& .MuiTabs-indicator": {
+              display: "none",
+            },
+            "& .MuiTabs-flexContainer": {
+              alignItems: "flex-end",
+            },
             "& .MuiTab-root": {
-              minHeight: 54,
-              alignItems: "flex-start",
+              minHeight: 38,
               px: 1.5,
+              py: 0.35,
+              mr: 0.5,
+              borderTopLeftRadius: 4,
+              borderTopRightRadius: 4,
+              borderBottomLeftRadius: 0,
+              borderBottomRightRadius: 0,
+              border: "1px solid transparent",
+              borderBottom: 0,
+              alignItems: "center",
+              color: "#93A0B5",
+              bgcolor: "transparent",
+            },
+            "& .MuiTab-root.Mui-selected": {
+              color: "#F8FBFF",
+              bgcolor: "#1A2940",
+              borderColor: "rgba(78, 128, 208, 0.56)",
+              boxShadow: "inset 0 2px 0 rgba(116, 167, 255, 0.82)",
             },
           }}
         >
           {STORM_WORKSPACE_TABS.map((label) => (
-            <Tab key={label} value={label} label={label} />
+            <Tab
+              key={label}
+              value={label}
+              label={label}
+              sx={
+                SHORT_STORM_WORKSPACE_TABS.has(label)
+                  ? {
+                      minHeight: 20,
+                      py: 0.05,
+                      mt: "auto",
+                      "&.MuiTab-root": {
+                        minHeight: 20,
+                      },
+                    }
+                  : undefined
+              }
+            />
           ))}
         </Tabs>
       </Box>
@@ -546,6 +587,7 @@ function StormWorkspaceBar({
           minHeight: 0,
           overflowY: "auto",
           overscrollBehavior: "contain",
+          backgroundColor: "#141920",
           ...subtleScrollbarSx,
         }}
       >

@@ -59,24 +59,25 @@ function RequirementCard({
   const markerColor = isManualRequirement ? accentColor : "primary.main";
 
   return (
-    <Box ref={setNodeRef} style={style} sx={{ mb: 1 }}>
+    <Box ref={setNodeRef} style={style} sx={{ mb: 0.6 }}>
       <Paper
         variant="outlined"
         onClick={() => onSelect(requirement.id)}
         sx={{
           position: "relative",
           overflow: "hidden",
-          pl: 2,
-          pr: 1.5,
-          py: 1.4,
+          pl: 1.75,
+          pr: 1.2,
+          py: 0.82,
+          minHeight: 0,
           borderRadius: 1,
           cursor: "pointer",
-          borderColor: selected ? "rgba(110, 168, 254, 0.62)" : "rgba(36, 50, 74, 0.72)",
-          bgcolor: selected ? "#243552" : "#15191F",
-          boxShadow: selected ? "0 14px 28px rgba(5, 11, 22, 0.32)" : "none",
+          borderColor: selected ? "rgba(110, 168, 254, 0.52)" : "rgba(30, 40, 58, 0.82)",
+          bgcolor: selected ? "#1F2C42" : "#0F141B",
+          boxShadow: selected ? "0 12px 24px rgba(2, 8, 18, 0.28)" : "none",
           transition: "border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease",
           "&:hover": {
-            bgcolor: selected ? "#243552" : "#1A2028",
+            bgcolor: selected ? "#223148" : "#131922",
           },
         }}
       >
@@ -97,38 +98,40 @@ function RequirementCard({
         <Stack direction="row" spacing={1} alignItems="flex-start">
           <Box
             sx={{
-              width: 52,
-              minWidth: 52,
+              width: 44,
+              minWidth: 44,
               alignSelf: "stretch",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               borderRight: 1,
               borderColor: "rgba(43, 58, 85, 0.92)",
-              pl: 0.25,
-              pr: 0.5,
+              pl: 0.15,
+              pr: 0.25,
             }}
           >
           <Typography
             variant="caption"
             color={markerColor}
             sx={{
+              fontSize: "0.73rem",
               fontWeight: 700,
-              letterSpacing: 0.2,
+              letterSpacing: 0.15,
                 textAlign: "center",
-                lineHeight: 1.2,
+                lineHeight: 1,
                 wordBreak: "break-word",
               }}
             >
               {formatRequirementMarker(requirement)}
             </Typography>
           </Box>
-          <Box sx={{ flexGrow: 1, minWidth: 0, pr: 0.25 }}>
+          <Box sx={{ flexGrow: 1, minWidth: 0, pr: 0.15 }}>
             <Typography
               variant="body2"
               color="text.primary"
               sx={{
-                lineHeight: 1.4,
+                fontSize: "0.89rem",
+                lineHeight: 1.32,
                 display: "-webkit-box",
                 WebkitLineClamp: 3,
                 WebkitBoxOrient: "vertical",
@@ -148,7 +151,7 @@ function RequirementCard({
               minWidth: 28,
               px: 0.25,
               mt: 0,
-              ml: 0.25,
+              ml: 0.1,
               color: hasChildren ? "text.secondary" : "transparent",
               visibility: hasChildren ? "visible" : "hidden",
               alignSelf: "center",
@@ -270,7 +273,7 @@ function RequirementList({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={requirementIds} strategy={verticalListSortingStrategy}>
-        <Box sx={{ mt: depth === 0 ? 0 : 0.5 }}>
+        <Box sx={{ mt: depth === 0 ? 0 : 0.3 }}>
           {requirements.map((requirement) => (
             <SortableRequirementNode
               key={requirement.id}
@@ -314,9 +317,9 @@ export function WorkspaceCanvas({
       sx={{
         p: 2.75,
         borderRadius: 1,
-        bgcolor: "#1D232C",
-        borderColor: "rgba(47, 64, 90, 0.9)",
-        boxShadow: "0 10px 22px rgba(3, 8, 18, 0.18)",
+        bgcolor: "transparent",
+        borderColor: "transparent",
+        boxShadow: "none",
       }}
     >
       <Stack spacing={1.5}>
