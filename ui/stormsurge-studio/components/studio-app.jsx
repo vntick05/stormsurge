@@ -93,6 +93,7 @@ const UNASSIGNED_SECTION = {
   sourceKind: "system",
   sectionNumber: null,
 };
+const STORMSURGE_LOGO_SRC = "/stormsurge-logo.png";
 const subtleScrollbarSx = {
   scrollbarWidth: "thin",
   scrollbarColor: "rgba(255, 255, 255, 0.12) transparent",
@@ -325,12 +326,28 @@ function RailShell({
               pt: 0.15,
             }}
           >
-            <Typography
-              variant={isLeft ? "h6" : "subtitle1"}
-              sx={{ fontWeight: 700, letterSpacing: isLeft ? -0.02 : -0.01 }}
-            >
-              {title}
-            </Typography>
+            {isLeft ? (
+              <Box
+                component="img"
+                src={STORMSURGE_LOGO_SRC}
+                alt="StormSurge"
+                sx={{
+                  display: "block",
+                  width: 220,
+                  height: 54,
+                  objectFit: "cover",
+                  objectPosition: "center 43%",
+                  borderRadius: 1,
+                }}
+              />
+            ) : (
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 700, letterSpacing: -0.01 }}
+              >
+                {title}
+              </Typography>
+            )}
           </Box>
         )}
         <Tooltip title={collapsed ? `Expand ${title}` : `Collapse ${title}`}>
@@ -1772,15 +1789,19 @@ export function StudioApp() {
       >
         <Toolbar sx={{ minHeight: 76, pl: 0, pr: 0 }}>
           <Box sx={{ flexGrow: 1 }}>
-            <Typography
-              variant="h5"
+            <Box
+              component="img"
+              src={STORMSURGE_LOGO_SRC}
+              alt="StormSurge"
               sx={{
-                fontWeight: 700,
                 display: { xs: "block", xl: isHomeScreen ? "block" : "none" },
+                width: 220,
+                height: 54,
+                objectFit: "cover",
+                objectPosition: "center 43%",
+                borderRadius: 1,
               }}
-            >
-              StormSurge Studio
-            </Typography>
+            />
           </Box>
           {!isHomeScreen ? (
             <Box
