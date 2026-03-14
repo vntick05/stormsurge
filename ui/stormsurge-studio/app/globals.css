@@ -12,9 +12,12 @@ body {
 }
 
 body {
-  font-family: "IBM Plex Sans", "Bahnschrift", "Trebuchet MS", sans-serif;
-  background: linear-gradient(180deg, #0a0f1a 0%, #0d121b 100%);
-  color: #f3f6fc;
+  font-family: "Sora", "IBM Plex Sans", "Trebuchet MS", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(116, 163, 255, 0.06), transparent 26%),
+    radial-gradient(circle at 85% 12%, rgba(79, 126, 224, 0.05), transparent 18%),
+    linear-gradient(180deg, #090b10 0%, #0c0f14 100%);
+  color: #f5efe6;
 }
 
 #__next {

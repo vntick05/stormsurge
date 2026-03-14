@@ -198,6 +198,11 @@ export function reassignRequirement(requirements, requirementId, nextSectionId) 
   });
 }
 
+export function deleteRequirement(requirements, requirementId) {
+  const idsToDelete = new Set([requirementId, ...getDescendantIds(requirements, requirementId)]);
+  return requirements.filter((requirement) => !idsToDelete.has(requirement.id));
+}
+
 export function createTopLevelRequirement(sectionId) {
   const idSuffix = Date.now();
 
@@ -207,7 +212,7 @@ export function createTopLevelRequirement(sectionId) {
     parentId: null,
     position: 9999,
     sourceType: "manual",
-    sourceRef: "Workspace draft",
+    sourceRef: "New Req",
     kind: "top-level",
     title: "New top-level requirement",
     summary: "Define the outcome, then refine the hierarchy around it.",
@@ -226,7 +231,7 @@ export function createChildRequirement(parentRequirement, requirements) {
     parentId: parentRequirement.id,
     position: childCount + 1,
     sourceType: "manual",
-    sourceRef: "Workspace draft",
+    sourceRef: "New Req",
     kind: "child",
     title: "New child requirement",
     summary: "Break the parent requirement into a more specific obligation.",

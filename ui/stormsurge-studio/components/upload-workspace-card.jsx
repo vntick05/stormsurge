@@ -45,7 +45,16 @@ export function UploadWorkspaceCard({ loading, onUpload, compact = false }) {
   }
 
   return (
-    <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 0.75 }}>
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 3,
+        borderRadius: 1,
+        bgcolor: "rgba(20, 23, 30, 0.82)",
+        borderColor: "rgba(132, 121, 111, 0.08)",
+        boxShadow: "0 18px 28px rgba(0, 0, 0, 0.14)",
+      }}
+    >
       <input
         hidden
         ref={inputRef}

@@ -35,6 +35,7 @@ export function DetailInspector({
   onPromoteRequirement,
   onDemoteRequirement,
   onCreateSectionFromRequirement,
+  onDeleteRequirement,
 }) {
   const [activeTab, setActiveTab] = useState(INSPECTOR_TABS[0]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -63,7 +64,15 @@ export function DetailInspector({
 
   if (!requirement) {
     return (
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 0.75 }}>
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 2.5,
+          borderRadius: 0.75,
+          bgcolor: "rgba(22, 25, 32, 0.86)",
+          borderColor: "rgba(132, 121, 111, 0.08)",
+        }}
+      >
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           Inspector
         </Typography>
@@ -78,10 +87,11 @@ export function DetailInspector({
     <Stack spacing={2}>
       <Box
         sx={{
-          px: 0.75,
-          py: 0.75,
-          border: "1px solid rgba(47, 64, 90, 0.92)",
-          bgcolor: "#151B22",
+          px: 0.7,
+          py: 0.55,
+          border: "1px solid rgba(132, 121, 111, 0.08)",
+          bgcolor: "rgba(21, 24, 31, 0.82)",
+          borderRadius: 0.75,
         }}
       >
         <Tabs
@@ -89,23 +99,26 @@ export function DetailInspector({
           onChange={(_, value) => setActiveTab(value)}
           variant="fullWidth"
           sx={{
-            minHeight: 38,
+            minHeight: 32,
             "& .MuiTabs-flexContainer": {
-              gap: 0.75,
+              gap: 0.55,
             },
             "& .MuiTab-root": {
-              minHeight: 38,
+              minHeight: 32,
               minWidth: 0,
-              px: 1.1,
-              border: "1px solid rgba(54, 69, 93, 0.82)",
-              bgcolor: "rgba(19, 24, 31, 0.92)",
-              color: "#93A0B5",
-              borderRadius: 0.5,
+              px: 0.95,
+              py: 0.2,
+              border: "1px solid rgba(132, 121, 111, 0.06)",
+              bgcolor: "rgba(24, 27, 34, 0.86)",
+              color: "#8D8891",
+              borderRadius: 0.75,
+              fontSize: "0.82rem",
+              lineHeight: 1,
             },
             "& .MuiTab-root.Mui-selected": {
-              color: "#F3F6FC",
-              bgcolor: "#202B39",
-              borderColor: "rgba(110, 168, 254, 0.34)",
+              color: "#F5EFE6",
+              bgcolor: "rgba(53, 43, 34, 0.92)",
+              borderColor: "rgba(116, 163, 255, 0.18)",
             },
             "& .MuiTabs-indicator": {
               display: "none",
@@ -121,9 +134,9 @@ export function DetailInspector({
         variant="outlined"
         sx={{
           p: 2.5,
-          borderRadius: 1,
-          bgcolor: "#1A2028",
-          borderColor: "rgba(47, 64, 90, 0.86)",
+          borderRadius: 0.75,
+          bgcolor: "rgba(22, 25, 32, 0.86)",
+          borderColor: "rgba(132, 121, 111, 0.08)",
         }}
       >
         <Stack spacing={2}>
@@ -146,10 +159,10 @@ export function DetailInspector({
                 </Button>
               </Stack>
               <TextField
-                label="Requirement title"
+                label="Requirement label"
                 fullWidth
-                value={requirement.title}
-                onChange={(event) => onRequirementChange("title", event.target.value)}
+                value={requirement.sourceRef || ""}
+                onChange={(event) => onRequirementChange("sourceRef", event.target.value)}
               />
               <TextField
                 label="Working text"
@@ -172,8 +185,13 @@ export function DetailInspector({
                 }}
               />
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Button size="small" variant="outlined" onClick={onMoveToUnassigned}>
-                  Send to holding area
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  onClick={onDeleteRequirement}
+                >
+                  Delete requirement
                 </Button>
               </Stack>
             </Stack>
@@ -209,13 +227,13 @@ export function DetailInspector({
                       p: 1.25,
                       borderRadius: 0.75,
                       cursor: "pointer",
-                      bgcolor: candidate.id === requirement.id ? "#243552" : "#15191F",
+                      bgcolor: candidate.id === requirement.id ? "rgba(53, 43, 34, 0.96)" : "rgba(20, 23, 30, 0.88)",
                       borderColor:
                         candidate.id === requirement.id
-                          ? "rgba(110, 168, 254, 0.55)"
-                          : "rgba(47, 64, 90, 0.72)",
+                          ? "rgba(116, 163, 255, 0.18)"
+                          : "rgba(132, 121, 111, 0.08)",
                       "&:hover": {
-                        bgcolor: candidate.id === requirement.id ? "#243552" : "#1A2028",
+                        bgcolor: candidate.id === requirement.id ? "rgba(53, 43, 34, 0.96)" : "rgba(25, 28, 36, 0.96)",
                       },
                     }}
                   >

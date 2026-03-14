@@ -54,7 +54,7 @@ const requirements = [
     parentId: "req-ops-1",
     position: 1,
     sourceType: "manual",
-    sourceRef: "Workspace draft",
+    sourceRef: "New Req",
     kind: "child",
     title: "Staff surge support for critical outage windows",
     summary:

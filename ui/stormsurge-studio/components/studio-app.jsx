@@ -3,12 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import ChevronLeftRounded from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRounded from "@mui/icons-material/ChevronRightRounded";
+import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
+import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
 import CloudUploadRounded from "@mui/icons-material/CloudUploadRounded";
 import DragIndicatorRounded from "@mui/icons-material/DragIndicatorRounded";
 import EditRounded from "@mui/icons-material/EditRounded";
 import HomeRounded from "@mui/icons-material/HomeRounded";
-import InsightsRounded from "@mui/icons-material/InsightsRounded";
+import RedoRounded from "@mui/icons-material/RedoRounded";
 import SaveRounded from "@mui/icons-material/SaveRounded";
+import UndoRounded from "@mui/icons-material/UndoRounded";
 import {
   closestCenter,
   DndContext,
@@ -41,8 +44,6 @@ import {
   ListItemText,
   Paper,
   Stack,
-  Tab,
-  Tabs,
   TextField,
   Toolbar,
   Tooltip,
@@ -55,6 +56,7 @@ import {
   createChildRequirement,
   createTopLevelRequirement,
   demoteRequirement,
+  deleteRequirement,
   getChildren,
   getRequirementById,
   getSiblingGroup,
@@ -76,14 +78,13 @@ const BOTTOM_DOCK_MIN_HEIGHT = 220;
 const BOTTOM_DOCK_MAX_HEIGHT = 520;
 const STUDIO_STATE_STORAGE_KEY = "stormsurge-studio-state-v1";
 const SAVED_PROJECTS_STORAGE_KEY = "stormsurge-studio-saved-projects-v1";
+const UNDO_HISTORY_LIMIT = 5;
 const STORM_WORKSPACE_TABS = [
   "MTS Definition",
   "MTS Solution",
   "Exceeds the Standard",
   "Risks",
 ];
-
-const SHORT_STORM_WORKSPACE_TABS = new Set(["MTS Definition", "MTS Solution"]);
 const UNASSIGNED_SECTION = {
   id: "unassigned",
   label: "Unassigned Requirements",
@@ -93,7 +94,7 @@ const UNASSIGNED_SECTION = {
 };
 const subtleScrollbarSx = {
   scrollbarWidth: "thin",
-  scrollbarColor: "rgba(58, 72, 96, 0.16) transparent",
+  scrollbarColor: "rgba(58, 72, 96, 0.1) transparent",
   "&::-webkit-scrollbar": {
     width: 8,
     height: 8,
@@ -102,13 +103,13 @@ const subtleScrollbarSx = {
     background: "transparent",
   },
   "&::-webkit-scrollbar-thumb": {
-    backgroundColor: "rgba(58, 72, 96, 0.14)",
+    backgroundColor: "rgba(58, 72, 96, 0.08)",
     borderRadius: 999,
     border: "2px solid transparent",
     backgroundClip: "padding-box",
   },
   "&:hover::-webkit-scrollbar-thumb": {
-    backgroundColor: "rgba(72, 88, 116, 0.24)",
+    backgroundColor: "rgba(72, 88, 116, 0.14)",
   },
 };
 
@@ -152,18 +153,18 @@ function buildSectionBarSx(selected) {
     overflow: "hidden",
     alignItems: "stretch",
     borderRadius: 0.75,
-    mb: 0.75,
-    px: 1.1,
-    py: 0.1,
-    minHeight: 48,
-    bgcolor: selected ? "rgba(32, 44, 66, 0.96)" : "rgba(18, 23, 31, 0.92)",
-    border: "1px solid",
-    borderColor: selected ? "rgba(110, 168, 254, 0.3)" : "rgba(40, 53, 74, 0.9)",
-    boxShadow: selected ? "0 10px 22px rgba(5, 11, 22, 0.22)" : "none",
+    mb: 0.9,
+    px: 1.25,
+    py: 0.2,
+    minHeight: 54,
+    bgcolor: selected ? "rgba(42, 34, 26, 0.98)" : "rgba(27, 30, 38, 0.68)",
+    border: "1px solid transparent",
+    borderColor: selected ? "rgba(116, 163, 255, 0.14)" : "transparent",
+    boxShadow: selected ? "0 14px 24px rgba(0, 0, 0, 0.14)" : "0 8px 14px rgba(0, 0, 0, 0.06)",
     transition: "border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease",
     "&:hover": {
-      bgcolor: selected ? "rgba(35, 49, 72, 0.98)" : "rgba(23, 29, 38, 0.96)",
-      borderColor: selected ? "rgba(110, 168, 254, 0.34)" : "rgba(54, 71, 97, 0.92)",
+      bgcolor: selected ? "rgba(48, 39, 30, 0.98)" : "rgba(31, 35, 43, 0.82)",
+      borderColor: selected ? "rgba(116, 163, 255, 0.2)" : "transparent",
     },
   };
 }
@@ -180,8 +181,8 @@ function SectionTabContent({ section, selected, dragHandleProps, onRename }) {
           top: 0,
           bottom: 0,
           width: 6,
-          bgcolor: selected ? "primary.light" : "primary.main",
-          opacity: selected ? 0.82 : 0.34,
+          bgcolor: selected ? "#9BC0FF" : "#5B86D9",
+          opacity: selected ? 0.9 : 0.42,
           cursor: dragHandleProps ? "grab" : "default",
         }}
       />
@@ -257,6 +258,7 @@ function RailShell({
   collapsed,
   onToggleCollapsed,
   onResizeStart,
+  sx,
   children,
 }) {
   const isLeft = side === "left";
@@ -270,20 +272,25 @@ function RailShell({
         display: "flex",
         flexDirection: "column",
         minHeight: 0,
-        borderRight: { xs: 0, xl: isLeft ? 1 : 0 },
-        borderLeft: { xs: 0, xl: isLeft ? 0 : 1 },
-        borderBottom: { xs: 1, xl: 0 },
-        borderColor: "rgba(26, 35, 49, 0.42)",
-        bgcolor: isLeft ? "#0E1116" : "#11151B",
+        borderRight: 0,
+        borderLeft: 0,
+        borderBottom: 0,
+        borderColor: "transparent",
+        bgcolor: isLeft ? "rgba(16, 18, 24, 0.72)" : "rgba(18, 21, 28, 0.74)",
         backgroundImage: isLeft
-          ? "linear-gradient(180deg, rgba(14,17,22,0.98), rgba(12,15,20,0.98))"
-          : "linear-gradient(180deg, rgba(17,21,27,0.98), rgba(14,18,24,0.98))",
+          ? "linear-gradient(180deg, rgba(17,19,25,0.94), rgba(13,15,20,0.96))"
+          : "linear-gradient(180deg, rgba(20,23,30,0.94), rgba(15,17,23,0.96))",
+        boxShadow: "0 26px 40px rgba(0, 0, 0, 0.16)",
         transition: "width 180ms ease",
         overflow: "hidden",
         overscrollBehavior: "contain",
+        backdropFilter: "blur(18px)",
+        borderRadius: { xs: 0, xl: 1.25 },
+        mt: { xs: 0, xl: 8.5 },
+        mb: { xs: 0, xl: 2.5 },
+        ...sx,
       }}
     >
-      <Toolbar sx={{ minHeight: 80 }} />
       <Box
         sx={{
           px: 1.5,
@@ -292,8 +299,8 @@ function RailShell({
           justifyContent: collapsed ? "center" : "space-between",
           alignItems: "center",
           flexShrink: 0,
-          borderBottom: 1,
-          borderColor: "rgba(28, 38, 54, 0.42)",
+          borderBottom: 0,
+          background: "linear-gradient(180deg, rgba(255,255,255,0.02), transparent)",
         }}
       >
         {collapsed ? null : (
@@ -350,6 +357,7 @@ function RailShell({
             flex: "1 1 auto",
             ...subtleScrollbarSx,
             overscrollBehavior: "contain",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.015), transparent 22%)",
           }}
         >
           {children}
@@ -375,16 +383,17 @@ function RailShell({
             height: 56,
             borderRadius: 999,
             bgcolor: "rgba(61, 79, 106, 0.62)",
+            bgcolor: "rgba(84, 104, 148, 0.22)",
           },
           "&:hover::before": {
-            bgcolor: "rgba(110, 168, 254, 0.5)",
+            bgcolor: "rgba(116, 163, 255, 0.34)",
           },
         }}
       >
         <DragIndicatorRounded
           sx={{
             position: "absolute",
-            color: "rgba(203, 213, 225, 0.54)",
+            color: "rgba(213, 194, 176, 0.18)",
             fontSize: 18,
             transform: "rotate(90deg)",
           }}
@@ -476,6 +485,8 @@ function getSectionRequirementScope(requirements, sectionId) {
 }
 
 function StormWorkspaceBar({
+  collapsed,
+  onToggleCollapsed,
   activeTab,
   onTabChange,
   notesByTab,
@@ -497,89 +508,93 @@ function StormWorkspaceBar({
     <Paper
       variant="outlined"
       sx={{
-        borderRadius: { xs: 0.75, xl: 0 },
+        borderRadius: { xs: 0.5, xl: 0 },
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
         height: "100%",
-        bgcolor: "#141920",
+        bgcolor: "rgba(18, 21, 28, 0.92)",
         backgroundImage: "none",
-        boxShadow: { xs: "0 18px 34px rgba(2, 6, 23, 0.36)", xl: "none" },
-        borderTop: 1,
-        borderLeft: { xs: 1, xl: 0 },
-        borderRight: { xs: 1, xl: 0 },
+        boxShadow: { xs: "0 18px 32px rgba(0, 0, 0, 0.12)", xl: "none" },
+        borderTop: 0,
+        borderLeft: 0,
+        borderRight: 0,
         borderBottom: 0,
-        borderColor: "rgba(28, 38, 54, 0.38)",
+        borderColor: "transparent",
       }}
     >
       <Box
         sx={{
-          borderBottom: 1,
-          borderColor: "rgba(28, 38, 54, 0.32)",
-          px: 1.25,
-          pt: 0.35,
-          background: "linear-gradient(180deg, #151A22 0%, #12171E 100%)",
+          borderBottom: 0,
+          px: 1.35,
+          py: 0.8,
+          background:
+            "linear-gradient(180deg, rgba(25, 28, 36, 0.98) 0%, rgba(18, 21, 28, 0.98) 100%)",
         }}
       >
-        <Tabs
-          value={activeTab}
-          onChange={(_, value) => onTabChange(value)}
-          variant="scrollable"
-          scrollButtons="auto"
-          textColor="primary"
-          indicatorColor="primary"
-          sx={{
-            minHeight: 38,
-            "& .MuiTabs-indicator": {
-              display: "none",
-            },
-            "& .MuiTabs-flexContainer": {
-              alignItems: "flex-end",
-            },
-            "& .MuiTab-root": {
-              minHeight: 38,
-              px: 1.5,
-              py: 0.35,
-              mr: 0.5,
-              borderTopLeftRadius: 4,
-              borderTopRightRadius: 4,
-              borderBottomLeftRadius: 0,
-              borderBottomRightRadius: 0,
-              border: "1px solid transparent",
-              borderBottom: 0,
-              alignItems: "center",
-              color: "#93A0B5",
-              bgcolor: "transparent",
-            },
-            "& .MuiTab-root.Mui-selected": {
-              color: "#F8FBFF",
-              bgcolor: "#1A2940",
-              borderColor: "rgba(78, 128, 208, 0.56)",
-              boxShadow: "inset 0 2px 0 rgba(116, 167, 255, 0.82)",
-            },
-          }}
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={1}
+          alignItems={{ xs: "stretch", md: "center" }}
+          justifyContent="space-between"
         >
-          {STORM_WORKSPACE_TABS.map((label) => (
-            <Tab
-              key={label}
-              value={label}
-              label={label}
-              sx={
-                SHORT_STORM_WORKSPACE_TABS.has(label)
-                  ? {
-                      minHeight: 20,
-                      py: 0.05,
-                      mt: "auto",
-                      "&.MuiTab-root": {
-                        minHeight: 20,
-                      },
-                    }
-                  : undefined
-              }
-            />
-          ))}
-        </Tabs>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            Section Solution
+          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center">
+            {!collapsed ? (
+              <Box
+                sx={{
+                  display: "inline-grid",
+                  gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, minmax(0, 1fr))" },
+                  p: 0.35,
+                  bgcolor: "rgba(12, 14, 19, 0.82)",
+                  border: "1px solid rgba(132, 121, 111, 0.06)",
+                  borderRadius: 1,
+                  minWidth: { xs: "100%", md: 720 },
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.02)",
+                }}
+              >
+                {STORM_WORKSPACE_TABS.map((label) => {
+                  const selected = activeTab === label;
+                  return (
+                    <Button
+                      key={label}
+                      onClick={() => onTabChange(label)}
+                      variant="text"
+                      sx={{
+                        minHeight: 32,
+                        px: 1.6,
+                        borderRadius: 0.5,
+                        color: selected ? "#F5EFE6" : "#8D8891",
+                        bgcolor: selected ? "rgba(116, 163, 255, 0.2)" : "transparent",
+                        border: "1px solid",
+                        borderColor: selected ? "rgba(116, 163, 255, 0.16)" : "transparent",
+                        boxShadow: selected ? "inset 0 1px 0 rgba(255,255,255,0.03)" : "none",
+                        fontSize: "0.86rem",
+                        lineHeight: 1.05,
+                        justifyContent: "center",
+                        "&:hover": {
+                          bgcolor: selected ? "rgba(116, 163, 255, 0.24)" : "rgba(255,255,255,0.02)",
+                          borderColor: selected ? "rgba(116, 163, 255, 0.2)" : "transparent",
+                        },
+                      }}
+                    >
+                      {label}
+                    </Button>
+                  );
+                })}
+              </Box>
+            ) : null}
+            <Tooltip title={collapsed ? "Expand Section Solution" : "Collapse Section Solution"}>
+              <IconButton size="small" onClick={onToggleCollapsed}>
+                {collapsed ? <ExpandLessRounded /> : <ExpandMoreRounded />}
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        </Stack>
       </Box>
+      {collapsed ? null : (
       <Box
         sx={{
           p: 2.5,
@@ -587,7 +602,7 @@ function StormWorkspaceBar({
           minHeight: 0,
           overflowY: "auto",
           overscrollBehavior: "contain",
-          backgroundColor: "#141920",
+          backgroundColor: "#181C24",
           ...subtleScrollbarSx,
         }}
       >
@@ -658,6 +673,7 @@ function StormWorkspaceBar({
           />
         </Stack>
       </Box>
+      )}
     </Paper>
   );
 }
@@ -665,6 +681,8 @@ function StormWorkspaceBar({
 export function StudioApp() {
   const [mounted, setMounted] = useState(false);
   const [workspace, setWorkspace] = useState(buildEmptyWorkspace);
+  const [undoHistory, setUndoHistory] = useState([]);
+  const [redoHistory, setRedoHistory] = useState([]);
   const [stormWorkspaceTab, setStormWorkspaceTab] = useState(STORM_WORKSPACE_TABS[0]);
   const [stormWorkspaceNotes, setStormWorkspaceNotes] = useState({});
   const [stormWorkspacePrompts, setStormWorkspacePrompts] = useState({});
@@ -673,6 +691,7 @@ export function StudioApp() {
   const [mtsPromptDraft, setMtsPromptDraft] = useState("");
   const [homeDialogOpen, setHomeDialogOpen] = useState(false);
   const [stormWorkspaceHeight, setStormWorkspaceHeight] = useState(BOTTOM_DOCK_DEFAULT_HEIGHT);
+  const [stormWorkspaceCollapsed, setStormWorkspaceCollapsed] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState("");
   const [selectedRequirementId, setSelectedRequirementId] = useState("");
   const [uploadState, setUploadState] = useState({
@@ -727,20 +746,6 @@ export function StudioApp() {
     );
   }, [activeSection, stormWorkspacePrompts]);
 
-  const workspaceStats = useMemo(() => {
-    const extractedCount = requirements.filter(
-      (requirement) => requirement.sourceType === "extracted",
-    ).length;
-    const manualCount = requirements.filter(
-      (requirement) => requirement.sourceType === "manual",
-    ).length;
-    return {
-      sections: displaySections.length,
-      requirements: requirements.length,
-      extractedCount,
-      manualCount,
-    };
-  }, [displaySections.length, requirements]);
   const isHomeScreen = !sections.length;
 
   function buildStudioSnapshot() {
@@ -761,11 +766,14 @@ export function StudioApp() {
 
   function resetToHomeScreen() {
     setWorkspace(buildEmptyWorkspace());
+    setUndoHistory([]);
+    setRedoHistory([]);
     setStormWorkspaceTab(STORM_WORKSPACE_TABS[0]);
     setStormWorkspaceNotes({});
     setStormWorkspacePrompts({});
     setActiveSectionId("");
     setSelectedRequirementId("");
+    setStormWorkspaceCollapsed(false);
     setCollapsedRequirementIds(new Set());
     setUploadState({ loading: false, error: "" });
     setMtsDefinitionGenerationState({ loading: false, error: "" });
@@ -773,6 +781,8 @@ export function StudioApp() {
 
   function restoreStudioSnapshot(snapshot) {
     setWorkspace(snapshot?.workspace ? snapshot.workspace : buildEmptyWorkspace());
+    setUndoHistory([]);
+    setRedoHistory([]);
     setActiveSectionId(typeof snapshot?.activeSectionId === "string" ? snapshot.activeSectionId : "");
     setSelectedRequirementId(
       typeof snapshot?.selectedRequirementId === "string" ? snapshot.selectedRequirementId : "",
@@ -795,6 +805,7 @@ export function StudioApp() {
         ? clampDockHeight(snapshot.stormWorkspaceHeight)
         : BOTTOM_DOCK_DEFAULT_HEIGHT,
     );
+    setStormWorkspaceCollapsed(false);
     setLeftRailWidth(
       typeof snapshot?.leftRailWidth === "number"
         ? clampRailWidth(snapshot.leftRailWidth)
@@ -992,7 +1003,7 @@ export function StudioApp() {
       return;
     }
 
-    setWorkspace((current) => ({
+    applyWorkspaceChange((current) => ({
       ...current,
       requirements: current.requirements.map((requirement) =>
         requirement.id === selectedRequirement.id
@@ -1000,6 +1011,78 @@ export function StudioApp() {
           : requirement,
       ),
     }));
+  }
+
+  function pushHistorySnapshot(setHistory, snapshot) {
+    setHistory((current) => [snapshot, ...current].slice(0, UNDO_HISTORY_LIMIT));
+  }
+
+  function applyWorkspaceChange(updateWorkspace, options = {}) {
+    const nextWorkspace =
+      typeof updateWorkspace === "function" ? updateWorkspace(workspace) : updateWorkspace;
+
+    const workspaceChanged =
+      nextWorkspace !== workspace &&
+      (nextWorkspace.sections !== workspace.sections ||
+        nextWorkspace.requirements !== workspace.requirements ||
+        nextWorkspace.sourceFilename !== workspace.sourceFilename ||
+        nextWorkspace.sourceFormat !== workspace.sourceFormat);
+
+    if (!workspaceChanged) {
+      return;
+    }
+
+    pushHistorySnapshot(setUndoHistory, {
+      workspace,
+      activeSectionId,
+      selectedRequirementId,
+    });
+    setRedoHistory([]);
+    setWorkspace(nextWorkspace);
+
+    if (Object.prototype.hasOwnProperty.call(options, "nextActiveSectionId")) {
+      setActiveSectionId(options.nextActiveSectionId || "");
+    }
+
+    if (Object.prototype.hasOwnProperty.call(options, "nextSelectedRequirementId")) {
+      setSelectedRequirementId(options.nextSelectedRequirementId || "");
+    }
+  }
+
+  function handleUndo() {
+    if (!undoHistory.length) {
+      return;
+    }
+
+    const [latestSnapshot, ...remainingHistory] = undoHistory;
+    setUndoHistory(remainingHistory);
+    pushHistorySnapshot(setRedoHistory, {
+      workspace,
+      activeSectionId,
+      selectedRequirementId,
+    });
+    setWorkspace(latestSnapshot.workspace);
+    setActiveSectionId(latestSnapshot.activeSectionId || "");
+    setSelectedRequirementId(latestSnapshot.selectedRequirementId || "");
+    setCollapsedRequirementIds(new Set());
+  }
+
+  function handleRedo() {
+    if (!redoHistory.length) {
+      return;
+    }
+
+    const [latestSnapshot, ...remainingHistory] = redoHistory;
+    setRedoHistory(remainingHistory);
+    pushHistorySnapshot(setUndoHistory, {
+      workspace,
+      activeSectionId,
+      selectedRequirementId,
+    });
+    setWorkspace(latestSnapshot.workspace);
+    setActiveSectionId(latestSnapshot.activeSectionId || "");
+    setSelectedRequirementId(latestSnapshot.selectedRequirementId || "");
+    setCollapsedRequirementIds(new Set());
   }
 
   function handleRequirementChange(field, value) {
@@ -1018,7 +1101,7 @@ export function StudioApp() {
     }
 
     let insertedRequirement = createTopLevelRequirement(activeSection.id);
-    setWorkspace((current) => {
+    applyWorkspaceChange((current) => {
       const currentSelectedRequirement = selectedRequirementId
         ? getRequirementById(current.requirements, selectedRequirementId)
         : null;
@@ -1065,8 +1148,7 @@ export function StudioApp() {
           0,
         ),
       };
-    });
-    setSelectedRequirementId(insertedRequirement.id);
+    }, { nextSelectedRequirementId: insertedRequirement.id });
   }
 
   function handleCreateChildRequirement() {
@@ -1075,11 +1157,10 @@ export function StudioApp() {
     }
 
     const nextRequirement = createChildRequirement(selectedRequirement, requirements);
-    setWorkspace((current) => ({
+    applyWorkspaceChange((current) => ({
       ...current,
       requirements: [...current.requirements, nextRequirement],
-    }));
-    setSelectedRequirementId(nextRequirement.id);
+    }), { nextSelectedRequirementId: nextRequirement.id });
   }
 
   function handleAssignToActiveSection() {
@@ -1087,7 +1168,7 @@ export function StudioApp() {
       return;
     }
 
-    setWorkspace((current) => ({
+    applyWorkspaceChange((current) => ({
       ...current,
       requirements: reassignRequirement(
         current.requirements,
@@ -1102,7 +1183,7 @@ export function StudioApp() {
       return;
     }
 
-    setWorkspace((current) => ({
+    applyWorkspaceChange((current) => ({
       ...current,
       requirements: reassignRequirement(
         current.requirements,
@@ -1117,7 +1198,7 @@ export function StudioApp() {
       return;
     }
 
-    setWorkspace((current) => ({
+    applyWorkspaceChange((current) => ({
       ...current,
       requirements: moveRequirement(
         current.requirements,
@@ -1132,7 +1213,7 @@ export function StudioApp() {
       return;
     }
 
-    setWorkspace((current) => ({
+    applyWorkspaceChange((current) => ({
       ...current,
       requirements: promoteRequirement(current.requirements, selectedRequirement.id),
     }));
@@ -1143,14 +1224,32 @@ export function StudioApp() {
       return;
     }
 
-    setWorkspace((current) => ({
+    applyWorkspaceChange((current) => ({
       ...current,
       requirements: demoteRequirement(current.requirements, selectedRequirement.id),
     }));
   }
 
+  function handleDeleteRequirement() {
+    if (!selectedRequirement) {
+      return;
+    }
+
+    const requirementId = selectedRequirement.id;
+    const fallbackSectionId = activeSection?.id || selectedRequirement.sectionId;
+    const remainingRequirements = deleteRequirement(requirements, requirementId);
+    const fallbackRequirement = fallbackSectionId
+      ? getSectionRoots(remainingRequirements, fallbackSectionId)[0]
+      : null;
+
+    applyWorkspaceChange((current) => ({
+      ...current,
+      requirements: deleteRequirement(current.requirements, requirementId),
+    }), { nextSelectedRequirementId: fallbackRequirement?.id ?? "" });
+  }
+
   function handleReorderRequirements(nextRequirements) {
-    setWorkspace((current) => ({
+    applyWorkspaceChange((current) => ({
       ...current,
       requirements: nextRequirements,
     }));
@@ -1173,7 +1272,7 @@ export function StudioApp() {
       return;
     }
 
-    setWorkspace((current) => ({
+    applyWorkspaceChange((current) => ({
       ...current,
       sections: arrayMove(current.sections, oldIndex, newIndex),
     }));
@@ -1229,7 +1328,7 @@ export function StudioApp() {
 
     const nextSection = buildCustomSection(trimmedLabel, sections.length);
 
-    setWorkspace((current) => ({
+    applyWorkspaceChange((current) => ({
       ...current,
       sections: [...current.sections, nextSection],
       requirements: reassignRequirement(
@@ -1237,9 +1336,10 @@ export function StudioApp() {
         selectedRequirement.id,
         nextSection.id,
       ),
-    }));
-    setActiveSectionId(nextSection.id);
-    setSelectedRequirementId(selectedRequirement.id);
+    }), {
+      nextActiveSectionId: nextSection.id,
+      nextSelectedRequirementId: selectedRequirement.id,
+    });
   }
 
   function handleRenameSection(sectionId) {
@@ -1258,7 +1358,7 @@ export function StudioApp() {
       return;
     }
 
-    setWorkspace((current) => ({
+    applyWorkspaceChange((current) => ({
       ...current,
       sections: current.sections.map((entry) =>
         entry.id === sectionId
@@ -1492,6 +1592,8 @@ export function StudioApp() {
       const payload = await response.json();
       const nextWorkspace = transformOutlineToWorkspace(payload);
       setWorkspace(nextWorkspace);
+      setUndoHistory([]);
+      setRedoHistory([]);
       setActiveSectionId(nextWorkspace.sections[0]?.id ?? "");
       setSelectedRequirementId(
         getSectionRoots(nextWorkspace.requirements, nextWorkspace.sections[0]?.id ?? "")[0]
@@ -1579,10 +1681,17 @@ export function StudioApp() {
     <Box
       sx={{
         display: "flex",
-        flexDirection: { xs: "column", xl: "row" },
+        flexDirection: "row",
         height: "100vh",
         bgcolor: "background.default",
         overflow: "hidden",
+        gap: 2.5,
+        px: 2.5,
+        "@media (max-width: 1600px)": {
+          flexDirection: "column",
+          gap: 0,
+          px: 0,
+        },
       }}
     >
       <AppBar
@@ -1592,25 +1701,38 @@ export function StudioApp() {
         sx={{
           left: 0,
           right: 0,
-          borderBottom: 1,
-          borderColor: "rgba(36, 50, 74, 0.95)",
+          borderBottom: 0,
           backdropFilter: "blur(16px)",
-          bgcolor: "rgba(10, 15, 26, 0.92)",
-          pl: 2,
-          pr: 2,
+          bgcolor: "rgba(9, 11, 15, 0.82)",
+          pl: { xs: 2, xl: 5 },
+          pr: { xs: 1, xl: 1.5 },
           transition: "padding 180ms ease",
+          boxShadow: "none",
         }}
       >
-        <Toolbar sx={{ gap: 2, minHeight: 76, pl: 0 }}>
+        <Toolbar sx={{ minHeight: 76, pl: 0, pr: 0 }}>
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h5" sx={{ fontWeight: 700 }}>
               StormSurge Studio
             </Typography>
           </Box>
           {!isHomeScreen ? (
-            <>
-              <Button variant="outlined" startIcon={<HomeRounded />} onClick={handleGoHome}>
-                Home
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, ml: "auto" }}>
+              <Button
+                variant="outlined"
+                startIcon={<UndoRounded />}
+                onClick={handleUndo}
+                disabled={!undoHistory.length}
+              >
+                Undo
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<RedoRounded />}
+                onClick={handleRedo}
+                disabled={!redoHistory.length}
+              >
+                Redo
               </Button>
               <Button
                 variant="contained"
@@ -1620,17 +1742,10 @@ export function StudioApp() {
               >
                 Save Project
               </Button>
-              {workspace.sourceFilename ? (
-                <Chip
-                  color="primary"
-                  variant="outlined"
-                  icon={<InsightsRounded />}
-                  label={workspace.sourceFilename}
-                />
-              ) : null}
-              <Chip label={`${workspaceStats.sections} tabs`} variant="outlined" />
-              <Chip label={`${workspaceStats.requirements} nodes`} variant="outlined" />
-            </>
+              <Button variant="outlined" startIcon={<HomeRounded />} onClick={handleGoHome}>
+                Home
+              </Button>
+            </Box>
           ) : null}
         </Toolbar>
       </AppBar>
@@ -1644,6 +1759,12 @@ export function StudioApp() {
           collapsed={leftRailCollapsed}
           onToggleCollapsed={() => setLeftRailCollapsed((current) => !current)}
           onResizeStart={startRailResize("left")}
+          sx={{
+            order: 1,
+            "@media (max-width: 1600px)": {
+              display: "none",
+            },
+          }}
         >
           {uploadState.error ? <Alert severity="error">{uploadState.error}</Alert> : null}
 
@@ -1697,20 +1818,24 @@ export function StudioApp() {
       <Box
         component="main"
         sx={{
+          order: 2,
           flexGrow: 1,
           minWidth: 0,
           minHeight: 0,
           display: "flex",
           flexDirection: "column",
-          pl: isHomeScreen ? 0 : { xs: 0.375, md: 0.5, xl: 0.75 },
-          pr: isHomeScreen ? 0 : { xs: 0.75, md: 1, xl: 1.25 },
-          py: isHomeScreen ? 0 : 2,
+          pl: 0,
+          pr: 0,
+          py: isHomeScreen ? 0 : { xs: 0, xl: 0.75 },
           overflow: "hidden",
           overscrollBehavior: "contain",
-          bgcolor: isHomeScreen ? "background.default" : "#171C24",
-          borderLeft: isHomeScreen ? 0 : { xs: 0, xl: 1 },
-          borderRight: isHomeScreen ? 0 : { xs: 0, xl: 1 },
-          borderColor: "rgba(69, 87, 116, 0.98)",
+          bgcolor: "transparent",
+          borderLeft: 0,
+          borderRight: 0,
+          borderColor: "transparent",
+          "@media (max-width: 1600px)": {
+            order: 1,
+          },
         }}
       >
         <Toolbar sx={{ minHeight: 76 }} />
@@ -1721,8 +1846,8 @@ export function StudioApp() {
             overflowY: isHomeScreen ? "hidden" : "auto",
             ...(isHomeScreen ? {} : subtleScrollbarSx),
             overscrollBehavior: "contain",
-            px: isHomeScreen ? 3 : { xs: 0.5, xl: 1.25 },
-            py: isHomeScreen ? 3 : 0.75,
+            px: isHomeScreen ? 3 : { xs: 0.5, xl: 0.5 },
+            py: isHomeScreen ? 3 : { xs: 0.35, xl: 0.15 },
             display: "flex",
             alignItems: isHomeScreen ? "center" : "stretch",
             justifyContent: isHomeScreen ? "center" : "flex-start",
@@ -1730,7 +1855,7 @@ export function StudioApp() {
         >
         <Stack spacing={3.25} sx={{ minHeight: "100%", width: "100%", maxWidth: isHomeScreen ? 980 : "none" }}>
           {uploadState.loading ? (
-            <Paper variant="outlined" sx={{ p: 6, borderRadius: 0.75 }}>
+            <Paper variant="outlined" sx={{ p: 6, borderRadius: 0.5 }}>
               <Stack spacing={2} alignItems="center">
                 <CircularProgress />
                 <Typography variant="h6">Building hierarchy from uploaded PWS</Typography>
@@ -1743,7 +1868,7 @@ export function StudioApp() {
           ) : null}
 
           {!sections.length && !uploadState.loading ? (
-            <Paper variant="outlined" sx={{ p: 6, borderRadius: 0.75, width: "100%" }}>
+            <Paper variant="outlined" sx={{ p: 6, borderRadius: 0.5, width: "100%" }}>
               <Stack spacing={3} alignItems="flex-start">
                 <CloudUploadRounded color="primary" sx={{ fontSize: 40 }} />
                 <Typography variant="h5" sx={{ fontWeight: 700 }}>
@@ -1766,7 +1891,7 @@ export function StudioApp() {
                         sx={{
                           p: 1.5,
                           width: "100%",
-                          borderRadius: 0.75,
+                          borderRadius: 0.5,
                           bgcolor: "#15191F",
                           borderColor: "rgba(47, 64, 90, 0.72)",
                         }}
@@ -1816,36 +1941,40 @@ export function StudioApp() {
           <Box
             sx={{
               flexShrink: 0,
-              height: stormWorkspaceHeight,
+              height: stormWorkspaceCollapsed ? 58 : stormWorkspaceHeight,
               position: "relative",
             }}
           >
-            <Box
-              onMouseDown={startDockResize}
-              sx={{
-                position: "absolute",
-                top: -8,
-                left: 0,
-                right: 0,
-                height: 16,
-                cursor: "row-resize",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 1,
-                "&::before": {
-                  content: '""',
-                  width: 72,
-                  height: 6,
-                  borderRadius: 999,
-                  bgcolor: "rgba(148, 163, 184, 0.42)",
-                },
-                "&:hover::before": {
-                  bgcolor: "rgba(148, 163, 184, 0.72)",
-                },
-              }}
-            />
+            {stormWorkspaceCollapsed ? null : (
+              <Box
+                onMouseDown={startDockResize}
+                sx={{
+                  position: "absolute",
+                  top: -8,
+                  left: 0,
+                  right: 0,
+                  height: 16,
+                  cursor: "row-resize",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 1,
+                  "&::before": {
+                    content: '""',
+                    width: 72,
+                    height: 6,
+                    borderRadius: 999,
+                    bgcolor: "rgba(148, 163, 184, 0.42)",
+                  },
+                  "&:hover::before": {
+                    bgcolor: "rgba(148, 163, 184, 0.72)",
+                  },
+                }}
+              />
+            )}
             <StormWorkspaceBar
+              collapsed={stormWorkspaceCollapsed}
+              onToggleCollapsed={() => setStormWorkspaceCollapsed((current) => !current)}
               activeTab={stormWorkspaceTab}
               onTabChange={setStormWorkspaceTab}
               notesByTab={activeSectionStormWorkspaceNotes}
@@ -1864,12 +1993,18 @@ export function StudioApp() {
       {!isHomeScreen ? (
         <RailShell
           side="right"
-          title="Inspector"
+          title="Requirements"
           subtitle="Selection"
           width={rightRailDisplayWidth}
           collapsed={rightRailCollapsed}
           onToggleCollapsed={() => setRightRailCollapsed((current) => !current)}
           onResizeStart={startRailResize("right")}
+          sx={{
+            order: 3,
+            "@media (max-width: 1600px)": {
+              display: "none",
+            },
+          }}
         >
           <DetailInspector
             section={activeSection}
@@ -1889,6 +2024,7 @@ export function StudioApp() {
             onPromoteRequirement={handlePromoteRequirement}
             onDemoteRequirement={handleDemoteRequirement}
             onCreateSectionFromRequirement={handleCreateSectionFromRequirement}
+            onDeleteRequirement={handleDeleteRequirement}
           />
         </RailShell>
       ) : null}

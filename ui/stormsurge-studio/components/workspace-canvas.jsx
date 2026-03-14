@@ -51,33 +51,29 @@ function RequirementCard({
   const isManualRequirement = requirement.sourceType === "manual";
   const accentColor = isManualRequirement
     ? selected
-      ? "#F59E0B"
-      : "#D97706"
+      ? "#F2B36D"
+      : "#D8892F"
     : selected
-      ? "primary.light"
-      : "primary.main";
-  const markerColor = isManualRequirement ? accentColor : "primary.main";
+      ? "#9BC0FF"
+      : "#74A3FF";
+  const markerColor = accentColor;
 
   return (
-    <Box ref={setNodeRef} style={style} sx={{ mb: 0.6 }}>
-      <Paper
-        variant="outlined"
+    <Box ref={setNodeRef} style={style} sx={{ mb: 0.85 }}>
+      <Box
         onClick={() => onSelect(requirement.id)}
         sx={{
           position: "relative",
-          overflow: "hidden",
-          pl: 1.75,
-          pr: 1.2,
-          py: 0.82,
+          pl: 1.5,
+          pr: 1,
+          py: 0.7,
           minHeight: 0,
-          borderRadius: 1,
           cursor: "pointer",
-          borderColor: selected ? "rgba(110, 168, 254, 0.52)" : "rgba(30, 40, 58, 0.82)",
-          bgcolor: selected ? "#1F2C42" : "#0F141B",
-          boxShadow: selected ? "0 12px 24px rgba(2, 8, 18, 0.28)" : "none",
-          transition: "border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease",
+          bgcolor: selected ? "rgba(26, 22, 18, 0.8)" : "rgba(7, 9, 13, 0.96)",
+          borderBottom: "1px solid rgba(255,255,255,0.04)",
+          transition: "background-color 120ms ease",
           "&:hover": {
-            bgcolor: selected ? "#223148" : "#131922",
+            bgcolor: selected ? "rgba(31, 26, 20, 0.84)" : "rgba(10, 12, 16, 0.98)",
           },
         }}
       >
@@ -87,57 +83,43 @@ function RequirementCard({
           sx={{
             position: "absolute",
             left: 0,
-            top: 0,
-            bottom: 0,
-            width: 8,
+            top: 10,
+            bottom: 10,
+            width: 6,
             bgcolor: accentColor,
-            opacity: selected ? 1 : 0.5,
+            opacity: selected ? 0.95 : 0.55,
             cursor: "grab",
+            borderRadius: 999,
           }}
         />
-        <Stack direction="row" spacing={1} alignItems="flex-start">
-          <Box
-            sx={{
-              width: 44,
-              minWidth: 44,
-              alignSelf: "stretch",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRight: 1,
-              borderColor: "rgba(43, 58, 85, 0.92)",
-              pl: 0.15,
-              pr: 0.25,
-            }}
-          >
-          <Typography
-            variant="caption"
-            color={markerColor}
-            sx={{
-              fontSize: "0.73rem",
-              fontWeight: 700,
-              letterSpacing: 0.15,
-                textAlign: "center",
-                lineHeight: 1,
-                wordBreak: "break-word",
-              }}
-            >
-              {formatRequirementMarker(requirement)}
-            </Typography>
-          </Box>
-          <Box sx={{ flexGrow: 1, minWidth: 0, pr: 0.15 }}>
+        <Stack direction="row" spacing={1.15} alignItems="center">
+          <Box sx={{ flexGrow: 1, minWidth: 0, pr: 0.15, py: 0.2, pl: 0.05 }}>
             <Typography
               variant="body2"
               color="text.primary"
               sx={{
                 fontSize: "0.89rem",
-                lineHeight: 1.32,
+                lineHeight: 1.28,
                 display: "-webkit-box",
                 WebkitLineClamp: 3,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
               }}
             >
+              <Box
+                component="span"
+                sx={{
+                  color: markerColor,
+                  fontSize: "0.89rem",
+                  fontWeight: 700,
+                  letterSpacing: 0.12,
+                  mr: 0.9,
+                  verticalAlign: "baseline",
+                  textTransform: "uppercase",
+                }}
+              >
+                {formatRequirementMarker(requirement)}
+              </Box>
               {requirement.text || requirement.summary}
             </Typography>
           </Box>
@@ -164,8 +146,8 @@ function RequirementCard({
             )}
           </Button>
         </Stack>
-      </Paper>
-      {children}
+      </Box>
+      {children ? <Box sx={{ mt: 0.85 }}>{children}</Box> : null}
     </Box>
   );
 }
@@ -273,7 +255,14 @@ function RequirementList({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={requirementIds} strategy={verticalListSortingStrategy}>
-        <Box sx={{ mt: depth === 0 ? 0 : 0.3 }}>
+        <Box
+          sx={{
+            mt: 0,
+            p: 0,
+            borderRadius: 0,
+            bgcolor: "transparent",
+          }}
+        >
           {requirements.map((requirement) => (
             <SortableRequirementNode
               key={requirement.id}
@@ -316,7 +305,7 @@ export function WorkspaceCanvas({
       variant="outlined"
       sx={{
         p: 2.75,
-        borderRadius: 1,
+        borderRadius: 0.5,
         bgcolor: "transparent",
         borderColor: "transparent",
         boxShadow: "none",
