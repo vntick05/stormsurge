@@ -280,7 +280,7 @@ services:
       - /home/admin/stormsurge/data:/opt/perfect-rfp/data:ro
     environment:
       API_PORT: ${API_PORT:-8460}
-      TRTLLM_BASE_URL: ${TRTLLM_BASE_URL:-http://127.0.0.1:8355}
+      TRTLLM_BASE_URL: ${TRTLLM_BASE_URL:-http://127.0.0.1:8455}
       RETRIEVAL_SERVICE_BASE_URL: ${RETRIEVAL_SERVICE_BASE_URL:-http://127.0.0.1:8481}
       PROJECTS_ROOT: ${PROJECTS_ROOT:-/opt/perfect-rfp/data/rfps}
       PROJECT_CHAT_TOP_K: ${PROJECT_CHAT_TOP_K:-8}

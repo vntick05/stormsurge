@@ -26,6 +26,7 @@ import {
   Alert,
   AppBar,
   Box,
+  Button,
   Chip,
   CircularProgress,
   Divider,
@@ -49,6 +50,7 @@ import {
   createChildRequirement,
   createTopLevelRequirement,
   demoteRequirement,
+  getChildren,
   getRequirementById,
   getSectionRoots,
   moveRequirement,
@@ -355,7 +357,51 @@ function buildEmptyStormWorkspace() {
   }, {});
 }
 
-function StormWorkspaceBar({ activeTab, onTabChange, notesByTab, onNotesChange }) {
+function normalizeStormWorkspaceNotes(notesBySection) {
+  if (!notesBySection || typeof notesBySection !== "object" || Array.isArray(notesBySection)) {
+    return {};
+  }
+
+  return Object.entries(notesBySection).reduce((accumulator, [sectionId, notes]) => {
+    if (!notes || typeof notes !== "object" || Array.isArray(notes)) {
+      return accumulator;
+    }
+
+    accumulator[sectionId] = {
+      ...buildEmptyStormWorkspace(),
+      ...notes,
+    };
+    return accumulator;
+  }, {});
+}
+
+function getSectionRequirementScope(requirements, sectionId) {
+  const orderedRequirements = [];
+  const visit = (requirement, depth) => {
+    orderedRequirements.push({ requirement, depth });
+    getChildren(requirements, requirement.id).forEach((child) => visit(child, depth + 1));
+  };
+
+  getSectionRoots(requirements, sectionId).forEach((requirement) => visit(requirement, 0));
+  return orderedRequirements;
+}
+
+function StormWorkspaceBar({
+  activeTab,
+  onTabChange,
+  notesByTab,
+  onNotesChange,
+  onGenerateMtsDefinition,
+  generationState,
+  activeSection,
+  activeSectionRequirementCount,
+}) {
+  const canGenerateMtsDefinition =
+    activeTab === "MTS Definition" &&
+    Boolean(activeSection?.id) &&
+    activeSectionRequirementCount > 0 &&
+    !generationState.loading;
+
   return (
     <Paper
       variant="outlined"
@@ -415,14 +461,39 @@ function StormWorkspaceBar({ activeTab, onTabChange, notesByTab, onNotesChange }
         }}
       >
         <Stack spacing={1.5}>
-          <Box>
-            <Typography variant="overline" color="text.secondary">
-              Storm Workspace
-            </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              {activeTab}
-            </Typography>
-          </Box>
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={1.5}
+            alignItems={{ xs: "flex-start", md: "center" }}
+            justifyContent="space-between"
+          >
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                {activeTab}
+              </Typography>
+              {activeSection ? (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                  {activeSection.label} · {activeSectionRequirementCount} requirement
+                  {activeSectionRequirementCount === 1 ? "" : "s"}
+                </Typography>
+              ) : null}
+            </Box>
+            {activeTab === "MTS Definition" ? (
+              <Button
+                variant="contained"
+                onClick={onGenerateMtsDefinition}
+                disabled={!canGenerateMtsDefinition}
+                startIcon={
+                  generationState.loading ? <CircularProgress size={16} color="inherit" /> : null
+                }
+              >
+                {generationState.loading ? "Generating..." : "Generate Definition"}
+              </Button>
+            ) : null}
+          </Stack>
+          {generationState.error && activeTab === "MTS Definition" ? (
+            <Alert severity="error">{generationState.error}</Alert>
+          ) : null}
           <TextField
             multiline
             minRows={10}
@@ -450,11 +521,15 @@ export function StudioApp() {
   const [mounted, setMounted] = useState(false);
   const [workspace, setWorkspace] = useState(buildEmptyWorkspace);
   const [stormWorkspaceTab, setStormWorkspaceTab] = useState(STORM_WORKSPACE_TABS[0]);
-  const [stormWorkspaceNotes, setStormWorkspaceNotes] = useState(buildEmptyStormWorkspace);
+  const [stormWorkspaceNotes, setStormWorkspaceNotes] = useState({});
   const [stormWorkspaceHeight, setStormWorkspaceHeight] = useState(BOTTOM_DOCK_DEFAULT_HEIGHT);
   const [activeSectionId, setActiveSectionId] = useState("");
   const [selectedRequirementId, setSelectedRequirementId] = useState("");
   const [uploadState, setUploadState] = useState({
+    loading: false,
+    error: "",
+  });
+  const [mtsDefinitionGenerationState, setMtsDefinitionGenerationState] = useState({
     loading: false,
     error: "",
   });
@@ -477,6 +552,20 @@ export function StudioApp() {
   const activeSection =
     displaySections.find((section) => section.id === activeSectionId) ?? displaySections[0] ?? null;
   const selectedRequirement = getRequirementById(requirements, selectedRequirementId);
+  const activeSectionRequirements = useMemo(
+    () => (activeSection ? getSectionRequirementScope(requirements, activeSection.id) : []),
+    [activeSection, requirements],
+  );
+  const activeSectionStormWorkspaceNotes = useMemo(() => {
+    if (!activeSection?.id) {
+      return buildEmptyStormWorkspace();
+    }
+
+    return {
+      ...buildEmptyStormWorkspace(),
+      ...(stormWorkspaceNotes[activeSection.id] || {}),
+    };
+  }, [activeSection, stormWorkspaceNotes]);
 
   const workspaceStats = useMemo(() => {
     const extractedCount = requirements.filter(
@@ -515,10 +604,22 @@ export function StudioApp() {
         setStormWorkspaceTab(parsed.stormWorkspaceTab);
       }
       if (parsed?.stormWorkspaceNotes && typeof parsed.stormWorkspaceNotes === "object") {
-        setStormWorkspaceNotes({
-          ...buildEmptyStormWorkspace(),
-          ...parsed.stormWorkspaceNotes,
-        });
+        const hasLegacyShape = STORM_WORKSPACE_TABS.some(
+          (tab) => typeof parsed.stormWorkspaceNotes?.[tab] === "string",
+        );
+        const restoredActiveSectionId =
+          typeof parsed?.activeSectionId === "string" ? parsed.activeSectionId : "";
+
+        if (hasLegacyShape && restoredActiveSectionId) {
+          setStormWorkspaceNotes({
+            [restoredActiveSectionId]: {
+              ...buildEmptyStormWorkspace(),
+              ...parsed.stormWorkspaceNotes,
+            },
+          });
+        } else {
+          setStormWorkspaceNotes(normalizeStormWorkspaceNotes(parsed.stormWorkspaceNotes));
+        }
       }
       if (typeof parsed?.stormWorkspaceHeight === "number") {
         setStormWorkspaceHeight(clampDockHeight(parsed.stormWorkspaceHeight));
@@ -561,6 +662,10 @@ export function StudioApp() {
       setSelectedRequirementId(fallbackRequirement?.id ?? "");
     }
   }, [mounted, sections, requirements, activeSectionId, selectedRequirementId]);
+
+  useEffect(() => {
+    setMtsDefinitionGenerationState({ loading: false, error: "" });
+  }, [activeSectionId]);
 
   useEffect(() => {
     if (!mounted) {
@@ -912,10 +1017,68 @@ export function StudioApp() {
   }
 
   function handleStormWorkspaceNoteChange(tab, value) {
+    if (!activeSection?.id) {
+      return;
+    }
+
     setStormWorkspaceNotes((current) => ({
       ...current,
-      [tab]: value,
+      [activeSection.id]: {
+        ...buildEmptyStormWorkspace(),
+        ...(current[activeSection.id] || {}),
+        [tab]: value,
+      },
     }));
+  }
+
+  async function handleGenerateMtsDefinition() {
+    if (!activeSection || !activeSectionRequirements.length) {
+      setMtsDefinitionGenerationState({
+        loading: false,
+        error: "Select a section that has requirements before generating.",
+      });
+      return;
+    }
+
+    setMtsDefinitionGenerationState({ loading: true, error: "" });
+
+    try {
+      const response = await fetch("/api/storm/mts-definition", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sectionLabel: activeSection.label,
+          requirements: activeSectionRequirements.map(({ requirement }) => ({
+            id: requirement.sourceRef || requirement.title || requirement.id,
+            section: activeSection.label,
+            text: requirement.text || requirement.summary || requirement.title,
+          })),
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.detail || "MTS definition generation failed");
+      }
+
+      setStormWorkspaceNotes((current) => ({
+        ...current,
+        [activeSection.id]: {
+          ...buildEmptyStormWorkspace(),
+          ...(current[activeSection.id] || {}),
+          ["MTS Definition"]: payload?.definition || "",
+        },
+      }));
+      setStormWorkspaceTab("MTS Definition");
+      setMtsDefinitionGenerationState({ loading: false, error: "" });
+    } catch (error) {
+      setMtsDefinitionGenerationState({
+        loading: false,
+        error: error instanceof Error ? error.message : "MTS definition generation failed",
+      });
+    }
   }
 
   async function handleOutlineUpload(file) {
@@ -1191,8 +1354,12 @@ export function StudioApp() {
           <StormWorkspaceBar
             activeTab={stormWorkspaceTab}
             onTabChange={setStormWorkspaceTab}
-            notesByTab={stormWorkspaceNotes}
+            notesByTab={activeSectionStormWorkspaceNotes}
             onNotesChange={handleStormWorkspaceNoteChange}
+            onGenerateMtsDefinition={handleGenerateMtsDefinition}
+            generationState={mtsDefinitionGenerationState}
+            activeSection={activeSection}
+            activeSectionRequirementCount={activeSectionRequirements.length}
           />
         </Box>
       </Box>
