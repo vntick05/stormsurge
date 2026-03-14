@@ -279,7 +279,6 @@ function RequirementList({
 export function WorkspaceCanvas({
   section,
   allRequirements,
-  unassignedRequirements,
   selectedRequirementId,
   onReorderRequirements,
   onSelectRequirement,
@@ -296,85 +295,32 @@ export function WorkspaceCanvas({
   }
 
   return (
-    <Stack spacing={2}>
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+    <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
         <Stack spacing={1.5}>
           <Box>
-            <Typography variant="overline" color="text.secondary">
-              Hierarchy
-            </Typography>
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               {section.label}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 640 }}>
-              Reorder sibling nodes by drag handle, or use the inspector to change
-              parent-child relationships.
-            </Typography>
           </Box>
 
-          {sectionRoots.length ? (
-            <RequirementList
-              requirements={sectionRoots}
-              allRequirements={allRequirements}
-              selectedRequirementId={selectedRequirementId}
-              onSelectRequirement={onSelectRequirement}
-              onReorderRequirements={onReorderRequirements}
-              collapsedIds={collapsedIds}
-              onToggleCollapsed={onToggleCollapsed}
-            />
-          ) : (
-            <Alert severity="info">
-              This section does not have any extracted or manual nodes yet.
-            </Alert>
-          )}
-        </Stack>
-      </Paper>
-
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-        <Stack spacing={1.5}>
-          <Box>
-            <Typography variant="overline" color="text.secondary">
-              Holding Area
-            </Typography>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Unassigned requirements
-            </Typography>
-          </Box>
-          {!unassignedRequirements.length ? (
-            <Typography variant="body2" color="text.secondary">
-              No unassigned requirements are waiting for triage.
-            </Typography>
-          ) : (
-            <Stack spacing={1.5}>
-              {unassignedRequirements.map((requirement) => (
-                <Paper
-                  key={requirement.id}
-                  variant="outlined"
-                  onClick={() => onSelectRequirement(requirement.id)}
-                  sx={{
-                    p: 1.5,
-                    borderRadius: 1,
-                    cursor: "pointer",
-                    borderColor:
-                      selectedRequirementId === requirement.id ? "primary.main" : "divider",
-                    bgcolor:
-                      selectedRequirementId === requirement.id
-                        ? "rgba(108,182,255,0.14)"
-                        : "rgba(8, 15, 28, 0.88)",
-                  }}
-                >
-                  <Typography variant="caption" color="primary.main" sx={{ fontWeight: 700 }}>
-                    {requirement.title}
-                  </Typography>
-                  <Typography variant="body2" color="text.primary" sx={{ mt: 0.5, lineHeight: 1.4 }}>
-                    {requirement.text || requirement.summary}
-                  </Typography>
-                </Paper>
-              ))}
-            </Stack>
-          )}
-        </Stack>
-      </Paper>
-    </Stack>
+        {sectionRoots.length ? (
+          <RequirementList
+            requirements={sectionRoots}
+            allRequirements={allRequirements}
+            selectedRequirementId={selectedRequirementId}
+            onSelectRequirement={onSelectRequirement}
+            onReorderRequirements={onReorderRequirements}
+            collapsedIds={collapsedIds}
+            onToggleCollapsed={onToggleCollapsed}
+          />
+        ) : (
+          <Alert severity="info">
+            {section.id === "unassigned"
+              ? "No unassigned requirements are waiting for triage."
+              : "This section does not have any extracted or manual nodes yet."}
+          </Alert>
+        )}
+      </Stack>
+    </Paper>
   );
 }

@@ -4,7 +4,7 @@ import { useRef } from "react";
 import UploadFileRounded from "@mui/icons-material/UploadFileRounded";
 import { Button, Paper } from "@mui/material";
 
-export function UploadWorkspaceCard({ loading, onUpload }) {
+export function UploadWorkspaceCard({ loading, onUpload, compact = false }) {
   const inputRef = useRef(null);
 
   async function handleFileChange(event) {
@@ -17,6 +17,33 @@ export function UploadWorkspaceCard({ loading, onUpload }) {
     event.target.value = "";
   }
 
+  const button = (
+    <Button
+      variant="contained"
+      size={compact ? "medium" : "large"}
+      startIcon={<UploadFileRounded />}
+      onClick={() => inputRef.current?.click()}
+      disabled={loading}
+    >
+      {loading ? "Building hierarchy..." : "Upload PWS"}
+    </Button>
+  );
+
+  if (compact) {
+    return (
+      <>
+        <input
+          hidden
+          ref={inputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.txt,.md"
+          onChange={handleFileChange}
+        />
+        {button}
+      </>
+    );
+  }
+
   return (
     <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1 }}>
       <input
@@ -26,15 +53,7 @@ export function UploadWorkspaceCard({ loading, onUpload }) {
         accept=".pdf,.doc,.docx,.txt,.md"
         onChange={handleFileChange}
       />
-      <Button
-        variant="contained"
-        size="large"
-        startIcon={<UploadFileRounded />}
-        onClick={() => inputRef.current?.click()}
-        disabled={loading}
-      >
-        {loading ? "Building hierarchy..." : "Upload PWS"}
-      </Button>
+      {button}
     </Paper>
   );
 }

@@ -93,7 +93,17 @@ export function DetailInspector({
         </Stack>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 2,
+          borderRadius: 1,
+          position: "sticky",
+          top: 0,
+          zIndex: 2,
+          bgcolor: "background.paper",
+        }}
+      >
         <Stack spacing={1.5}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             Hierarchy Controls

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import ChevronLeftRounded from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRounded from "@mui/icons-material/ChevronRightRounded";
 import CloudUploadRounded from "@mui/icons-material/CloudUploadRounded";
-import CreateNewFolderRounded from "@mui/icons-material/CreateNewFolderRounded";
 import DragIndicatorRounded from "@mui/icons-material/DragIndicatorRounded";
 import EditRounded from "@mui/icons-material/EditRounded";
 import HubRounded from "@mui/icons-material/HubRounded";
@@ -73,6 +72,13 @@ const STORM_WORKSPACE_TABS = [
   "Exceeds the Standard",
   "Risks",
 ];
+const UNASSIGNED_SECTION = {
+  id: "unassigned",
+  label: "Unassigned Requirements",
+  shortLabel: "UNAS",
+  sourceKind: "system",
+  sectionNumber: null,
+};
 const subtleScrollbarSx = {
   scrollbarWidth: "thin",
   scrollbarColor: "rgba(96, 109, 128, 0.22) transparent",
@@ -210,6 +216,7 @@ function RailShell({
           `linear-gradient(180deg, ${theme.palette.background.paper}, rgba(15,23,42,0.96))`,
         transition: "width 180ms ease",
         overflow: "hidden",
+        overscrollBehavior: "contain",
       }}
     >
       <Toolbar sx={{ minHeight: 80 }} />
@@ -257,6 +264,7 @@ function RailShell({
             overflowY: "auto",
             minHeight: 0,
             ...subtleScrollbarSx,
+            overscrollBehavior: "contain",
           }}
         >
           <Typography
@@ -448,7 +456,6 @@ export function StudioApp() {
     loading: false,
     error: "",
   });
-  const [newSectionLabel, setNewSectionLabel] = useState("");
   const [leftRailWidth, setLeftRailWidth] = useState(LEFT_RAIL_DEFAULT_WIDTH);
   const [rightRailWidth, setRightRailWidth] = useState(RIGHT_RAIL_DEFAULT_WIDTH);
   const [leftRailCollapsed, setLeftRailCollapsed] = useState(false);
@@ -457,13 +464,17 @@ export function StudioApp() {
 
   const sections = workspace.sections;
   const requirements = workspace.requirements;
-  const activeSection =
-    sections.find((section) => section.id === activeSectionId) ?? sections[0] ?? null;
-  const selectedRequirement = getRequirementById(requirements, selectedRequirementId);
-  const activeRequirements = activeSection
-    ? requirements.filter((requirement) => requirement.sectionId === activeSection.id)
-    : [];
   const unassignedRequirements = getSectionRoots(requirements, "unassigned");
+  const displaySections = useMemo(
+    () =>
+      unassignedRequirements.length
+        ? [...sections, UNASSIGNED_SECTION]
+        : sections,
+    [sections, unassignedRequirements.length],
+  );
+  const activeSection =
+    displaySections.find((section) => section.id === activeSectionId) ?? displaySections[0] ?? null;
+  const selectedRequirement = getRequirementById(requirements, selectedRequirementId);
 
   const workspaceStats = useMemo(() => {
     const extractedCount = requirements.filter(
@@ -473,12 +484,12 @@ export function StudioApp() {
       (requirement) => requirement.sourceType === "manual",
     ).length;
     return {
-      sections: sections.length,
+      sections: displaySections.length,
       requirements: requirements.length,
       extractedCount,
       manualCount,
     };
-  }, [requirements, sections.length]);
+  }, [displaySections.length, requirements]);
 
   useEffect(() => {
     setMounted(true);
@@ -642,7 +653,7 @@ export function StudioApp() {
   function selectRequirement(requirementId) {
     setSelectedRequirementId(requirementId);
     const requirement = getRequirementById(requirements, requirementId);
-    if (requirement && requirement.sectionId !== "unassigned") {
+    if (requirement) {
       setActiveSectionId(requirement.sectionId);
     }
   }
@@ -673,7 +684,7 @@ export function StudioApp() {
   }
 
   function handleCreateTopLevelRequirement() {
-    if (!activeSection) {
+    if (!activeSection || activeSection.id === "unassigned") {
       return;
     }
 
@@ -785,6 +796,10 @@ export function StudioApp() {
       return;
     }
 
+    if (active.id === "unassigned" || over.id === "unassigned") {
+      return;
+    }
+
     const oldIndex = sections.findIndex((section) => section.id === active.id);
     const newIndex = sections.findIndex((section) => section.id === over.id);
 
@@ -829,23 +844,13 @@ export function StudioApp() {
     requirements.some((candidate) => candidate.parentId === requirement.id),
   );
 
-  function handleCreateSection() {
-    const nextSection = buildCustomSection(newSectionLabel, sections.length);
-
-    setWorkspace((current) => ({
-      ...current,
-      sections: [...current.sections, nextSection],
-    }));
-    setActiveSectionId(nextSection.id);
-    setNewSectionLabel("");
-  }
-
   function handleCreateSectionFromRequirement() {
     if (!selectedRequirement) {
       return;
     }
 
-    const defaultLabel = newSectionLabel.trim() || selectedRequirement.title || `Custom Section ${sections.length + 1}`;
+    const defaultLabel =
+      selectedRequirement.title || `Custom Section ${sections.length + 1}`;
     const label = window.prompt("New section tab name", defaultLabel);
     if (label === null) {
       return;
@@ -869,7 +874,6 @@ export function StudioApp() {
     }));
     setActiveSectionId(nextSection.id);
     setSelectedRequirementId(selectedRequirement.id);
-    setNewSectionLabel("");
   }
 
   function handleRenameSection(sectionId) {
@@ -969,8 +973,8 @@ export function StudioApp() {
           borderColor: "divider",
           backdropFilter: "blur(14px)",
           bgcolor: "rgba(11, 18, 32, 0.78)",
-          pl: { xs: 2, xl: `calc(${leftRailDisplayWidth}px + 16px)` },
-          pr: { xs: 2, xl: `calc(${rightRailDisplayWidth}px + 16px)` },
+          pl: 2,
+          pr: 2,
           transition: "padding 180ms ease",
         }}
       >
@@ -980,6 +984,7 @@ export function StudioApp() {
               StormSurge Studio
             </Typography>
           </Box>
+          <UploadWorkspaceCard loading={uploadState.loading} onUpload={handleOutlineUpload} compact />
           {workspace.sourceFilename ? (
             <Chip
               color="primary"
@@ -1002,39 +1007,15 @@ export function StudioApp() {
         onToggleCollapsed={() => setLeftRailCollapsed((current) => !current)}
         onResizeStart={startRailResize("left")}
       >
-        <UploadWorkspaceCard loading={uploadState.loading} onUpload={handleOutlineUpload} />
-
         {uploadState.error ? <Alert severity="error">{uploadState.error}</Alert> : null}
 
-        <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 1 }}>
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+        <Box>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
             <HubRounded color="primary" />
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
               Section Tabs
             </Typography>
           </Stack>
-          <Stack direction="row" spacing={1}>
-            <TextField
-              size="small"
-              fullWidth
-              placeholder="New tab name"
-              value={newSectionLabel}
-              onChange={(event) => setNewSectionLabel(event.target.value)}
-            />
-            <Tooltip title="Add custom section tab">
-              <span>
-                <IconButton color="primary" onClick={handleCreateSection}>
-                  <CreateNewFolderRounded />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Stack>
-        </Paper>
-
-        <Box>
-          <Typography variant="overline" color="text.secondary">
-            Workspace
-          </Typography>
           <DndContext
             sensors={sectionTabSensors}
             collisionDetection={closestCenter}
@@ -1054,6 +1035,15 @@ export function StudioApp() {
                     onRename={handleRenameSection}
                   />
                 ))}
+                {unassignedRequirements.length ? (
+                  <ListItemButton
+                    selected={activeSectionId === "unassigned"}
+                    onClick={() => selectSection("unassigned")}
+                    sx={{ borderRadius: 1, mt: 0.5 }}
+                  >
+                    <ListItemText primary={UNASSIGNED_SECTION.label} />
+                  </ListItemButton>
+                ) : null}
               </List>
             </SortableContext>
           </DndContext>
@@ -1072,6 +1062,7 @@ export function StudioApp() {
           pr: { xs: 0.75, md: 1, xl: 1.25 },
           py: 2,
           overflow: "hidden",
+          overscrollBehavior: "contain",
         }}
       >
         <Toolbar sx={{ minHeight: 80 }} />
@@ -1081,6 +1072,7 @@ export function StudioApp() {
             minHeight: 0,
             overflowY: "auto",
             ...subtleScrollbarSx,
+            overscrollBehavior: "contain",
           }}
         >
         <Stack spacing={3} sx={{ minHeight: "100%" }}>
@@ -1118,7 +1110,6 @@ export function StudioApp() {
               <WorkspaceCanvas
                 section={activeSection}
                 allRequirements={requirements}
-                unassignedRequirements={unassignedRequirements}
                 selectedRequirementId={selectedRequirementId}
                 onReorderRequirements={handleReorderRequirements}
                 onSelectRequirement={selectRequirement}
