@@ -435,7 +435,8 @@ function RailShell({
           sx={{
             p: isLeft ? 2 : 1.75,
             pt: 0.1,
-            display: "grid",
+            display: "flex",
+            flexDirection: "column",
             gap: isLeft ? 0.1 : 1.25,
             overflowY: "auto",
             minHeight: 0,
@@ -2263,24 +2264,7 @@ export function StudioApp() {
           >
             {uploadState.error ? <Alert severity="error">{uploadState.error}</Alert> : null}
 
-            <Box>
-              <Stack spacing={1.1} sx={{ mb: 1.2 }}>
-                <Button
-                  variant="outlined"
-                  onClick={handleOpenReqImportDialog}
-                  sx={{
-                    justifyContent: "flex-start",
-                    borderColor: GITHUB_BORDER,
-                    color: "#e6edf3",
-                    textTransform: "none",
-                  }}
-                >
-                  Add Reqs
-                </Button>
-                <Typography variant="caption" color="text.secondary" sx={{ px: 0.4 }}>
-                  Imports attach under the selected req, or to the top of the active section if none is selected.
-                </Typography>
-              </Stack>
+            <Box sx={{ flex: "1 1 auto", minHeight: 0 }}>
               <DndContext
                 sensors={sectionTabSensors}
                 collisionDetection={closestCenter}
@@ -2325,6 +2309,32 @@ export function StudioApp() {
                 </SortableContext>
               </DndContext>
             </Box>
+            <Stack spacing={1.1} sx={{ pt: 1.25, mt: "auto" }}>
+              <Button
+                variant="outlined"
+                onClick={handleOpenReqImportDialog}
+                sx={{
+                  justifyContent: "flex-start",
+                  borderColor: GITHUB_BORDER,
+                  color: "#e6edf3",
+                  textTransform: "none",
+                }}
+              >
+                Import Reqs
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={handleCreateSectionFromRequirement}
+                sx={{
+                  justifyContent: "flex-start",
+                  borderColor: GITHUB_BORDER,
+                  color: "#e6edf3",
+                  textTransform: "none",
+                }}
+              >
+                New Section From Req
+              </Button>
+            </Stack>
           </RailShell>
         ) : null}
 

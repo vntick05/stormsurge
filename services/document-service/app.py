@@ -311,3 +311,30 @@ async def upload_document(
             "port": DOCUMENT_SERVICE_PORT,
         }
     )
+
+
+@app.post("/v1/documents/extract")
+async def extract_document(file: UploadFile = File(...)) -> JSONResponse:
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    filename = file.filename or "uploaded-document.bin"
+
+    try:
+        extracted_text = await extract_text_with_tika(filename, content, file.content_type)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Tika extraction failed: {exc}") from exc
+
+    return JSONResponse(
+        {
+            "filename": filename,
+            "content_type": file.content_type or "application/octet-stream",
+            "extracted_text": extracted_text,
+            "extracted_text_chars": len(extracted_text),
+            "status": "extracted",
+            "service": "document-service",
+            "runtime": "document-extract",
+            "port": DOCUMENT_SERVICE_PORT,
+        }
+    )

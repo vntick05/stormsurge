@@ -176,7 +176,7 @@ export function RequirementImportDialog({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
-      <DialogTitle>Add Reqs</DialogTitle>
+      <DialogTitle>Import Reqs</DialogTitle>
       <DialogContent
         sx={{
           bgcolor: GITHUB_SURFACE,

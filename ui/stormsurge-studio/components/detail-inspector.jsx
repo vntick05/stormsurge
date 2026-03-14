@@ -51,7 +51,6 @@ export function DetailInspector({
   onMoveToUnassigned,
   onPromoteRequirement,
   onDemoteRequirement,
-  onCreateSectionFromRequirement,
   onDeleteRequirement,
 }) {
   const [activeTab, setActiveTab] = useState(INSPECTOR_TABS[0]);
@@ -395,13 +394,20 @@ export function DetailInspector({
         variant="outlined"
         sx={{
           p: 0,
+          height: "100%",
           borderRadius: 0,
           bgcolor: "transparent",
           borderColor: "transparent",
           boxShadow: "none",
         }}
       >
-        <Stack spacing={2} sx={{ pt: 0.25 }}>
+        <Stack
+          spacing={2}
+          sx={{
+            pt: 0.25,
+            height: "100%",
+          }}
+        >
           {activeTab === "Edit" ? (
             <Stack spacing={1.5}>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -415,9 +421,6 @@ export function DetailInspector({
                 </Button>
                 <Button size="small" variant="contained" onClick={onCreateChildRequirement}>
                   Add child
-                </Button>
-                <Button size="small" variant="outlined" onClick={onCreateSectionFromRequirement}>
-                  New tab from req
                 </Button>
               </Stack>
               <TextField
@@ -546,7 +549,13 @@ export function DetailInspector({
           ) : null}
 
           {activeTab === "AI Helper" ? (
-            <Stack spacing={1.5}>
+            <Stack
+              spacing={1.5}
+              sx={{
+                flex: 1,
+                minHeight: 0,
+              }}
+            >
               {requirement ? (
                 <Box sx={{ px: 0.1 }}>
                   <Typography
@@ -590,8 +599,8 @@ export function DetailInspector({
                 sx={{
                   px: 0.25,
                   py: 0.35,
-                  minHeight: 280,
-                  maxHeight: 380,
+                  flex: 1,
+                  minHeight: 0,
                   overflowY: "auto",
                   bgcolor: "transparent",
                   border: 0,
@@ -599,12 +608,6 @@ export function DetailInspector({
                 }}
               >
                 <Stack spacing={2}>
-                  {!aiMessages.length ? (
-                    <Typography variant="body2" color="text.secondary">
-                      Ask about the selected requirement, request a draft, compare obligations, or
-                      pull package context from the selected project.
-                    </Typography>
-                  ) : null}
                   {aiMessages.map((message) => (
                     <Box
                       key={message.id}
@@ -641,13 +644,12 @@ export function DetailInspector({
               <TextField
                 fullWidth
                 multiline
-                minRows={2}
-                maxRows={8}
+                minRows={1}
+                maxRows={6}
                 value={aiPrompt}
                 onChange={(event) => setAiPrompt(event.target.value)}
                 onKeyDown={handleAiPromptKeyDown}
                 placeholder="Message the AI Helper..."
-                helperText="Enter to send, Shift+Enter for a new line"
                 InputProps={{
                   sx: {
                     fontSize: "0.875rem",
