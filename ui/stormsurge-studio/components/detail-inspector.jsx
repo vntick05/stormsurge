@@ -3,13 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import PlaylistAddRounded from "@mui/icons-material/PlaylistAddRounded";
 import AutoAwesomeRounded from "@mui/icons-material/AutoAwesomeRounded";
+import AddRounded from "@mui/icons-material/AddRounded";
 import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
 import SearchRounded from "@mui/icons-material/SearchRounded";
 import {
   Box,
   Button,
   CircularProgress,
-  MenuItem,
+  IconButton,
+  InputAdornment,
   Paper,
   Stack,
   Tab,
@@ -32,6 +34,7 @@ const GITHUB_PANEL = "#161b22";
 const GITHUB_PANEL_HOVER = "#1c2128";
 const GITHUB_BORDER = "#30363d";
 const GITHUB_TEXT_MUTED = "#7d8590";
+const INSPECTOR_TEXT = "rgba(230, 237, 243, 0.84)";
 const AI_ACTION = "#c678dd";
 
 export function DetailInspector({
@@ -61,39 +64,18 @@ export function DetailInspector({
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
-  const [availableProjects, setAvailableProjects] = useState([]);
+  const [docUploadState, setDocUploadState] = useState({
+    loading: false,
+    error: "",
+    message: "",
+  });
   const [selectedProjectId, setSelectedProjectId] = useState(projectId || "");
   const aiMessagesEndRef = useRef(null);
+  const docUploadInputRef = useRef(null);
 
   useEffect(() => {
     setSelectedProjectId(projectId || "");
   }, [projectId]);
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadProjects() {
-      try {
-        const response = await fetch("/api/storm/active-projects", {
-          cache: "no-store",
-        });
-        const payload = await response.json().catch(() => ({ projects: [] }));
-        if (!response.ok || ignore) {
-          return;
-        }
-        setAvailableProjects(Array.isArray(payload?.projects) ? payload.projects : []);
-      } catch {
-        if (!ignore) {
-          setAvailableProjects([]);
-        }
-      }
-    }
-
-    loadProjects();
-    return () => {
-      ignore = true;
-    };
-  }, []);
 
   useEffect(() => {
     aiMessagesEndRef.current?.scrollIntoView({ block: "end" });
@@ -281,6 +263,75 @@ export function DetailInspector({
     void handleSendAiPrompt();
   }
 
+  function handleOpenDocUploadPicker() {
+    if (!selectedProjectId) {
+      setDocUploadState({
+        loading: false,
+        error: "Select a project before uploading documents.",
+        message: "",
+      });
+      return;
+    }
+
+    docUploadInputRef.current?.click();
+  }
+
+  async function handleDocUploadChange(event) {
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+
+    if (!files.length) {
+      return;
+    }
+
+    if (!selectedProjectId) {
+      setDocUploadState({
+        loading: false,
+        error: "Select a project before uploading documents.",
+        message: "",
+      });
+      return;
+    }
+
+    setDocUploadState({
+      loading: true,
+      error: "",
+      message: `Uploading ${files.length} document${files.length === 1 ? "" : "s"}...`,
+    });
+
+    try {
+      const formData = new FormData();
+      formData.append("projectId", selectedProjectId);
+      files.forEach((file) => {
+        formData.append("files", file, file.name);
+      });
+
+      const response = await fetch("/api/storm/project-documents/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.detail || "Document upload failed");
+      }
+
+      setDocUploadState({
+        loading: false,
+        error: "",
+        message:
+          String(payload?.message || "").trim() ||
+          `Uploaded ${files.length} document${files.length === 1 ? "" : "s"}.`,
+      });
+    } catch (error) {
+      setDocUploadState({
+        loading: false,
+        error: error instanceof Error ? error.message : "Document upload failed",
+        message: "",
+      });
+    }
+  }
+
   if (!requirement) {
     return (
       <Paper
@@ -292,9 +343,9 @@ export function DetailInspector({
           borderColor: GITHUB_BORDER,
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-          Inspector
-        </Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Inspector
+            </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
           Select a node in the hierarchy to inspect and edit it.
         </Typography>
@@ -303,7 +354,7 @@ export function DetailInspector({
   }
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} sx={{ height: "100%", minHeight: 0 }}>
       <Box
         sx={{
           px: 0,
@@ -396,7 +447,8 @@ export function DetailInspector({
         variant="outlined"
         sx={{
           p: 0,
-          height: "100%",
+          flex: 1,
+          minHeight: 0,
           borderRadius: 0,
           bgcolor: "transparent",
           borderColor: "transparent",
@@ -426,7 +478,7 @@ export function DetailInspector({
                   onClick={onCreateTopLevelRequirement}
                   sx={{
                     justifyContent: "flex-start",
-                    color: "#e6edf3",
+                    color: INSPECTOR_TEXT,
                     textTransform: "none",
                     px: 0.7,
                     py: 0.35,
@@ -446,7 +498,7 @@ export function DetailInspector({
                   onClick={onCreateChildRequirement}
                   sx={{
                     justifyContent: "flex-start",
-                    color: "#e6edf3",
+                    color: INSPECTOR_TEXT,
                     textTransform: "none",
                     px: 0.7,
                     py: 0.35,
@@ -483,14 +535,16 @@ export function DetailInspector({
               <TextField
                 fullWidth
                 value={requirement.sourceRef || ""}
-                onChange={(event) => onRequirementChange("sourceRef", event.target.value)}
+                onChange={(event) =>
+                  onRequirementChange("sourceRef", event.target.value.toUpperCase())
+                }
                 placeholder="Requirement title"
                 variant="outlined"
                 InputProps={{
                   sx: {
                     fontSize: "0.86rem",
                     fontWeight: 600,
-                    color: "#e6edf3",
+                    color: INSPECTOR_TEXT,
                     bgcolor: "rgba(255, 255, 255, 0.035)",
                     borderRadius: 1,
                     "& fieldset": {
@@ -602,11 +656,11 @@ export function DetailInspector({
                     }}
                   >
                     <Stack spacing={0.5}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: INSPECTOR_TEXT }}>
                         {candidate.title}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {candidate.sourceRef || candidate.intent || "Working draft"}
+                        {String(candidate.sourceRef || candidate.intent || "Working draft").toUpperCase()}
                       </Typography>
                       <Typography
                         variant="body2"
@@ -638,44 +692,43 @@ export function DetailInspector({
               sx={{
                 flex: 1,
                 minHeight: 0,
+                height: "100%",
               }}
             >
               {requirement ? (
-                <Box sx={{ px: 0.1 }}>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      display: "block",
-                      mb: 0.45,
-                      color: "#58a6ff",
-                      textTransform: "uppercase",
-                      letterSpacing: 0.55,
-                    }}
-                  >
-                    Selected Requirement
-                  </Typography>
+                <Box
+                  sx={{
+                    px: 1,
+                    py: 0.9,
+                    bgcolor: "rgba(255, 255, 255, 0.035)",
+                    borderRadius: 1,
+                  }}
+                >
                   <Typography
                     variant="body2"
                     sx={{
-                      color: "#e6edf3",
-                      fontWeight: 600,
+                      color: INSPECTOR_TEXT,
+                      fontWeight: 500,
                       lineHeight: 1.35,
                     }}
                   >
-                    {requirement.sourceRef || requirement.title || requirement.id}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      mt: 0.35,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {requirement.text || requirement.summary || "No requirement text"}
+                    <Box
+                      component="span"
+                      sx={{
+                        color: "#58a6ff",
+                        textTransform: "uppercase",
+                        letterSpacing: 0.4,
+                        mr: 0.55,
+                      }}
+                    >
+                      {String(requirement.sourceRef || requirement.title || requirement.id).toUpperCase()}
+                    </Box>
+                    <Box component="span" sx={{ color: GITHUB_TEXT_MUTED, mr: 0.55 }}>
+                      Selected Requirement
+                    </Box>
+                    <Box component="span">
+                      {requirement.text || requirement.summary || "No requirement text"}
+                    </Box>
                   </Typography>
                 </Box>
               ) : null}
@@ -725,58 +778,98 @@ export function DetailInspector({
                   <Box ref={aiMessagesEndRef} />
                 </Stack>
               </Paper>
-              <TextField
-                fullWidth
-                multiline
-                minRows={1}
-                maxRows={6}
-                value={aiPrompt}
-                onChange={(event) => setAiPrompt(event.target.value)}
-                onKeyDown={handleAiPromptKeyDown}
-                placeholder="Message the AI Helper..."
-                InputProps={{
-                  sx: {
-                    fontSize: "0.875rem",
-                    lineHeight: 1.4,
-                    alignItems: "flex-start",
-                    bgcolor: GITHUB_SURFACE,
-                  },
-                }}
-              />
-              {aiError ? (
-                <Typography variant="body2" color="error">
-                  {aiError}
-                </Typography>
-              ) : null}
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Button
-                  size="small"
-                  variant="contained"
-                  startIcon={<AutoAwesomeRounded />}
-                  onClick={handleSendAiPrompt}
-                  disabled={!aiPrompt.trim() || aiLoading}
-                  sx={{
-                    bgcolor: AI_ACTION,
-                    color: "#140d18",
-                    boxShadow: "0 0 0 1px rgba(198, 120, 221, 0.18)",
-                    "&:hover": {
-                      bgcolor: "#d08ae5",
+              <Stack spacing={1} sx={{ mt: "auto", pt: 0.5, pb: 0 }}>
+                <input
+                  ref={docUploadInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleDocUploadChange}
+                  style={{ display: "none" }}
+                />
+                {docUploadState.error ? (
+                  <Typography variant="body2" color="error">
+                    {docUploadState.error}
+                  </Typography>
+                ) : null}
+                {!docUploadState.error && docUploadState.message ? (
+                  <Typography variant="body2" color="text.secondary">
+                    {docUploadState.message}
+                  </Typography>
+                ) : null}
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={1}
+                  maxRows={6}
+                  value={aiPrompt}
+                  onChange={(event) => setAiPrompt(event.target.value)}
+                  onKeyDown={handleAiPromptKeyDown}
+                  placeholder="Message the AI Helper..."
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start" sx={{ alignSelf: "flex-end", mb: 0.15 }}>
+                        <IconButton
+                          size="small"
+                          onClick={handleOpenDocUploadPicker}
+                          disabled={docUploadState.loading}
+                          sx={{
+                            mr: 0.5,
+                            color: GITHUB_TEXT_MUTED,
+                            borderRadius: 999,
+                            border: "1px solid rgba(255, 255, 255, 0.08)",
+                          }}
+                        >
+                          {docUploadState.loading ? (
+                            <CircularProgress size={14} color="inherit" />
+                          ) : (
+                            <AddRounded fontSize="small" />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                    sx: {
+                      fontSize: "0.875rem",
+                      lineHeight: 1.4,
+                      alignItems: "center",
+                      bgcolor: GITHUB_SURFACE,
                     },
                   }}
-                >
-                  Send
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => {
-                    setAiMessages([]);
-                    setAiError("");
-                  }}
-                  disabled={aiLoading || (!aiMessages.length && !aiError)}
-                >
-                  Clear chat
-                </Button>
+                />
+                {aiError ? (
+                  <Typography variant="body2" color="error">
+                    {aiError}
+                  </Typography>
+                ) : null}
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<AutoAwesomeRounded />}
+                    onClick={handleSendAiPrompt}
+                    disabled={!aiPrompt.trim() || aiLoading}
+                    sx={{
+                      bgcolor: AI_ACTION,
+                      color: "#140d18",
+                      boxShadow: "0 0 0 1px rgba(198, 120, 221, 0.18)",
+                      "&:hover": {
+                        bgcolor: "#d08ae5",
+                      },
+                    }}
+                  >
+                    Send
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => {
+                      setAiMessages([]);
+                      setAiError("");
+                    }}
+                    disabled={aiLoading || (!aiMessages.length && !aiError)}
+                  >
+                    Clear chat
+                  </Button>
+                </Stack>
               </Stack>
             </Stack>
           ) : null}

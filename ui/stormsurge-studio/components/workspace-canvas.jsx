@@ -42,7 +42,7 @@ const GITHUB_FONT_STACK =
 
 function formatRequirementMarker(requirement) {
   const source = String(requirement.sourceRef || requirement.title || "").trim();
-  return source || requirement.title;
+  return (source || requirement.title || "").toUpperCase();
 }
 
 function getRequirementAccent(requirement) {

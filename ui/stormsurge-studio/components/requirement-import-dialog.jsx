@@ -30,7 +30,7 @@ const GITHUB_FONT_STACK =
 
 function formatRequirementMarker(requirement) {
   const source = String(requirement.sourceRef || requirement.title || "").trim();
-  return source || requirement.title || "Requirement";
+  return (source || requirement.title || "Requirement").toUpperCase();
 }
 
 function ImportRequirementNode({
@@ -187,7 +187,9 @@ export function RequirementImportDialog({
           <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
             <Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>
               {targetRequirement
-                ? `Selected imports will be added under: ${targetRequirement.sourceRef || targetRequirement.title || targetRequirement.id}`
+                ? `Selected imports will be added under: ${String(
+                    targetRequirement.sourceRef || targetRequirement.title || targetRequirement.id
+                  ).toUpperCase()}`
                 : "No requirement is selected. Imported requirements will be added at the top of the active section."}
             </Typography>
             <input hidden ref={inputRef} type="file" accept=".pdf,.doc,.docx" onChange={handleFileChange} />

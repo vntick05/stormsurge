@@ -350,8 +350,8 @@ function RailShell({
         overscrollBehavior: "contain",
         backdropFilter: "blur(10px)",
         borderRadius: 0,
-        borderRight: 0,
-        borderLeft: 0,
+        borderRight: isLeft ? "1px solid" : 0,
+        borderLeft: !isLeft ? "1px solid" : 0,
         mt: { xs: 0, xl: 0 },
         mb: { xs: 0, xl: 0 },
         ml: { xs: 0, xl: isLeft ? 0.2 : 0 },
@@ -582,8 +582,7 @@ function StormWorkspaceBar({
         flexDirection: "column",
         overflow: "hidden",
         height: "100%",
-        bgcolor: "#232327",
-        bgcolor: GITHUB_SURFACE,
+        bgcolor: GITHUB_BASE,
         backgroundImage: "none",
         boxShadow: { xs: "0 18px 32px rgba(0, 0, 0, 0.12)", xl: "none" },
         borderTop: 0,
@@ -597,7 +596,7 @@ function StormWorkspaceBar({
         sx={{
           borderBottom: 0,
           px: 1.35,
-          py: 0.8,
+          py: 0.7,
           background: GITHUB_BASE,
         }}
       >
@@ -689,12 +688,12 @@ function StormWorkspaceBar({
       {collapsed ? null : (
       <Box
         sx={{
-          p: 2.5,
+          p: 1.6,
           flex: "1 1 auto",
           minHeight: 0,
           overflowY: "auto",
           overscrollBehavior: "contain",
-          backgroundColor: GITHUB_SURFACE,
+          backgroundColor: GITHUB_BASE,
           ...subtleScrollbarSx,
         }}
       >
@@ -719,7 +718,13 @@ function StormWorkspaceBar({
                   variant="outlined"
                   onClick={onClearActiveTab}
                   size="small"
-                  sx={{ minHeight: 30, py: 0.35 }}
+                  sx={{
+                    minHeight: 28,
+                    py: 0.25,
+                    borderColor: "transparent",
+                    bgcolor: "transparent",
+                    "&:hover": { bgcolor: "rgba(255,255,255,0.06)", borderColor: "transparent" },
+                  }}
                 >
                   Clear
                 </Button>
@@ -727,12 +732,18 @@ function StormWorkspaceBar({
                   variant="outlined"
                   onClick={onEditMtsPrompt}
                   size="small"
-                  sx={{ minHeight: 30, py: 0.35 }}
+                  sx={{
+                    minHeight: 28,
+                    py: 0.25,
+                    borderColor: "transparent",
+                    bgcolor: "transparent",
+                    "&:hover": { bgcolor: "rgba(255,255,255,0.06)", borderColor: "transparent" },
+                  }}
                 >
                   Edit Prompt
                 </Button>
                 <Button
-                  variant="contained"
+                  variant="text"
                   size="small"
                   onClick={onGenerateMtsDefinition}
                   disabled={!canGenerateMtsDefinition}
@@ -742,13 +753,14 @@ function StormWorkspaceBar({
                     ) : null
                   }
                   sx={{
-                    minHeight: 30,
-                    py: 0.35,
-                    bgcolor: AI_ACTION,
-                    color: "#140d18",
-                    boxShadow: "0 0 0 1px rgba(198, 120, 221, 0.18)",
+                    minHeight: 28,
+                    py: 0.25,
+                    bgcolor: "transparent",
+                    color: AI_ACTION,
+                    boxShadow: "none",
                     "&:hover": {
-                      bgcolor: "#d08ae5",
+                      bgcolor: "rgba(198, 120, 221, 0.12)",
+                      color: "#d08ae5",
                     },
                   }}
                 >
@@ -756,7 +768,18 @@ function StormWorkspaceBar({
                 </Button>
               </Stack>
             ) : (
-              <Button variant="outlined" onClick={onClearActiveTab}>
+              <Button
+                variant="outlined"
+                onClick={onClearActiveTab}
+                size="small"
+                sx={{
+                  minHeight: 28,
+                  py: 0.25,
+                  borderColor: "transparent",
+                  bgcolor: "transparent",
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.06)", borderColor: "transparent" },
+                }}
+              >
                 Clear
               </Button>
             )}
@@ -776,8 +799,19 @@ function StormWorkspaceBar({
                 alignItems: "flex-start",
                 fontSize: "0.95rem",
                 lineHeight: 1.5,
-                bgcolor: GITHUB_PANEL,
+                fontWeight: 400,
+                color: "rgba(210, 218, 228, 0.72)",
+                bgcolor: "rgba(255,255,255,0.035)",
+                borderRadius: 1,
                 overscrollBehavior: "contain",
+                "& textarea": {
+                  fontWeight: 400,
+                  color: "rgba(210, 218, 228, 0.72)",
+                },
+                "& textarea::placeholder": {
+                  color: "rgba(125, 133, 144, 0.72)",
+                  opacity: 1,
+                },
                 "& fieldset": {
                   borderColor: "transparent",
                   borderWidth: 0,
@@ -821,6 +855,10 @@ export function StudioApp() {
   const [mtsPromptDialogOpen, setMtsPromptDialogOpen] = useState(false);
   const [mtsPromptDraft, setMtsPromptDraft] = useState("");
   const [homeDialogOpen, setHomeDialogOpen] = useState(false);
+  const [mtsConfirmDialog, setMtsConfirmDialog] = useState({
+    open: false,
+    action: "",
+  });
   const [stormWorkspaceHeight, setStormWorkspaceHeight] = useState(BOTTOM_DOCK_DEFAULT_HEIGHT);
   const [stormWorkspaceCollapsed, setStormWorkspaceCollapsed] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState("");
@@ -1835,6 +1873,47 @@ export function StudioApp() {
     }));
   }
 
+  function handleOpenMtsConfirm(action) {
+    const currentTabText = String(activeSectionStormWorkspaceNotes[stormWorkspaceTab] || "").trim();
+    if (!currentTabText) {
+      if (action === "clear") {
+        handleClearStormWorkspaceTab();
+        return;
+      }
+
+      if (action === "generate") {
+        void handleGenerateMtsDefinition();
+        return;
+      }
+    }
+
+    setMtsConfirmDialog({
+      open: true,
+      action,
+    });
+  }
+
+  function handleCloseMtsConfirm() {
+    setMtsConfirmDialog({
+      open: false,
+      action: "",
+    });
+  }
+
+  async function handleConfirmMtsAction() {
+    const action = mtsConfirmDialog.action;
+    handleCloseMtsConfirm();
+
+    if (action === "clear") {
+      handleClearStormWorkspaceTab();
+      return;
+    }
+
+    if (action === "generate") {
+      await handleGenerateMtsDefinition();
+    }
+  }
+
   function handleEditMtsPrompt() {
     if (!activeSection?.id) {
       return;
@@ -2629,8 +2708,8 @@ export function StudioApp() {
               onTabChange={setStormWorkspaceTab}
               notesByTab={activeSectionStormWorkspaceNotes}
               onNotesChange={handleStormWorkspaceNoteChange}
-              onGenerateMtsDefinition={handleGenerateMtsDefinition}
-              onClearActiveTab={handleClearStormWorkspaceTab}
+              onGenerateMtsDefinition={() => handleOpenMtsConfirm("generate")}
+              onClearActiveTab={() => handleOpenMtsConfirm("clear")}
               onEditMtsPrompt={handleEditMtsPrompt}
               generationState={mtsDefinitionGenerationState}
               activeSection={activeSection}
@@ -2728,6 +2807,24 @@ export function StudioApp() {
           <Button onClick={handleConfirmHomeWithoutSaving}>Go Home Without Saving</Button>
           <Button onClick={handleSaveThenGoHome} variant="contained">
             Save First
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={mtsConfirmDialog.open} onClose={handleCloseMtsConfirm} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          {mtsConfirmDialog.action === "generate" ? "Re-run AI Define?" : "Clear This Box?"}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            {mtsConfirmDialog.action === "generate"
+              ? "This box already has text. Do you want to replace it with a new AI definition?"
+              : "This box already has text. Do you want to clear it?"}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseMtsConfirm}>Cancel</Button>
+          <Button onClick={handleConfirmMtsAction} variant="contained">
+            Continue
           </Button>
         </DialogActions>
       </Dialog>

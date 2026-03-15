@@ -29,17 +29,17 @@ const theme = createTheme({
     borderRadius: 8,
   },
   typography: {
-    fontFamily: '"Sora", "IBM Plex Sans", "Trebuchet MS", sans-serif',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif',
     h5: {
-      fontWeight: 700,
+      fontWeight: 600,
       letterSpacing: -0.03,
     },
     h6: {
-      fontWeight: 700,
+      fontWeight: 600,
       letterSpacing: -0.02,
     },
     subtitle1: {
-      fontWeight: 600,
+      fontWeight: 500,
     },
     overline: {
       color: "#FFFFFF",
@@ -48,6 +48,7 @@ const theme = createTheme({
     },
     body2: {
       lineHeight: 1.5,
+      fontWeight: 400,
     },
   },
   components: {
@@ -84,7 +85,7 @@ const theme = createTheme({
         root: {
           borderRadius: 6,
           textTransform: "none",
-          fontWeight: 600,
+          fontWeight: 500,
           boxShadow: "none",
         },
         containedPrimary: {
@@ -159,7 +160,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           textTransform: "none",
-          fontWeight: 600,
+          fontWeight: 500,
           minHeight: 46,
           color: "#7d8590",
           borderRadius: 6,
