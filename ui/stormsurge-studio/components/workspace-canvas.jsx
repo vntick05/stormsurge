@@ -40,9 +40,9 @@ const GITHUB_PANEL_SELECTED = "var(--studio-panel-selected)";
 const GITHUB_TEXT_MUTED = "var(--studio-text-muted)";
 const GITHUB_FONT_STACK =
   '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
-const LIGHT_SHARED_SURFACE = "#f7f9fb";
-const LIGHT_SHARED_SURFACE_HOVER = "#f0f4f8";
-const LIGHT_SHARED_SURFACE_SELECTED = "#dce9f7";
+const LIGHT_SHARED_SURFACE = "#edf1f5";
+const LIGHT_SHARED_SURFACE_HOVER = "#e4eaf0";
+const LIGHT_SHARED_SURFACE_SELECTED = "#d5e2ef";
 
 function formatRequirementMarker(requirement) {
   const source = String(requirement.sourceRef || requirement.title || "").trim();
@@ -67,8 +67,8 @@ function getRequirementAccent(requirement) {
         dots: "rgba(242, 155, 92, 0.95)",
       }
     : {
-        text: "#8FB7FF",
-        dots: "rgba(143, 183, 255, 0.95)",
+        text: "#5f8dff",
+        dots: "rgba(95, 141, 255, 0.95)",
       };
 }
 
@@ -181,7 +181,7 @@ function RequirementCard({
                   component="span"
                   sx={{
                     fontFamily: GITHUB_FONT_STACK,
-                    color: "var(--studio-text)",
+                    color: "#111827",
                     fontWeight: 400,
                     letterSpacing: 0,
                   }}

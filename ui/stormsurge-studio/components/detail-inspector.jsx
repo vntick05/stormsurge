@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import PlaylistAddRounded from "@mui/icons-material/PlaylistAddRounded";
 import AutoAwesomeRounded from "@mui/icons-material/AutoAwesomeRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
+import CloseRounded from "@mui/icons-material/CloseRounded";
 import EditNoteRounded from "@mui/icons-material/EditNoteRounded";
 import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
 import AccountTreeRounded from "@mui/icons-material/AccountTreeRounded";
@@ -30,7 +31,7 @@ const INSPECTOR_TAB_ACCENTS = {
   Search: "#58a6ff",
   "AI Helper": "#3fb950",
   Structure: "#d29922",
-  STORM: "#64d3e3",
+  STORM: "#2ef2ff",
 };
 const INSPECTOR_TAB_ICONS = {
   STORM: AutoAwesomeRounded,
@@ -83,6 +84,7 @@ export function DetailInspector({
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
+  const [dismissedRequirementId, setDismissedRequirementId] = useState("");
   const [docUploadState, setDocUploadState] = useState({
     loading: false,
     error: "",
@@ -90,14 +92,17 @@ export function DetailInspector({
   });
   const theme = useTheme();
   const isLightMode = theme.palette.mode === "light";
-  const railSurface = isLightMode ? "#efefef" : GITHUB_BASE;
-  const panelSurface = isLightMode ? "#f7f7f7" : "transparent";
-  const panelSurfaceSoft = isLightMode ? "#f2f2f2" : "transparent";
-  const panelSurfaceHover = isLightMode ? "rgba(49, 56, 65, 0.05)" : "rgba(255,255,255,0.04)";
-  const panelBorder = isLightMode ? "rgba(99, 111, 128, 0.18)" : "transparent";
-  const inspectorText = isLightMode ? "#313841" : INSPECTOR_TEXT;
-  const inspectorMutedText = isLightMode ? "#636f80" : GITHUB_TEXT_MUTED;
+  const railSurface = isLightMode ? "#6a7986" : GITHUB_BASE;
+  const panelSurface = isLightMode ? "#3b4955" : "transparent";
+  const panelSurfaceSoft = isLightMode ? "#3b4955" : "transparent";
+  const panelSurfaceHover = isLightMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.04)";
+  const panelBorder = isLightMode ? "rgba(255,255,255,0.14)" : "transparent";
+  const inspectorText = isLightMode ? "#f5f7fa" : INSPECTOR_TEXT;
+  const inspectorMutedText = isLightMode ? "rgba(245, 247, 250, 0.72)" : GITHUB_TEXT_MUTED;
   const inspectorAction = isLightMode ? "#64d3e3" : AI_ACTION;
+  const aiHelperText = "#ffffff";
+  const activeTabAccent = INSPECTOR_TAB_ACCENTS[activeTab] || "#f78166";
+  const inspectorHeaderBg = isLightMode ? "#101821" : "transparent";
   const inspectorChromeBg = "rgba(9, 14, 20, 0.56)";
   const primaryButtonSx = {
     bgcolor: "#64d3e3",
@@ -107,9 +112,24 @@ export function DetailInspector({
       bgcolor: "#45bfd2",
     },
   };
+  const secondaryButtonSx = {
+    color: aiHelperText,
+    borderColor: "rgba(255,255,255,0.34)",
+    bgcolor: "rgba(255,255,255,0.06)",
+    "&:hover": {
+      borderColor: "rgba(255,255,255,0.5)",
+      bgcolor: "rgba(255,255,255,0.12)",
+    },
+    "&.Mui-disabled": {
+      color: "rgba(255,255,255,0.38)",
+      borderColor: "rgba(255,255,255,0.14)",
+      bgcolor: "rgba(255,255,255,0.03)",
+    },
+  };
   const [selectedProjectId, setSelectedProjectId] = useState(projectId || "");
   const aiMessagesEndRef = useRef(null);
   const docUploadInputRef = useRef(null);
+  const aiAbortControllerRef = useRef(null);
 
   useEffect(() => {
     setSelectedProjectId(projectId || "");
@@ -161,20 +181,36 @@ export function DetailInspector({
       .slice(0, 12);
   }, [allRequirements, searchTerm]);
   const visibleSearchResults = relatedSearchResults.length ? relatedSearchResults : searchResults;
-
-  const aiCheckedRequirements = useMemo(() => {
-    if (!requirement) {
-      return [];
+  const aiRequirement = useMemo(() => {
+    if (!requirement || requirement.id === dismissedRequirementId) {
+      return null;
     }
 
-    return [
-      {
-        id: requirement.sourceRef || requirement.title || requirement.id,
-        section: section?.label || "",
-        text: requirement.text || requirement.summary || requirement.title || "",
-      },
-    ].filter((candidate) => candidate.id && candidate.text);
-  }, [requirement, section]);
+    return requirement;
+  }, [dismissedRequirementId, requirement]);
+
+  const aiCheckedRequirements = useMemo(() => {
+    if (aiRequirement) {
+      return [
+        {
+          id: aiRequirement.sourceRef || aiRequirement.title || aiRequirement.id,
+          section: section?.label || "",
+          text: aiRequirement.text || aiRequirement.summary || aiRequirement.title || "",
+        },
+      ].filter((candidate) => candidate.id && candidate.text);
+    }
+
+    return Array.isArray(sectionRequirements)
+      ? sectionRequirements
+          .map((candidate) => candidate?.requirement || candidate)
+          .map((candidate) => ({
+            id: candidate?.sourceRef || candidate?.title || candidate?.id || "",
+            section: section?.label || "",
+            text: candidate?.text || candidate?.summary || candidate?.title || "",
+          }))
+          .filter((candidate) => candidate.id && candidate.text)
+      : [];
+  }, [aiRequirement, section, sectionRequirements]);
 
   async function handleSendAiPrompt() {
     const trimmedPrompt = aiPrompt.trim();
@@ -198,6 +234,8 @@ export function DetailInspector({
     setAiError("");
     setAiLoading(true);
     setAiMessages((current) => [...current, nextUserMessage, nextAssistantMessage]);
+    const abortController = new AbortController();
+    aiAbortControllerRef.current = abortController;
 
     try {
       const response = await fetch("/api/storm/ai-helper", {
@@ -205,16 +243,17 @@ export function DetailInspector({
         headers: {
           "Content-Type": "application/json",
         },
+        signal: abortController.signal,
         body: JSON.stringify({
           prompt: trimmedPrompt,
           projectId: selectedProjectId,
           messages: requestMessages,
           checkedRequirements: aiCheckedRequirements,
-          selectedRequirement: requirement
+          selectedRequirement: aiRequirement
             ? {
-                id: requirement.sourceRef || requirement.title || requirement.id,
+                id: aiRequirement.sourceRef || aiRequirement.title || aiRequirement.id,
                 section: section?.label || "",
-                text: requirement.text || requirement.summary || requirement.title || "",
+                text: aiRequirement.text || aiRequirement.summary || aiRequirement.title || "",
               }
             : null,
         }),
@@ -299,6 +338,9 @@ export function DetailInspector({
         throw new Error("AI Helper returned no content");
       }
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
       const detail = error instanceof Error ? error.message : "AI Helper request failed";
       setAiError(detail);
       setAiMessages((current) =>
@@ -309,8 +351,17 @@ export function DetailInspector({
         ),
       );
     } finally {
+      if (aiAbortControllerRef.current === abortController) {
+        aiAbortControllerRef.current = null;
+      }
       setAiLoading(false);
     }
+  }
+
+  function handleStopAiPrompt() {
+    aiAbortControllerRef.current?.abort();
+    aiAbortControllerRef.current = null;
+    setAiLoading(false);
   }
 
   function handleAiPromptKeyDown(event) {
@@ -492,9 +543,8 @@ export function DetailInspector({
           py: 0,
           pt: 0,
           border: "none",
-          bgcolor: "transparent",
+          bgcolor: inspectorHeaderBg,
           borderRadius: 0,
-          borderBottom: "1px solid rgba(17,24,39,0.3)",
         }}
       >
         <Tabs
@@ -505,6 +555,8 @@ export function DetailInspector({
           allowScrollButtonsMobile
           sx={{
             minHeight: 40,
+            borderBottom: 0,
+            bgcolor: inspectorHeaderBg,
             "& .MuiTabs-flexContainer": {
               gap: 2.2,
             },
@@ -512,17 +564,15 @@ export function DetailInspector({
               overflowX: "auto !important",
             },
             "& .MuiTab-root": {
-              position: "relative",
               minHeight: 40,
               minWidth: "fit-content",
               px: 0.2,
               py: 0,
-              mb: "-1px",
               border: "0 !important",
               borderRadius: 0,
               bgcolor: "transparent !important",
               boxShadow: "none",
-              color: inspectorMutedText,
+              color: isLightMode ? "#f5f7fa" : inspectorMutedText,
               fontSize: "0.92rem",
               lineHeight: 1.05,
               textTransform: "none",
@@ -531,36 +581,27 @@ export function DetailInspector({
               },
             },
             "& .MuiTab-root.Mui-selected": {
-              color: inspectorText,
+              color: isLightMode ? "#ffffff" : inspectorText,
               fontWeight: 600,
               bgcolor: "transparent !important",
-              boxShadow: "none",
             },
             "& .MuiTab-root.Mui-focusVisible": {
               bgcolor: "transparent !important",
             },
-            "& .MuiTab-root::after": {
-              content: '""',
-              position: "absolute",
-              left: -4,
-              right: -4,
-              bottom: -1,
-              height: 4,
-              borderRadius: 999,
-              bgcolor: "transparent",
-              opacity: 1,
-            },
             "& .MuiTab-root:hover": {
-              color: inspectorText,
+              color: isLightMode ? "#ffffff" : inspectorText,
               bgcolor: "transparent !important",
             },
             "& .MuiTabs-indicator": {
-              display: "none",
+              display: "block",
+              height: 8,
+              bottom: -4,
+              borderRadius: 999,
+              backgroundColor: activeTabAccent,
             },
           }}
         >
           {INSPECTOR_TABS.map((label) => {
-            const accent = INSPECTOR_TAB_ACCENTS[label] || "#f78166";
             const TabIcon = INSPECTOR_TAB_ICONS[label];
             return (
               <Tab
@@ -572,16 +613,6 @@ export function DetailInspector({
                     <Box component="span">{label}</Box>
                   </Stack>
                 }
-                sx={{
-                  "&.Mui-selected::after": {
-                    bgcolor: accent,
-                    boxShadow: "0 0 0 1px rgba(17,24,39,0.14)",
-                  },
-                  "&:hover::after": {
-                    bgcolor: activeTab === label ? accent : accent,
-                    opacity: activeTab === label ? 1 : 0.58,
-                  },
-                }}
               />
             );
           })}
@@ -597,6 +628,7 @@ export function DetailInspector({
           bgcolor: "transparent",
           borderColor: "transparent",
           boxShadow: "none",
+          color: inspectorText,
         }}
       >
         <Stack
@@ -859,7 +891,7 @@ export function DetailInspector({
                       cursor: "pointer",
                       bgcolor:
                         candidate.id === requirement.id
-                          ? "#e9f7fa"
+                          ? "#31404d"
                           : panelSurface,
                       borderColor:
                         candidate.id === requirement.id
@@ -868,7 +900,7 @@ export function DetailInspector({
                       "&:hover": {
                         bgcolor:
                           candidate.id === requirement.id
-                            ? "#def2f6"
+                            ? "#385062"
                             : panelSurfaceHover,
                       },
                     }}
@@ -918,7 +950,7 @@ export function DetailInspector({
                 height: "100%",
               }}
             >
-              {requirement ? (
+              {aiRequirement ? (
                 <Box
                   sx={{
                     px: 1,
@@ -926,14 +958,32 @@ export function DetailInspector({
                     bgcolor: panelSurface,
                     border: `1px solid ${panelBorder}`,
                     borderRadius: 1,
+                    position: "relative",
+                    color: aiHelperText,
                   }}
                 >
+                  <IconButton
+                    size="small"
+                    onClick={() => setDismissedRequirementId(aiRequirement.id)}
+                    sx={{
+                      position: "absolute",
+                      top: 6,
+                      right: 6,
+                      width: 22,
+                      height: 22,
+                      color: inspectorMutedText,
+                    }}
+                  >
+                    <CloseRounded sx={{ fontSize: 15 }} />
+                  </IconButton>
                   <Typography
                     variant="body2"
                     sx={{
                       color: inspectorText,
+                      color: aiHelperText,
                       fontWeight: 500,
                       lineHeight: 1.35,
+                      pr: 3.2,
                     }}
                   >
                     <Box
@@ -945,16 +995,22 @@ export function DetailInspector({
                         mr: 0.55,
                       }}
                     >
-                      {String(requirement.sourceRef || requirement.title || requirement.id).toUpperCase()}
+                      {String(
+                        aiRequirement.sourceRef || aiRequirement.title || aiRequirement.id,
+                      ).toUpperCase()}
                     </Box>
-                    <Box component="span" sx={{ color: inspectorMutedText, mr: 0.55 }}>
+                    <Box component="span" sx={{ color: aiHelperText, mr: 0.55 }}>
                       Selected Requirement
                     </Box>
                     <Box component="span">
-                      {requirement.text || requirement.summary || "No requirement text"}
+                      {aiRequirement.text || aiRequirement.summary || "No requirement text"}
                     </Box>
                   </Typography>
                 </Box>
+              ) : requirement ? (
+                <Typography variant="body2" sx={{ color: aiHelperText }}>
+                  Select a requirement or ask about section.
+                </Typography>
               ) : null}
               <Paper
                 sx={{
@@ -967,6 +1023,7 @@ export function DetailInspector({
                   border: `1px solid ${panelBorder}`,
                   borderRadius: 1,
                   boxShadow: "none",
+                  color: aiHelperText,
                 }}
               >
                 <Stack spacing={2}>
@@ -977,6 +1034,7 @@ export function DetailInspector({
                         alignSelf: "stretch",
                         px: 0,
                         py: 0,
+                        color: aiHelperText,
                       }}
                     >
                       <Typography
@@ -984,7 +1042,7 @@ export function DetailInspector({
                         sx={{
                           display: "block",
                           mb: 0.6,
-                          color: message.role === "user" ? "#58a6ff" : inspectorMutedText,
+                          color: message.role === "user" ? "#58a6ff" : aiHelperText,
                           textTransform: "uppercase",
                           letterSpacing: 0.55,
                         }}
@@ -995,7 +1053,7 @@ export function DetailInspector({
                     </Box>
                   ))}
                   {aiLoading ? (
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ color: inspectorMutedText }}>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ color: aiHelperText }}>
                       <CircularProgress size={14} />
                       <Typography variant="caption">Thinking...</Typography>
                     </Stack>
@@ -1017,7 +1075,7 @@ export function DetailInspector({
                   </Typography>
                 ) : null}
                 {!docUploadState.error && docUploadState.message ? (
-                  <Typography variant="body2" sx={{ color: inspectorMutedText }}>
+                  <Typography variant="body2" sx={{ color: aiHelperText }}>
                     {docUploadState.message}
                   </Typography>
                 ) : null}
@@ -1039,10 +1097,14 @@ export function DetailInspector({
                           disabled={docUploadState.loading}
                           sx={{
                             mr: 0.5,
-                            color: inspectorMutedText,
+                            color: aiHelperText,
                             borderRadius: 999,
-                            border: `1px solid ${panelBorder}`,
-                            bgcolor: panelSurface,
+                            border: "1px solid rgba(255,255,255,0.34)",
+                            bgcolor: "rgba(255,255,255,0.06)",
+                            "&:hover": {
+                              bgcolor: "rgba(255,255,255,0.12)",
+                              borderColor: "rgba(255,255,255,0.5)",
+                            },
                           }}
                         >
                           {docUploadState.loading ? (
@@ -1058,12 +1120,12 @@ export function DetailInspector({
                       lineHeight: 1.4,
                       alignItems: "center",
                       bgcolor: panelSurface,
-                      color: inspectorText,
+                      color: aiHelperText,
                       "& textarea": {
-                        color: inspectorText,
+                        color: aiHelperText,
                       },
                       "& textarea::placeholder": {
-                        color: inspectorMutedText,
+                        color: "rgba(255,255,255,0.76)",
                         opacity: 1,
                       },
                     },
@@ -1090,11 +1152,22 @@ export function DetailInspector({
                   <Button
                     size="small"
                     variant="outlined"
+                    startIcon={<CloseRounded />}
+                    onClick={handleStopAiPrompt}
+                    disabled={!aiLoading}
+                    sx={secondaryButtonSx}
+                  >
+                    Stop
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
                     onClick={() => {
                       setAiMessages([]);
                       setAiError("");
                     }}
                     disabled={aiLoading || (!aiMessages.length && !aiError)}
+                    sx={secondaryButtonSx}
                   >
                     Clear chat
                   </Button>

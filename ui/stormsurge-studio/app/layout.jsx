@@ -2,7 +2,7 @@ import "./globals.css";
 import { ThemeRegistry } from "@/app/theme-registry";
 
 export const metadata = {
-  title: "StormSurge Studio",
+  title: "StormStudio",
   description: "Modern React workspace for PWS ingest and hierarchy editing",
 };
 

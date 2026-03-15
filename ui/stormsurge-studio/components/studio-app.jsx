@@ -147,7 +147,7 @@ const CHROME_TEXT_MUTED = "var(--studio-chrome-text)";
 const CHROME_BORDER = "var(--studio-chrome-border)";
 const LIGHT_SHARED_SURFACE = "#f7f9fb";
 const LIGHT_SHARED_SURFACE_HOVER = "#f0f4f8";
-const LIGHT_CANVAS_SURFACE = "#e9edf2";
+const LIGHT_CANVAS_SURFACE = "#e1e6ec";
 const RIBBON_TOOL_BUTTON_SX = {
   minWidth: 0,
   height: 28,
@@ -244,12 +244,12 @@ function buildSectionBarSx(selected) {
     py: 0.08,
     minHeight: 38,
     maxHeight: 38,
-    bgcolor: selected ? "var(--studio-selection-soft)" : "transparent",
+    bgcolor: selected ? "rgba(255,255,255,0.12)" : "transparent",
     border: "none",
     boxShadow: "none",
     transition: "background-color 120ms ease",
     "&:hover": {
-      bgcolor: selected ? "var(--studio-hover-strong)" : "var(--studio-hover-soft)",
+      bgcolor: selected ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.08)",
       "& .section-tab-menu": {
         opacity: 1,
       },
@@ -405,9 +405,11 @@ function RailShell({
   const theme = useTheme();
   const isLeft = side === "left";
   const isLightMode = theme.palette.mode === "light";
-  const rightRailBg = isLightMode ? LIGHT_CANVAS_SURFACE : CHROME_BG;
+  const rightRailBg = isLightMode ? "#6a7986" : CHROME_BG;
+  const leftRailBg = isLightMode ? "#24303a" : CHROME_BG;
   const rightRailBorder = isLightMode ? "rgba(82, 90, 100, 0.2)" : GITHUB_BORDER;
-  const rightRailText = isLightMode ? "#313841" : CHROME_TEXT;
+  const rightRailHeaderBg = isLightMode ? "#101821" : "transparent";
+  const rightRailText = isLightMode ? "#f5f7fa" : CHROME_TEXT;
 
   return (
     <Box
@@ -422,7 +424,7 @@ function RailShell({
         borderLeft: 0,
         borderBottom: 0,
         borderColor: isLeft ? CHROME_BORDER : rightRailBorder,
-        bgcolor: isLeft ? CHROME_BG : rightRailBg,
+        bgcolor: isLeft ? leftRailBg : rightRailBg,
         backgroundImage: "none",
         boxShadow: isLeft
           ? "none"
@@ -455,7 +457,7 @@ function RailShell({
           gap: 0.55,
           flexShrink: 0,
           borderBottom: 0,
-          background: "transparent",
+          background: isLeft ? "transparent" : rightRailHeaderBg,
           minHeight: collapsed ? 0 : 44,
           position: "relative",
           zIndex: 3,
@@ -534,10 +536,10 @@ function RailShell({
         <Box
           sx={{
             p: isLeft ? 2 : 0,
-            pt: 0.1,
+            pt: 0,
             display: "flex",
             flexDirection: "column",
-            gap: isLeft ? 0.1 : 1.25,
+            gap: isLeft ? 0.1 : 0,
             overflowY: "auto",
             minHeight: 0,
             flex: "1 1 auto",
@@ -637,7 +639,7 @@ function buildDefaultRiskGenerationPrompt(sectionLabel) {
     "Each risk must be grounded in the requirement set and written from an evaluator perspective.",
     "For each risk, provide a concise mitigation that would satisfy minimum evaluator expectations.",
     "Return strict JSON only as an array with up to 3 objects.",
-    'Each object must use: {"risk":"...","mitigation":"...","impact":"Low|Medium|High","likelihood":"Low|Medium|High","status":"Open","notes":"..."}',
+    'Each object must use: {"risk":"...","mitigation":"..."}',
     "Do not include markdown, commentary, or any text outside the JSON array.",
   ].join(" ");
 }
@@ -784,10 +786,15 @@ function createRiskRegisterEntry() {
     id: `risk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     risk: "",
     mitigation: "",
-    impact: "",
-    likelihood: "",
-    status: "",
-    notes: "",
+  };
+}
+
+function createExceedsRegisterEntry() {
+  return {
+    id: `exceeds-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    element: "Real-time performance dashboard and proactive issue alerts",
+    rationale:
+      "Provides live contract visibility, early warning indicators, and faster issue response than the minimum reporting baseline.",
   };
 }
 
@@ -808,20 +815,8 @@ function parseRiskRegister(rawValue) {
               : createRiskRegisterEntry().id,
           risk: String(entry?.risk || "").trim(),
           mitigation: String(entry?.mitigation || "").trim(),
-          impact: String(entry?.impact || "").trim(),
-          likelihood: String(entry?.likelihood || "").trim(),
-          status: String(entry?.status || "").trim(),
-          notes: String(entry?.notes || "").trim(),
         }))
-        .filter(
-          (entry) =>
-            entry.risk ||
-            entry.mitigation ||
-            entry.impact ||
-            entry.likelihood ||
-            entry.status ||
-            entry.notes,
-        );
+        .filter((entry) => entry.risk || entry.mitigation);
     }
   } catch {
     return [
@@ -864,13 +859,42 @@ function parseGeneratedRiskRegister(rawValue) {
               : createRiskRegisterEntry().id,
           risk: String(entry?.risk || "").trim(),
           mitigation: String(entry?.mitigation || "").trim(),
-          impact: String(entry?.impact || "").trim(),
-          likelihood: String(entry?.likelihood || "").trim(),
-          status: String(entry?.status || "Open").trim(),
-          notes: String(entry?.notes || "").trim(),
         }))
         .filter((entry) => entry.risk && entry.mitigation);
     } catch {}
+  }
+
+  return [];
+}
+
+function parseExceedsRegister(rawValue) {
+  const trimmedValue = String(rawValue || "").trim();
+  if (!trimmedValue) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(trimmedValue);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((entry) => ({
+          id:
+            typeof entry?.id === "string" && entry.id.trim()
+              ? entry.id
+              : createExceedsRegisterEntry().id,
+          element: String(entry?.element || "").trim(),
+          rationale: String(entry?.rationale || "").trim(),
+        }))
+        .filter((entry) => entry.element || entry.rationale);
+    }
+  } catch {
+    return [
+      {
+        ...createExceedsRegisterEntry(),
+        element: "Differentiated solution element",
+        rationale: trimmedValue,
+      },
+    ];
   }
 
   return [];
@@ -882,20 +906,20 @@ function serializeRiskRegister(entries) {
       id: entry.id || createRiskRegisterEntry().id,
       risk: String(entry.risk || "").trim(),
       mitigation: String(entry.mitigation || "").trim(),
-      impact: String(entry.impact || "").trim(),
-      likelihood: String(entry.likelihood || "").trim(),
-      status: String(entry.status || "").trim(),
-      notes: String(entry.notes || "").trim(),
     }))
-    .filter(
-      (entry) =>
-        entry.risk ||
-        entry.mitigation ||
-        entry.impact ||
-        entry.likelihood ||
-        entry.status ||
-        entry.notes,
-    );
+    .filter((entry) => entry.risk || entry.mitigation);
+
+  return normalizedEntries.length ? JSON.stringify(normalizedEntries) : "";
+}
+
+function serializeExceedsRegister(entries) {
+  const normalizedEntries = entries
+    .map((entry) => ({
+      id: entry.id || createExceedsRegisterEntry().id,
+      element: String(entry.element || "").trim(),
+      rationale: String(entry.rationale || "").trim(),
+    }))
+    .filter((entry) => entry.element || entry.rationale);
 
   return normalizedEntries.length ? JSON.stringify(normalizedEntries) : "";
 }
@@ -976,23 +1000,33 @@ function StormWorkspaceBar({
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
   const [riskDraft, setRiskDraft] = useState(createRiskRegisterEntry());
   const [riskDeleteId, setRiskDeleteId] = useState("");
-  const panelBg = isLightMode ? LIGHT_CANVAS_SURFACE : GITHUB_BASE;
-  const panelBorder = isLightMode ? "rgba(99, 111, 128, 0.18)" : GITHUB_BORDER;
+  const [exceedsDialogOpen, setExceedsDialogOpen] = useState(false);
+  const [exceedsDraft, setExceedsDraft] = useState(createExceedsRegisterEntry());
+  const [exceedsDeleteId, setExceedsDeleteId] = useState("");
+  const panelBg = "transparent";
+  const panelBorder = "transparent";
   const activeTabSurface = isLightMode ? LIGHT_SHARED_SURFACE : "#2b3542";
-  const panelCard = isLightMode ? "#f1f4f7" : activeTabSurface;
-  const panelCardHover = isLightMode ? "#e9eef3" : activeTabSurface;
-  const panelText = isLightMode ? "#313841" : CHROME_TEXT;
-  const panelMutedText = isLightMode ? "#636f80" : CHROME_TEXT_MUTED;
+  const panelToolbarBg = isLightMode ? "#3c4a56" : activeTabSurface;
+  const panelEditorBg = isLightMode ? "#495764" : "transparent";
+  const panelCardHover = isLightMode ? "#e3e9f0" : activeTabSurface;
+  const panelText = isLightMode ? "#f5f7fa" : CHROME_TEXT;
+  const panelMutedText = isLightMode ? "rgba(245, 247, 250, 0.72)" : CHROME_TEXT_MUTED;
   const panelAction = isLightMode ? "#64d3e3" : AI_ACTION;
   const tabChromeBg = "transparent";
   const activeTabText = isLightMode ? "#ffffff" : panelText;
   const selectedTabBg = isLightMode ? "#58a6ff" : "#141a21";
-  const inactiveTabText = isLightMode ? "#4b5563" : panelMutedText;
-  const inactiveTabBg = isLightMode ? "#dbe3ea" : "rgba(255,255,255,0.03)";
+  const inactiveTabText = isLightMode ? "#eef3f7" : panelMutedText;
+  const inactiveTabBg = isLightMode ? "#31404d" : "rgba(255,255,255,0.03)";
   const riskEntries = useMemo(
     () => (activeTab === "Risks" ? parseRiskRegister(notesByTab.Risks) : []),
     [activeTab, notesByTab.Risks],
   );
+  const exceedsEntries = useMemo(
+    () => (activeTab === "Exceeds MTS" ? parseExceedsRegister(notesByTab["Exceeds MTS"]) : []),
+    [activeTab, notesByTab],
+  );
+  const showDefinitionPanels = activeTab === "MTS Definition";
+  const showStandaloneToolbar = activeTab !== "MTS Definition";
   const canGenerateStormContent =
     (activeTab === "MTS Definition" || activeTab === "MTS Solution") &&
     Boolean(activeSection?.id) &&
@@ -1008,6 +1042,15 @@ function StormWorkspaceBar({
     setRiskDialogOpen(false);
   }
 
+  function openExceedsDialog() {
+    setExceedsDraft(createExceedsRegisterEntry());
+    setExceedsDialogOpen(true);
+  }
+
+  function closeExceedsDialog() {
+    setExceedsDialogOpen(false);
+  }
+
   function openRiskDeleteDialog(riskId) {
     setRiskDeleteId(riskId);
   }
@@ -1016,8 +1059,20 @@ function StormWorkspaceBar({
     setRiskDeleteId("");
   }
 
+  function openExceedsDeleteDialog(entryId) {
+    setExceedsDeleteId(entryId);
+  }
+
+  function closeExceedsDeleteDialog() {
+    setExceedsDeleteId("");
+  }
+
   function updateRiskDraft(field, value) {
     setRiskDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateExceedsDraft(field, value) {
+    setExceedsDraft((current) => ({ ...current, [field]: value }));
   }
 
   function saveRiskDraft() {
@@ -1044,6 +1099,32 @@ function StormWorkspaceBar({
     setRiskDeleteId("");
   }
 
+  function saveExceedsDraft() {
+    if (!exceedsDraft.element.trim() || !exceedsDraft.rationale.trim()) {
+      return;
+    }
+
+    onNotesChange(
+      "Exceeds MTS",
+      serializeExceedsRegister([...exceedsEntries, exceedsDraft]),
+    );
+    setExceedsDialogOpen(false);
+  }
+
+  function confirmExceedsDelete() {
+    if (!exceedsDeleteId) {
+      return;
+    }
+
+    onNotesChange(
+      "Exceeds MTS",
+      serializeExceedsRegister(
+        exceedsEntries.filter((candidate) => candidate.id !== exceedsDeleteId),
+      ),
+    );
+    setExceedsDeleteId("");
+  }
+
   return (
       <Paper
       variant="outlined"
@@ -1066,7 +1147,7 @@ function StormWorkspaceBar({
       <Box
         sx={{
           px: 0,
-          pt: 0.9,
+          pt: 0,
           pb: 0,
           background: "transparent",
           borderBottom: 0,
@@ -1085,6 +1166,7 @@ function StormWorkspaceBar({
             sx={{
               position: "relative",
               px: 3.75,
+              py: 0.9,
               width: "100%",
               justifyContent: "flex-start",
             }}
@@ -1207,240 +1289,47 @@ function StormWorkspaceBar({
               <Alert severity="error">{generationState.error}</Alert>
             </Box>
           ) : null}
-          <Box
-            sx={{
-              px: 3.75,
-              flex: 1,
-              minHeight: 0,
-              display: "flex",
-            }}
-          >
-            {activeTab === "MTS Definition" ? (
-              <Stack
-                spacing={1.25}
+          {showStandaloneToolbar ? (
+            <Box sx={{ px: 3.75, mb: activeTab === "Risks" ? 0 : -1.5 }}>
+              <Box
                 sx={{
-                  flex: 1,
-                  minHeight: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  fontFamily: GITHUB_FONT_STACK,
+                  fontSize: "0.875rem",
+                  lineHeight: 1.45,
+                  bgcolor: panelToolbarBg,
+                  border: `1px solid ${panelBorder}`,
+                  borderRadius: 0.5,
+                  overflow: "hidden",
+                  boxShadow: "none",
                 }}
-              >
-                {MTS_DEFINITION_PANELS.map((panel) => {
-                  const isGeneratingThisPanel = generationState.loading === panel.id;
-                  const panelValue = definitionPanels?.[panel.id] || "";
-                  const panelPrompt = definitionPrompts?.[panel.id] || "";
-                  const panelFlex = panel.id === "definition_1" ? 0.72 : 1.28;
-                  return (
-                    <Stack key={panel.id} spacing={0} sx={{ flex: panelFlex, minHeight: 0 }}>
-                      <Box
-                        sx={{
-                          flex: 1,
-                          minHeight: 0,
-                          display: "flex",
-                          flexDirection: "column",
-                          fontFamily: GITHUB_FONT_STACK,
-                          fontSize: "0.875rem",
-                          lineHeight: 1.45,
-                          bgcolor: panelCard,
-                          borderRadius: 0.5,
-                          overflow: "hidden",
-                          boxShadow: isLightMode
-                            ? "0 1px 0 rgba(17,24,39,0.04), 0 3px 8px rgba(17,24,39,0.08)"
-                            : "none",
-                        }}
-                      >
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          alignItems="center"
-                          justifyContent="space-between"
-                          sx={{
-                            px: 1,
-                            py: 0.45,
-                            bgcolor: "transparent",
-                            borderBottom: 0,
-                            flexShrink: 0,
-                          }}
-                        >
-                          <Typography variant="body2" sx={{ color: panelText, fontWeight: 600 }}>
-                            {panel.label}
-                          </Typography>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <Button
-                              variant="text"
-                              onClick={() => onClearActiveTab(panel.id)}
-                              size="small"
-                              sx={{
-                                minHeight: 26,
-                                py: 0.2,
-                                minWidth: 0,
-                                color: panelText,
-                                borderColor: "transparent",
-                                bgcolor: "transparent",
-                                boxShadow: "none",
-                                "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
-                              }}
-                            >
-                              Clear
-                            </Button>
-                            <Button
-                              variant="text"
-                              onClick={() => onEditMtsPrompt(panel.id)}
-                              size="small"
-                              sx={{
-                                minHeight: 26,
-                                py: 0.2,
-                                minWidth: 0,
-                                color: panelText,
-                                borderColor: "transparent",
-                                bgcolor: "transparent",
-                                boxShadow: "none",
-                                "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
-                              }}
-                            >
-                              Edit Prompt
-                            </Button>
-                            <Button
-                              variant="text"
-                              onClick={() => onGenerateMtsDefinition(panel.id)}
-                              disabled={!canGenerateStormContent}
-                              startIcon={
-                                isGeneratingThisPanel ? (
-                                  <CircularProgress size={16} color="inherit" />
-                                ) : null
-                              }
-                              sx={{
-                                minHeight: 24,
-                                px: 0.8,
-                                py: 0.1,
-                                borderRadius: 0.75,
-                                bgcolor: "transparent",
-                                color: "#2ea36a",
-                                boxShadow: "none",
-                                "& .MuiButton-startIcon": {
-                                  mr: 0.45,
-                                  ml: 0,
-                                },
-                                "&:hover": {
-                                  bgcolor: "transparent",
-                                  color: "#278b5a",
-                                },
-                              }}
-                            >
-                              {isGeneratingThisPanel ? "Generating..." : "Generate"}
-                            </Button>
-                          </Stack>
-                        </Stack>
-                        <TextField
-                          multiline
-                          minRows={6}
-                          fullWidth
-                          placeholder={`Draft ${panel.label.toLowerCase()} here...`}
-                          value={panelValue}
-                          onChange={(event) => onNotesChange(activeTab, event.target.value, panel.id)}
-                          sx={{ flex: 1 }}
-                          InputProps={{
-                            sx: {
-                              height: "100%",
-                              alignItems: "flex-start",
-                              fontFamily: GITHUB_FONT_STACK,
-                              fontSize: "0.875rem",
-                              lineHeight: 1.45,
-                              fontWeight: 400,
-                              color: panelText,
-                              bgcolor: "transparent",
-                              borderRadius: 0,
-                              overscrollBehavior: "contain",
-                              "& .MuiInputBase-inputMultiline": {
-                                height: "100% !important",
-                                minHeight: "100% !important",
-                                boxSizing: "border-box",
-                              },
-                              "& textarea": {
-                                fontWeight: 400,
-                                color: panelText,
-                                overflowY: "auto !important",
-                                scrollbarWidth: "thin",
-                                scrollbarColor: "rgba(17,24,39,0.14) transparent",
-                              },
-                              "& textarea::-webkit-scrollbar": {
-                                width: 4,
-                              },
-                              "& textarea::-webkit-scrollbar-track": {
-                                background: "transparent",
-                              },
-                              "& textarea::-webkit-scrollbar-thumb": {
-                                backgroundColor: "rgba(17,24,39,0.14)",
-                                borderRadius: 999,
-                                border: "1px solid transparent",
-                                backgroundClip: "padding-box",
-                              },
-                              "& textarea:hover::-webkit-scrollbar-thumb": {
-                                backgroundColor: "rgba(17,24,39,0.22)",
-                              },
-                              "& textarea::placeholder": {
-                                color: panelMutedText,
-                                opacity: 1,
-                              },
-                              "& fieldset": {
-                                borderColor: "transparent",
-                                borderWidth: 0,
-                              },
-                              "&:hover fieldset": {
-                                borderColor: "transparent",
-                                borderWidth: 0,
-                              },
-                              "&.Mui-focused fieldset": {
-                                borderColor: "transparent",
-                                borderWidth: 0,
-                              },
-                            },
-                          }}
-                        />
-                      </Box>
-                    </Stack>
-                  );
-                })}
-              </Stack>
-            ) : (
-            <Box
-              sx={{
-                flex: 1,
-                minHeight: 0,
-                display: "flex",
-                flexDirection: "column",
-                fontFamily: GITHUB_FONT_STACK,
-                fontSize: "0.875rem",
-                lineHeight: 1.45,
-                bgcolor: activeTab === "Risks" ? "transparent" : panelCard,
-                borderRadius: 0.5,
-                overflow: "hidden",
-                boxShadow:
-                  activeTab === "Risks"
-                    ? "none"
-                    : isLightMode
-                      ? "0 1px 0 rgba(17,24,39,0.04), 0 3px 8px rgba(17,24,39,0.08)"
-                      : "none",
-              }}
-            >
-              <Stack
-                direction="row"
-                spacing={1}
-                alignItems="center"
-                justifyContent="space-between"
-                sx={{
-                  px: activeTab === "Risks" ? 0.35 : 1,
-                  py: 0.45,
-                  bgcolor: "transparent",
-                  borderBottom: 0,
-                  flexShrink: 0,
-                }}
-              >
+                >
+                  <Stack
+                    direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  justifyContent={activeTab === "Risks" ? "flex-start" : "space-between"}
+                  sx={{
+                    px: activeTab === "Risks" ? 1 : 1,
+                    py: 0.45,
+                    bgcolor: "transparent",
+                    borderBottom: 0,
+                    flexShrink: 0,
+                  }}
+                  >
                   {activeTab === "Risks" ? null : (
                     <Typography variant="body2" sx={{ color: panelText, fontWeight: 600 }}>
                       {activeTab}
                     </Typography>
                   )}
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
-                    {activeTab === "Risks" ? null : (
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                    sx={{ flexShrink: 0, ml: activeTab === "Risks" ? 0 : "auto" }}
+                  >
+                    {activeTab === "Risks" || activeTab === "MTS Definition" ? null : (
                       <Button
                         variant="text"
                         onClick={onClearActiveTab}
@@ -1452,59 +1341,16 @@ function StormWorkspaceBar({
                           color: panelText,
                           borderColor: "transparent",
                           bgcolor: "transparent",
-                          boxShadow: "none",
+                          boxShadow: isLightMode
+                            ? "0 1px 0 rgba(17,24,39,0.04), 0 3px 8px rgba(17,24,39,0.08)"
+                            : "none",
                           "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
                         }}
                       >
                         Clear
                       </Button>
                     )}
-                    {activeTab === "MTS Definition" ? (
-                      <>
-                        <Button
-                          variant="text"
-                          onClick={onEditMtsPrompt}
-                          size="small"
-                          sx={{
-                            minHeight: 26,
-                            py: 0.2,
-                            minWidth: 0,
-                            color: panelText,
-                            borderColor: "transparent",
-                            bgcolor: "transparent",
-                            boxShadow: "none",
-                            "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
-                          }}
-                        >
-                          Edit Prompt
-                        </Button>
-                        <Button
-                          variant="text"
-                          size="small"
-                          onClick={onGenerateMtsDefinition}
-                          disabled={!canGenerateStormContent}
-                          startIcon={
-                            generationState.loading ? (
-                              <CircularProgress size={16} color="inherit" />
-                            ) : null
-                          }
-                          sx={{
-                            minHeight: 26,
-                            py: 0.2,
-                            minWidth: 0,
-                            bgcolor: "transparent",
-                            color: "#2ea36a",
-                            boxShadow: "none",
-                            "&:hover": {
-                              bgcolor: "transparent",
-                              color: "#278b5a",
-                            },
-                          }}
-                        >
-                          {generationState.loading ? "Generating..." : "Generate"}
-                        </Button>
-                      </>
-                    ) : activeTab === "MTS Solution" ? (
+                    {activeTab === "MTS Definition" ? null : activeTab === "MTS Solution" ? (
                       <>
                         <Button
                           variant="text"
@@ -1600,25 +1446,286 @@ function StormWorkspaceBar({
                           Add Risk
                         </Button>
                       </>
+                    ) : activeTab === "Exceeds MTS" ? (
+                      <Button
+                        variant="text"
+                        startIcon={<PlaylistAddRounded />}
+                        onClick={openExceedsDialog}
+                        sx={{
+                          minHeight: 26,
+                          py: 0.2,
+                          minWidth: 0,
+                          borderRadius: 0.75,
+                          bgcolor: "transparent",
+                          color: panelText,
+                          boxShadow: "none",
+                          "&:hover": {
+                            bgcolor: "transparent",
+                            color: panelText,
+                          },
+                        }}
+                      >
+                        Add Exceeds Element
+                      </Button>
                     ) : null}
                   </Stack>
+                </Stack>
+              </Box>
+            </Box>
+          ) : null}
+          <Box
+            sx={{
+              px: 3.75,
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+            }}
+          >
+            {showDefinitionPanels ? (
+              <Stack
+                spacing={1.25}
+                sx={{
+                  flex: 1,
+                  minHeight: 0,
+                }}
+              >
+                {MTS_DEFINITION_PANELS.map((panel) => {
+                  const isGeneratingThisPanel = generationState.loading === panel.id;
+                  const panelValue = definitionPanels?.[panel.id] || "";
+                  const panelFlex = panel.id === "definition_1" ? 0.72 : 1.28;
+                  return (
+                    <Stack key={panel.id} spacing={0.9} sx={{ flex: panelFlex, minHeight: 0 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          fontFamily: GITHUB_FONT_STACK,
+                          fontSize: "0.875rem",
+                          lineHeight: 1.45,
+                          bgcolor: panelToolbarBg,
+                          border: `1px solid ${panelBorder}`,
+                          borderRadius: 0.5,
+                          overflow: "hidden",
+                          boxShadow: "none",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
+                          justifyContent="space-between"
+                          sx={{
+                            px: 1,
+                            py: 0.45,
+                            bgcolor: "transparent",
+                            borderBottom: 0,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ color: panelText, fontWeight: 600 }}>
+                            {panel.label}
+                          </Typography>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Button
+                              variant="text"
+                              onClick={() => onClearActiveTab(panel.id)}
+                              size="small"
+                              sx={{
+                                minHeight: 26,
+                                py: 0.2,
+                                minWidth: 0,
+                                color: panelText,
+                                borderColor: "transparent",
+                                bgcolor: "transparent",
+                                boxShadow: "none",
+                                "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
+                              }}
+                            >
+                              Clear
+                            </Button>
+                            <Button
+                              variant="text"
+                              onClick={() => onEditMtsPrompt(panel.id)}
+                              size="small"
+                              sx={{
+                                minHeight: 26,
+                                py: 0.2,
+                                minWidth: 0,
+                                color: panelText,
+                                borderColor: "transparent",
+                                bgcolor: "transparent",
+                                boxShadow: "none",
+                                "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
+                              }}
+                            >
+                              Edit Prompt
+                            </Button>
+                            <Button
+                              variant="text"
+                              onClick={() => onGenerateMtsDefinition(panel.id)}
+                              disabled={!canGenerateStormContent}
+                              startIcon={
+                                isGeneratingThisPanel ? (
+                                  <CircularProgress size={16} color="inherit" />
+                                ) : null
+                              }
+                              sx={{
+                                minHeight: 24,
+                                px: 0.8,
+                                py: 0.1,
+                                borderRadius: 0.75,
+                                bgcolor: "transparent",
+                                color: "#2ea36a",
+                                boxShadow: "none",
+                                "& .MuiButton-startIcon": {
+                                  mr: 0.45,
+                                  ml: 0,
+                                },
+                                "&:hover": {
+                                  bgcolor: "transparent",
+                                  color: "#278b5a",
+                                },
+                              }}
+                            >
+                              {isGeneratingThisPanel ? "Generating..." : "Generate"}
+                            </Button>
+                          </Stack>
+                        </Stack>
+                      </Box>
+                      <Box
+                        sx={{
+                          flex: 1,
+                          minHeight: 0,
+                          display: "flex",
+                          flexDirection: "column",
+                          fontFamily: GITHUB_FONT_STACK,
+                          fontSize: "0.875rem",
+                          lineHeight: 1.45,
+                          bgcolor: panelEditorBg,
+                          border: `1px solid ${panelBorder}`,
+                          borderRadius: 0.5,
+                          overflow: "hidden",
+                          boxShadow: "none",
+                        }}
+                      >
+                        <TextField
+                          multiline
+                          minRows={6}
+                          fullWidth
+                          placeholder={`Draft ${panel.label.toLowerCase()} here...`}
+                          value={panelValue}
+                          onChange={(event) => onNotesChange(activeTab, event.target.value, panel.id)}
+                          sx={{ flex: 1 }}
+                          InputProps={{
+                            sx: {
+                              height: "100%",
+                              alignItems: "flex-start",
+                              fontFamily: GITHUB_FONT_STACK,
+                              fontSize: "0.875rem",
+                              lineHeight: 1.45,
+                              fontWeight: 400,
+                              color: panelText,
+                              bgcolor: "transparent",
+                              borderRadius: 0,
+                              overscrollBehavior: "contain",
+                              "& .MuiInputBase-inputMultiline": {
+                                height: "100% !important",
+                                minHeight: "100% !important",
+                                boxSizing: "border-box",
+                              },
+                              "& textarea": {
+                                fontWeight: 400,
+                                color: panelText,
+                                overflowY: "auto !important",
+                                scrollbarWidth: "thin",
+                                scrollbarColor: "rgba(17,24,39,0.14) transparent",
+                              },
+                              "& textarea::-webkit-scrollbar": {
+                                width: 4,
+                              },
+                              "& textarea::-webkit-scrollbar-track": {
+                                background: "transparent",
+                              },
+                              "& textarea::-webkit-scrollbar-thumb": {
+                                backgroundColor: "rgba(17,24,39,0.14)",
+                                borderRadius: 999,
+                                border: "1px solid transparent",
+                                backgroundClip: "padding-box",
+                              },
+                              "& textarea:hover::-webkit-scrollbar-thumb": {
+                                backgroundColor: "rgba(17,24,39,0.22)",
+                              },
+                              "& textarea::placeholder": {
+                                color: panelMutedText,
+                                opacity: 1,
+                              },
+                              "& fieldset": {
+                                borderColor: "transparent",
+                                borderWidth: 0,
+                              },
+                              "&:hover fieldset": {
+                                borderColor: "transparent",
+                                borderWidth: 0,
+                              },
+                              "&.Mui-focused fieldset": {
+                                borderColor: "transparent",
+                                borderWidth: 0,
+                              },
+                            },
+                          }}
+                        />
+                      </Box>
+                    </Stack>
+                  );
+                })}
               </Stack>
+            ) : (
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                display: "flex",
+                flexDirection: "column",
+                fontFamily: GITHUB_FONT_STACK,
+                fontSize: "0.875rem",
+                lineHeight: 1.45,
+                bgcolor:
+                  activeTab === "Risks" || activeTab === "Exceeds MTS"
+                    ? "transparent"
+                    : panelEditorBg,
+                border:
+                  activeTab === "Risks" || activeTab === "Exceeds MTS"
+                    ? "0"
+                    : `1px solid ${panelBorder}`,
+                borderRadius: 0.5,
+                overflow: "hidden",
+                mt: 0,
+                boxShadow:
+                  activeTab === "Risks" || activeTab === "Exceeds MTS"
+                    ? "none"
+                    : isLightMode
+                      ? "0 1px 0 rgba(17,24,39,0.04), 0 3px 8px rgba(17,24,39,0.08)"
+                      : "none",
+              }}
+            >
               {activeTab === "Risks" ? (
                 <Box
                   sx={{
                     flex: 1,
                     minHeight: 0,
                     overflowY: "auto",
-                    px: 0.35,
-                    py: 0.8,
+                    px: 0,
+                    pt: 0.2,
+                    pb: 0.8,
                     ...subtleScrollbarSx,
                   }}
                 >
                   <Stack spacing={1.2}>
                     {riskEntries.length ? null : (
                       <Typography variant="body2" sx={{ color: panelMutedText, px: 0.4 }}>
-                        No risks added yet. Use `Add Risk` to capture a risk, mitigation,
-                        and supporting details for this section.
+                        No risks added yet. Use `Add Risk` to capture a risk and mitigation
+                        for this section.
                       </Typography>
                     )}
                     {riskEntries.map((entry, index) => {
@@ -1629,15 +1736,14 @@ function StormWorkspaceBar({
                           sx={{
                             position: "relative",
                             p: 0.9,
+                            mx: 0,
                             fontFamily: GITHUB_FONT_STACK,
                             fontSize: "0.875rem",
                             lineHeight: 1.45,
                             borderRadius: 0.5,
-                            bgcolor: isLightMode ? "#f1f4f7" : "rgba(0,0,0,0.08)",
-                            borderColor: isLightMode ? "rgba(17,24,39,0.08)" : "rgba(255,255,255,0.12)",
-                            boxShadow: isLightMode
-                              ? "0 1px 0 rgba(17,24,39,0.04), 0 3px 8px rgba(17,24,39,0.08)"
-                              : "none",
+                            bgcolor: panelEditorBg,
+                            borderColor: "transparent",
+                            boxShadow: "none",
                           }}
                         >
                           <IconButton
@@ -1657,27 +1763,84 @@ function StormWorkspaceBar({
                           </IconButton>
                           <Stack spacing={1} sx={{ pr: 3.2 }}>
                             <Typography variant="body2" sx={{ color: panelText }}>
-                              <Box component="span" sx={{ fontWeight: 600 }}>Risk:</Box> {entry.risk}
+                              <Box component="span" sx={{ fontWeight: 600, color: "#ff4d4f" }}>Risk:</Box> {entry.risk}
                             </Typography>
                             <Typography variant="body2" sx={{ color: panelText }}>
                               <Box component="span" sx={{ fontWeight: 600 }}>Mitigation:</Box> {entry.mitigation}
                             </Typography>
-                            {entry.notes ? (
-                              <Typography variant="body2" sx={{ color: panelMutedText }}>
-                                {entry.notes}
-                              </Typography>
-                            ) : null}
-                            {(entry.impact || entry.likelihood || entry.status) ? (
-                              <Typography variant="body2" sx={{ color: panelMutedText }}>
-                                {[entry.impact && `Impact: ${entry.impact}`, entry.likelihood && `Likelihood: ${entry.likelihood}`, entry.status && `Status: ${entry.status}`]
-                                  .filter(Boolean)
-                                  .join("  |  ")}
-                              </Typography>
-                            ) : null}
                           </Stack>
                         </Paper>
                       );
                     })}
+                  </Stack>
+                </Box>
+              ) : activeTab === "Exceeds MTS" ? (
+                <Box
+                  sx={{
+                    flex: 1,
+                    minHeight: 0,
+                    overflowY: "auto",
+                    px: 0,
+                    pt: 0.2,
+                    pb: 0.8,
+                    ...subtleScrollbarSx,
+                  }}
+                >
+                  <Stack spacing={1.2}>
+                    {exceedsEntries.length ? null : (
+                      <Typography variant="body2" sx={{ color: panelMutedText, px: 0.4 }}>
+                        No exceeds elements added yet. Use `Add Exceeds Element` to capture
+                        discriminators that go beyond the minimum requirement.
+                      </Typography>
+                    )}
+                    {exceedsEntries.map((entry) => (
+                      <Paper
+                        key={entry.id}
+                        variant="outlined"
+                        sx={{
+                          position: "relative",
+                          p: 0.9,
+                          mx: 0,
+                          fontFamily: GITHUB_FONT_STACK,
+                          fontSize: "0.875rem",
+                          lineHeight: 1.45,
+                          borderRadius: 0.5,
+                          bgcolor: panelEditorBg,
+                          borderColor: "transparent",
+                          boxShadow: "none",
+                        }}
+                      >
+                        <IconButton
+                          size="small"
+                          onClick={() => openExceedsDeleteDialog(entry.id)}
+                          sx={{
+                            position: "absolute",
+                            top: 6,
+                            right: 6,
+                            width: 22,
+                            height: 22,
+                            color: panelMutedText,
+                            bgcolor: "transparent",
+                          }}
+                        >
+                          <CloseRounded sx={{ fontSize: 15 }} />
+                        </IconButton>
+                        <Stack spacing={1} sx={{ pr: 3.2 }}>
+                          <Typography variant="body2" sx={{ color: panelText }}>
+                            <Box component="span" sx={{ fontWeight: 600, color: "#58a6ff" }}>
+                              Exceeds Element:
+                            </Box>{" "}
+                            {entry.element}
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: panelText }}>
+                            <Box component="span" sx={{ fontWeight: 600 }}>
+                              Why it exceeds:
+                            </Box>{" "}
+                            {entry.rationale}
+                          </Typography>
+                        </Stack>
+                      </Paper>
+                    ))}
                   </Stack>
                 </Box>
               ) : (
@@ -1773,54 +1936,6 @@ function StormWorkspaceBar({
               value={riskDraft.mitigation}
               onChange={(event) => updateRiskDraft("mitigation", event.target.value)}
             />
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-              <TextField
-                fullWidth
-                select
-                label="Impact"
-                value={riskDraft.impact}
-                onChange={(event) => updateRiskDraft("impact", event.target.value)}
-              >
-                <MenuItem value="">Select impact</MenuItem>
-                <MenuItem value="High">High</MenuItem>
-                <MenuItem value="Medium">Medium</MenuItem>
-                <MenuItem value="Low">Low</MenuItem>
-              </TextField>
-              <TextField
-                fullWidth
-                select
-                label="Likelihood"
-                value={riskDraft.likelihood}
-                onChange={(event) => updateRiskDraft("likelihood", event.target.value)}
-              >
-                <MenuItem value="">Select likelihood</MenuItem>
-                <MenuItem value="High">High</MenuItem>
-                <MenuItem value="Medium">Medium</MenuItem>
-                <MenuItem value="Low">Low</MenuItem>
-              </TextField>
-            </Stack>
-            <TextField
-              fullWidth
-              select
-              label="Status"
-              value={riskDraft.status}
-              onChange={(event) => updateRiskDraft("status", event.target.value)}
-            >
-              <MenuItem value="">Select status</MenuItem>
-              <MenuItem value="Open">Open</MenuItem>
-              <MenuItem value="Monitoring">Monitoring</MenuItem>
-              <MenuItem value="Mitigated">Mitigated</MenuItem>
-              <MenuItem value="Accepted">Accepted</MenuItem>
-            </TextField>
-            <TextField
-              multiline
-              minRows={3}
-              fullWidth
-              label="Notes"
-              placeholder="Dependencies, triggers, assumptions, or evidence."
-              value={riskDraft.notes}
-              onChange={(event) => updateRiskDraft("notes", event.target.value)}
-            />
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -1848,13 +1963,67 @@ function StormWorkspaceBar({
           </Button>
         </DialogActions>
       </Dialog>
+      <Dialog open={exceedsDialogOpen} onClose={closeExceedsDialog} fullWidth maxWidth="sm">
+        <DialogTitle>Add Exceeds Element</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.25} sx={{ pt: 0.5 }}>
+            <TextField
+              fullWidth
+              required
+              label="Solution Element"
+              placeholder="Describe the differentiator."
+              value={exceedsDraft.element}
+              onChange={(event) => updateExceedsDraft("element", event.target.value)}
+            />
+            <TextField
+              fullWidth
+              required
+              multiline
+              minRows={3}
+              label="Why It Exceeds"
+              placeholder="Explain why this goes beyond the minimum."
+              value={exceedsDraft.rationale}
+              onChange={(event) => updateExceedsDraft("rationale", event.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeExceedsDialog}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={saveExceedsDraft}
+            disabled={!exceedsDraft.element.trim() || !exceedsDraft.rationale.trim()}
+          >
+            Add Element
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={Boolean(exceedsDeleteId)}
+        onClose={closeExceedsDeleteDialog}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Delete Exceeds Element</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Are you sure you want to delete this exceeds element?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeExceedsDeleteDialog}>Cancel</Button>
+          <Button onClick={confirmExceedsDelete} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 }
 
 export function StudioApp() {
   const { mode, toggleMode } = useStudioThemeMode();
-  const middleCanvasBg = mode === "light" ? "#e9edf2" : GITHUB_SURFACE;
+  const middleCanvasBg = mode === "light" ? "#b7c1cb" : GITHUB_SURFACE;
   const [mounted, setMounted] = useState(false);
   const [workspace, setWorkspace] = useState(buildEmptyWorkspace);
   const [undoHistory, setUndoHistory] = useState([]);
@@ -3573,7 +3742,7 @@ export function StudioApp() {
       return false;
     }
 
-    const defaultName = workspace.sourceFilename || "StormSurge Project";
+    const defaultName = workspace.sourceFilename || "StormStudio Project";
     const name = window.prompt("Save project as", defaultName);
     if (name === null) {
       return false;
@@ -3657,7 +3826,7 @@ export function StudioApp() {
           right: 0,
           borderBottom: "1px solid var(--studio-appbar-border)",
           backdropFilter: "none",
-          bgcolor: "#161b22",
+          bgcolor: "#223b54",
           pl: 0,
           pr: 0,
           py: 0,
@@ -3684,14 +3853,14 @@ export function StudioApp() {
               variant="h5"
               sx={{
                 color: "var(--studio-title)",
-                fontWeight: 700,
-                letterSpacing: -0.03,
+                fontWeight: 400,
+                letterSpacing: -0.02,
                 lineHeight: 1,
                 fontSize: "1.08rem",
                 flexShrink: 0,
               }}
             >
-              StormSurge
+              StormStudio
             </Typography>
             {!isHomeScreen ? (
               <Stack
@@ -3944,7 +4113,7 @@ export function StudioApp() {
                 <CircularProgress />
                 <Typography variant="h6">Building hierarchy from uploaded PWS</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  StormSurge is running the structuring pipeline and converting the result
+                  StormStudio is running the structuring pipeline and converting the result
                   into editable workspace objects.
                 </Typography>
               </Stack>

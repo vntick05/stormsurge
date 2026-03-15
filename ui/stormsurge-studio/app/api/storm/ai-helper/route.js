@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 const serviceUrl =
   process.env.PWS_STRUCTURING_SERVICE_URL || "http://pws-structuring-service:8193";
 
-function buildConversationPrompt(messages, userPrompt) {
+function buildConversationPrompt(messages, userPrompt, { useProjectEvidence = false } = {}) {
   const history = Array.isArray(messages)
     ? messages
         .filter(
@@ -17,9 +17,12 @@ function buildConversationPrompt(messages, userPrompt) {
     : [];
 
   const lines = [
-    "You are the StormSurge AI Helper in the requirement tools sidebar.",
+    "You are the StormStudio AI Helper in the requirement tools sidebar.",
     "Respond conversationally, like a practical ChatGPT-style assistant for proposal work.",
     "Use the conversation history when it matters, but prioritize the latest request.",
+    useProjectEvidence
+      ? "A project is attached. Ground your answer in the uploaded project documents and other project evidence when relevant."
+      : "No project evidence is attached, so rely on the request and visible requirement context only.",
     "",
     "Conversation history:",
   ];
@@ -66,7 +69,7 @@ export async function POST(request) {
     },
     body: JSON.stringify({
       project_id: useProjectEvidence ? projectId : null,
-      prompt: buildConversationPrompt(payload?.messages, userPrompt),
+      prompt: buildConversationPrompt(payload?.messages, userPrompt, { useProjectEvidence }),
       checked_requirements: checkedRequirements,
       mode: "ask",
       use_project_evidence: useProjectEvidence,

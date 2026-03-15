@@ -267,7 +267,7 @@ export function RequirementImportDialog({
                 <Stack spacing={1.2} alignItems="center" justifyContent="center" sx={{ minHeight: 360 }}>
                   <Typography variant="body1">Opening PWS hierarchy...</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    StormSurge is extracting the requirement tree for import.
+                    StormStudio is extracting the requirement tree for import.
                   </Typography>
                 </Stack>
               ) : sectionRequirements.length ? (

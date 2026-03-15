@@ -56,6 +56,7 @@ export function UploadWorkspaceCard({
       variant="outlined"
       sx={{
         p: 3,
+        height: "100%",
         borderRadius: 1,
         bgcolor: "var(--studio-panel)",
         borderColor: "var(--studio-border)",
@@ -63,7 +64,7 @@ export function UploadWorkspaceCard({
         borderBottom: "3px solid var(--studio-ai-action)",
       }}
     >
-      <Stack spacing={2}>
+      <Stack spacing={2} sx={{ height: "100%" }}>
         <input
           hidden
           ref={inputRef}
@@ -85,6 +86,7 @@ export function UploadWorkspaceCard({
           fullWidth
           value={selectedProjectId}
           onChange={(event) => onProjectChange?.(event.target.value)}
+          sx={{ mt: "auto" }}
           helperText={
             selectedProjectId
               ? "This workspace will use the selected project as its package data source."

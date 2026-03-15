@@ -34,6 +34,7 @@ export function PackageProjectCard({ loading, onCreateProject }) {
       variant="outlined"
       sx={{
         p: 3,
+        height: "100%",
         borderRadius: 1,
         bgcolor: "var(--studio-panel)",
         borderColor: "var(--studio-border)",
@@ -41,13 +42,13 @@ export function PackageProjectCard({ loading, onCreateProject }) {
         borderBottom: "3px solid var(--studio-accent-coral)",
       }}
     >
-      <Stack spacing={2}>
+      <Stack spacing={2} sx={{ height: "100%" }}>
         <Stack spacing={0.75}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             New Package Project
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Upload the full package here first. StormSurge will extract, normalize, and index the
+            Upload the full package here first. StormStudio will extract, normalize, and index the
             files so search and AI tools can use the complete project later.
           </Typography>
         </Stack>
@@ -90,16 +91,11 @@ export function PackageProjectCard({ loading, onCreateProject }) {
             {loading ? "Running pipeline..." : "Create project"}
           </Button>
         </Stack>
-        {files.length ? (
-          <Typography variant="body2" color="text.secondary">
-            {files.length} file{files.length === 1 ? "" : "s"} selected
-          </Typography>
-        ) : (
-          <Typography variant="body2" color="text.secondary">
-            Add the PWS plus any SOW, attachments, sections L/M, appendices, tables, or supporting
-            files you want indexed into the package.
-          </Typography>
-        )}
+        <Typography variant="body2" color="text.secondary" sx={{ mt: "auto" }}>
+          {files.length
+            ? `${files.length} file${files.length === 1 ? "" : "s"} selected`
+            : "Add the PWS plus any SOW, attachments, sections L/M, appendices, tables, or supporting files you want indexed into the package."}
+        </Typography>
       </Stack>
     </Paper>
   );

@@ -118,7 +118,7 @@ export function RichTextContent({ content, dense = false }) {
                       <TableCell
                         key={`head-${cellIndex}`}
                         sx={{
-                          color: "var(--studio-text)",
+                          color: "inherit",
                           fontWeight: 700,
                           borderColor: GITHUB_BORDER,
                           whiteSpace: "nowrap",
@@ -136,7 +136,7 @@ export function RichTextContent({ content, dense = false }) {
                         <TableCell
                           key={`cell-${rowIndex}-${cellIndex}`}
                           sx={{
-                            color: "var(--studio-text)",
+                            color: "inherit",
                             borderColor: GITHUB_BORDER,
                             verticalAlign: "top",
                           }}
@@ -157,7 +157,11 @@ export function RichTextContent({ content, dense = false }) {
             return (
               <Box key={`list-${blockIndex}`} sx={{ display: "grid", gap: 0.55 }}>
                 {block.items.map((item, itemIndex) => (
-                  <Typography key={`item-${itemIndex}`} variant="body2" sx={{ lineHeight: 1.5 }}>
+                  <Typography
+                    key={`item-${itemIndex}`}
+                    variant="body2"
+                    sx={{ lineHeight: 1.5, color: "inherit" }}
+                  >
                     {item}
                   </Typography>
                 ))}
@@ -169,7 +173,7 @@ export function RichTextContent({ content, dense = false }) {
             <Box key={`list-${blockIndex}`} component="ul" sx={{ m: 0, pl: 2.5 }}>
               {block.items.map((item, itemIndex) => (
                 <Box key={`item-${itemIndex}`} component="li" sx={{ mb: 0.35 }}>
-                  <Typography variant="body2" sx={{ lineHeight: 1.5 }}>
+                  <Typography variant="body2" sx={{ lineHeight: 1.5, color: "inherit" }}>
                     {item}
                   </Typography>
                 </Box>
@@ -185,7 +189,7 @@ export function RichTextContent({ content, dense = false }) {
             sx={{
               whiteSpace: "pre-wrap",
               lineHeight: 1.5,
-              color: dense ? "var(--studio-text)" : "inherit",
+              color: "inherit",
             }}
           >
             {block.text}
