@@ -1016,7 +1016,7 @@ function StormWorkspaceBar({
   const activeTabText = isLightMode ? "#ffffff" : panelText;
   const selectedTabBg = isLightMode ? "#58a6ff" : "#141a21";
   const inactiveTabText = isLightMode ? "#eef3f7" : panelMutedText;
-  const inactiveTabBg = isLightMode ? "#31404d" : "rgba(255,255,255,0.03)";
+  const inactiveTabBg = isLightMode ? "#455461" : "rgba(255,255,255,0.03)";
   const riskEntries = useMemo(
     () => (activeTab === "Risks" ? parseRiskRegister(notesByTab.Risks) : []),
     [activeTab, notesByTab.Risks],

@@ -9,6 +9,10 @@ from pathlib import Path
 
 import httpx
 import psycopg
+from docling.datamodel.base_models import DocumentStream
+from docling.document_converter import DocumentConverter, PdfFormatOption
+from docling.datamodel.pipeline_options import PdfPipelineOptions, TesseractCliOcrOptions
+from docling.datamodel.base_models import InputFormat
 from psycopg_pool import AsyncConnectionPool
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
@@ -30,12 +34,16 @@ MINIO_SECRET_KEY = os.environ["MINIO_SECRET_KEY"]
 MINIO_BUCKET_RAW = os.environ.get("MINIO_BUCKET_RAW", "raw")
 MINIO_BUCKET_PARSED = os.environ.get("MINIO_BUCKET_PARSED", "parsed")
 TIKA_BASE_URL = os.environ.get("TIKA_BASE_URL", "http://tika:9998").rstrip("/")
+DOCUMENT_EXTRACTOR = os.environ.get("DOCUMENT_EXTRACTOR", "docling").strip().lower()
+DOCLING_ENABLE_TIKA_FALLBACK = os.environ.get("DOCLING_ENABLE_TIKA_FALLBACK", "true").strip().lower() not in {"0", "false", "no"}
+DOCLING_FORCE_FULL_PAGE_OCR = os.environ.get("DOCLING_FORCE_FULL_PAGE_OCR", "false").strip().lower() in {"1", "true", "yes"}
 EXTRACTION_STATUS_EXTRACTED = "extracted"
 EXTRACTION_STATUS_FAILED = "failed"
 
 db_pool: AsyncConnectionPool | None = None
 redis_client: Redis | None = None
 minio_client: Minio | None = None
+converter: DocumentConverter | None = None
 
 
 def postgres_dsn() -> str:
@@ -61,6 +69,22 @@ def get_db_pool() -> AsyncConnectionPool:
     if db_pool is None:
         raise RuntimeError("Database pool is not initialized")
     return db_pool
+
+
+def get_converter() -> DocumentConverter:
+    global converter
+    if converter is None:
+        pdf_pipeline_options = PdfPipelineOptions()
+        pdf_pipeline_options.do_ocr = True
+        pdf_pipeline_options.ocr_options = TesseractCliOcrOptions(
+            force_full_page_ocr=DOCLING_FORCE_FULL_PAGE_OCR,
+        )
+        converter = DocumentConverter(
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
+            }
+        )
+    return converter
 
 
 async def ensure_schema() -> None:
@@ -152,6 +176,12 @@ async def healthz() -> JSONResponse:
         checks["minio"] = f"error: {exc}"
 
     try:
+        get_converter()
+        checks["docling"] = "ok"
+    except Exception as exc:
+        checks["docling"] = f"error: {exc}"
+
+    try:
         response = httpx.get(f"{TIKA_BASE_URL}/tika", timeout=10.0)
         response.raise_for_status()
         checks["tika"] = "ok"
@@ -173,6 +203,29 @@ async def extract_text_with_tika(filename: str, content: bytes, content_type: st
         response = await client.put(f"{TIKA_BASE_URL}/tika", content=content, headers=headers)
     response.raise_for_status()
     return response.text
+
+
+def extract_text_with_docling(filename: str, content: bytes) -> str:
+    source = DocumentStream(name=filename, stream=io.BytesIO(content))
+    result = get_converter().convert(source)
+    markdown = result.document.export_to_markdown()
+    extracted_text = str(markdown or "").strip()
+    if not extracted_text:
+        raise ValueError("Docling returned no text")
+    return extracted_text
+
+
+async def extract_text(filename: str, content: bytes, content_type: str | None) -> tuple[str, str]:
+    extractor = DOCUMENT_EXTRACTOR or "docling"
+    if extractor == "tika":
+        return await extract_text_with_tika(filename, content, content_type), "tika"
+
+    try:
+        return extract_text_with_docling(filename, content), "docling"
+    except Exception:
+        if not DOCLING_ENABLE_TIKA_FALLBACK:
+            raise
+        return await extract_text_with_tika(filename, content, content_type), "tika_fallback"
 
 
 async def insert_document(
@@ -263,10 +316,10 @@ async def upload_document(
         raise HTTPException(status_code=502, detail=f"MinIO upload failed: {exc}") from exc
 
     try:
-        extracted_text = await extract_text_with_tika(filename, content, file.content_type)
+        extracted_text, extractor_used = await extract_text(filename, content, file.content_type)
     except Exception as exc:
         minio_client.remove_object(MINIO_BUCKET_RAW, raw_object_key)
-        raise HTTPException(status_code=502, detail=f"Tika extraction failed: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"Document extraction failed: {exc}") from exc
 
     encoded_text = extracted_text.encode("utf-8")
     try:
@@ -306,6 +359,7 @@ async def upload_document(
             "parsed_object_key": parsed_object_key,
             "extracted_text_chars": len(extracted_text),
             "status": "extracted",
+            "extractor": extractor_used,
             "service": "document-service",
             "runtime": "document-pipeline",
             "port": DOCUMENT_SERVICE_PORT,
@@ -322,9 +376,9 @@ async def extract_document(file: UploadFile = File(...)) -> JSONResponse:
     filename = file.filename or "uploaded-document.bin"
 
     try:
-        extracted_text = await extract_text_with_tika(filename, content, file.content_type)
+        extracted_text, extractor_used = await extract_text(filename, content, file.content_type)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Tika extraction failed: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"Document extraction failed: {exc}") from exc
 
     return JSONResponse(
         {
@@ -333,6 +387,7 @@ async def extract_document(file: UploadFile = File(...)) -> JSONResponse:
             "extracted_text": extracted_text,
             "extracted_text_chars": len(extracted_text),
             "status": "extracted",
+            "extractor": extractor_used,
             "service": "document-service",
             "runtime": "document-extract",
             "port": DOCUMENT_SERVICE_PORT,
