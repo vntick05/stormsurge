@@ -11,6 +11,7 @@ import HomeRounded from "@mui/icons-material/HomeRounded";
 import LightModeRounded from "@mui/icons-material/LightModeRounded";
 import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
 import AssignmentTurnedInRounded from "@mui/icons-material/AssignmentTurnedInRounded";
+import CheckCircleRounded from "@mui/icons-material/CheckCircleRounded";
 import PlaylistAddRounded from "@mui/icons-material/PlaylistAddRounded";
 import RedoRounded from "@mui/icons-material/RedoRounded";
 import SaveRounded from "@mui/icons-material/SaveRounded";
@@ -110,6 +111,12 @@ const STORM_WORKSPACE_TAB_ICONS = {
   "MTS Solution": AssignmentTurnedInRounded,
   "Exceeds MTS": TrendingUpRounded,
   Risks: WarningAmberRounded,
+};
+const STORM_WORKSPACE_TAB_TEXT_COLORS = {
+  "MTS Definition": null,
+  "MTS Solution": "#3fb950",
+  "Exceeds MTS": "#58a6ff",
+  Risks: "#f85149",
 };
 const UNASSIGNED_SECTION = {
   id: "unassigned",
@@ -240,7 +247,7 @@ function buildSectionBarSx(selected) {
   };
 }
 
-function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
+function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu, completed }) {
   return (
     <>
       <Box
@@ -300,6 +307,15 @@ function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
             {section.label}
           </Typography>
         </Box>
+        {completed ? (
+          <CheckCircleRounded
+            sx={{
+              flexShrink: 0,
+              fontSize: 16,
+              color: "#3fb950",
+            }}
+          />
+        ) : null}
         {onOpenMenu ? (
           <Tooltip title="Section actions">
             <IconButton
@@ -330,7 +346,14 @@ function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
   );
 }
 
-function SortableSectionTab({ section, selected, onSelect, onRename, onOpenMenu }) {
+function SortableSectionTab({
+  section,
+  selected,
+  onSelect,
+  onRename,
+  onOpenMenu,
+  completed = false,
+}) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: section.id,
   });
@@ -352,6 +375,7 @@ function SortableSectionTab({ section, selected, onSelect, onRename, onOpenMenu 
         selected={selected}
         dragHandleProps={{ ...attributes, ...listeners }}
         onOpenMenu={onOpenMenu}
+        completed={completed}
       />
     </ListItemButton>
   );
@@ -395,9 +419,7 @@ function RailShell({
         borderRadius: 0,
         borderRight: isLeft ? "1px solid" : 0,
         borderLeft: !isLeft ? "1px solid" : 0,
-        boxShadow: isLeft
-          ? "inset -3px 0 0 rgba(8, 12, 16, 0.18)"
-          : "inset 3px 0 0 rgba(8, 12, 16, 0.24)",
+        boxShadow: "none",
         mt: { xs: 0, xl: 0 },
         mb: { xs: 0, xl: 0 },
         ml: 0,
@@ -431,7 +453,7 @@ function RailShell({
               left: "auto",
               transform: "none",
               color: !isLeft && isLightMode ? "#ffffff" : CHROME_TEXT,
-              fontWeight: 700,
+              fontWeight: 400,
               fontSize: "1rem",
               letterSpacing: -0.01,
               lineHeight: 1.1,
@@ -584,6 +606,86 @@ function buildDefaultMtsDefinitionPrompt(sectionLabel) {
   ].join(" ");
 }
 
+function createRiskRegisterEntry() {
+  return {
+    id: `risk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    risk: "",
+    mitigation: "",
+    impact: "",
+    likelihood: "",
+    status: "",
+    notes: "",
+  };
+}
+
+function parseRiskRegister(rawValue) {
+  const trimmedValue = String(rawValue || "").trim();
+  if (!trimmedValue) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(trimmedValue);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((entry) => ({
+          id:
+            typeof entry?.id === "string" && entry.id.trim()
+              ? entry.id
+              : createRiskRegisterEntry().id,
+          risk: String(entry?.risk || "").trim(),
+          mitigation: String(entry?.mitigation || "").trim(),
+          impact: String(entry?.impact || "").trim(),
+          likelihood: String(entry?.likelihood || "").trim(),
+          status: String(entry?.status || "").trim(),
+          notes: String(entry?.notes || "").trim(),
+        }))
+        .filter(
+          (entry) =>
+            entry.risk ||
+            entry.mitigation ||
+            entry.impact ||
+            entry.likelihood ||
+            entry.status ||
+            entry.notes,
+        );
+    }
+  } catch {
+    return [
+      {
+        ...createRiskRegisterEntry(),
+        risk: trimmedValue,
+      },
+    ];
+  }
+
+  return [];
+}
+
+function serializeRiskRegister(entries) {
+  const normalizedEntries = entries
+    .map((entry) => ({
+      id: entry.id || createRiskRegisterEntry().id,
+      risk: String(entry.risk || "").trim(),
+      mitigation: String(entry.mitigation || "").trim(),
+      impact: String(entry.impact || "").trim(),
+      likelihood: String(entry.likelihood || "").trim(),
+      status: String(entry.status || "").trim(),
+      notes: String(entry.notes || "").trim(),
+    }))
+    .filter(
+      (entry) =>
+        entry.risk ||
+        entry.mitigation ||
+        entry.impact ||
+        entry.likelihood ||
+        entry.status ||
+        entry.notes,
+    );
+
+  return normalizedEntries.length ? JSON.stringify(normalizedEntries) : "";
+}
+
 function normalizeStormWorkspaceNotes(notesBySection) {
   if (!notesBySection || typeof notesBySection !== "object" || Array.isArray(notesBySection)) {
     return {};
@@ -652,22 +754,54 @@ function StormWorkspaceBar({
 }) {
   const theme = useTheme();
   const isLightMode = theme.palette.mode === "light";
+  const [riskDialogOpen, setRiskDialogOpen] = useState(false);
+  const [riskDraft, setRiskDraft] = useState(createRiskRegisterEntry());
   const panelBg = isLightMode ? "#374351" : GITHUB_BASE;
   const panelBorder = isLightMode ? "rgba(255,255,255,0.18)" : GITHUB_BORDER;
-  const panelCard = isLightMode ? "#4d5968" : "#344150";
-  const panelCardHover = isLightMode ? "#566475" : "#3b4959";
+  const activeTabSurface = isLightMode ? "#44505e" : "#2b3542";
+  const panelCard = activeTabSurface;
+  const panelCardHover = activeTabSurface;
   const panelText = isLightMode ? "var(--studio-chrome-text)" : CHROME_TEXT;
   const panelMutedText = isLightMode ? "var(--studio-chrome-text)" : CHROME_TEXT_MUTED;
   const panelAction = isLightMode ? "#64d3e3" : AI_ACTION;
   const tabChromeBg = "transparent";
-  const activeTabSurface = isLightMode ? "#44505e" : "#2b3542";
   const activeTabText = isLightMode ? "#f5f7fa" : panelText;
+  const selectedTabBg = isLightMode ? "#1d242c" : "#141a21";
   const inactiveTabText = isLightMode ? "rgba(230, 237, 243, 0.78)" : panelMutedText;
+  const riskEntries = useMemo(
+    () => (activeTab === "Risks" ? parseRiskRegister(notesByTab.Risks) : []),
+    [activeTab, notesByTab.Risks],
+  );
   const canGenerateMtsDefinition =
     activeTab === "MTS Definition" &&
     Boolean(activeSection?.id) &&
     activeSectionRequirementCount > 0 &&
     !generationState.loading;
+
+  function openRiskDialog() {
+    setRiskDraft(createRiskRegisterEntry());
+    setRiskDialogOpen(true);
+  }
+
+  function closeRiskDialog() {
+    setRiskDialogOpen(false);
+  }
+
+  function updateRiskDraft(field, value) {
+    setRiskDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function saveRiskDraft() {
+    if (!riskDraft.risk.trim() || !riskDraft.mitigation.trim()) {
+      return;
+    }
+
+    onNotesChange(
+      "Risks",
+      serializeRiskRegister([...riskEntries, riskDraft]),
+    );
+    setRiskDialogOpen(false);
+  }
 
   return (
       <Paper
@@ -690,10 +824,10 @@ function StormWorkspaceBar({
     >
       <Box
         sx={{
-          px: 3.8,
-          pt: 0,
+          px: 2.2,
+          pt: 0.9,
           pb: 0,
-          background: "rgba(9, 14, 20, 0.56)",
+          background: "transparent",
           borderBottom: 0,
         }}
       >
@@ -716,16 +850,17 @@ function StormWorkspaceBar({
             <Box
               sx={{
                 display: "flex",
-                flexWrap: "wrap",
-                alignItems: "end",
-                justifyContent: "flex-start",
-                gap: 1.15,
+                flexWrap: "nowrap",
+                alignItems: "stretch",
+                justifyContent: "stretch",
+                gap: 1,
                 width: "100%",
               }}
             >
               {STORM_WORKSPACE_TABS.map((label) => {
                 const selected = activeTab === label;
                 const TabIcon = STORM_WORKSPACE_TAB_ICONS[label] || TrackChangesRounded;
+                const semanticTextColor = STORM_WORKSPACE_TAB_TEXT_COLORS[label];
                 return (
                   <Button
                     key={label}
@@ -733,18 +868,18 @@ function StormWorkspaceBar({
                     variant="text"
                     sx={{
                       position: "relative",
-                      minHeight: 46,
-                      minWidth: 124,
-                      px: 0.72,
-                      py: 0.6,
-                      mb: "-1px",
-                      borderRadius: "4px 4px 0 0",
-                      color: selected ? activeTabText : inactiveTabText,
-                      bgcolor: selected ? activeTabSurface : "rgba(255,255,255,0.03)",
+                      flex: "1 1 0",
+                      minHeight: 52,
+                      minWidth: 0,
+                      px: 1.05,
+                      py: 0.72,
+                      mb: 0,
+                      borderRadius: 0.5,
+                      color: semanticTextColor || (selected ? activeTabText : inactiveTabText),
+                      bgcolor: selected ? selectedTabBg : "rgba(255,255,255,0.03)",
                       border: "0 solid transparent",
-                      borderBottomColor: selected ? activeTabSurface : "transparent",
                       boxShadow: "none",
-                      fontSize: "0.76rem",
+                      fontSize: "0.82rem",
                       lineHeight: 1.1,
                       fontWeight: 500,
                       justifyContent: "center",
@@ -757,7 +892,8 @@ function StormWorkspaceBar({
                           : isLightMode
                             ? "rgba(255,255,255,0.05)"
                             : "rgba(255,255,255,0.07)",
-                        color: selected ? activeTabText : panelText,
+                        color:
+                          semanticTextColor || (selected ? activeTabText : panelText),
                       },
                     }}
                   >
@@ -790,7 +926,7 @@ function StormWorkspaceBar({
       </Box>
       <Box
         sx={{
-          pt: 0.45,
+          pt: 1.35,
           pb: 1.2,
           pl: 0,
           pr: 0,
@@ -800,7 +936,7 @@ function StormWorkspaceBar({
           flexDirection: "column",
           overflowY: "auto",
           overscrollBehavior: "contain",
-          backgroundColor: activeTabSurface,
+          backgroundColor: "transparent",
           borderTop: 0,
           ...subtleScrollbarSx,
         }}
@@ -813,147 +949,370 @@ function StormWorkspaceBar({
             justifyContent="space-between"
             sx={{ px: 1.45 }}
           >
-            <Box>
-              {activeSection ? (
-                <Typography variant="body2" sx={{ color: panelMutedText }}>
-                  {activeSection.label} · {activeSectionRequirementCount} requirement
-                  {activeSectionRequirementCount === 1 ? "" : "s"}
-                </Typography>
-              ) : null}
-            </Box>
-            {activeTab === "MTS Definition" ? (
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Button
-                  variant="outlined"
-                  onClick={onClearActiveTab}
-                  size="small"
-                  sx={{
-                    minHeight: 28,
-                    py: 0.25,
-                    color: panelText,
-                    borderColor: "transparent",
-                    bgcolor: isLightMode ? panelCard : "transparent",
-                    "&:hover": { bgcolor: panelCardHover, borderColor: "transparent" },
-                  }}
-                >
-                  Clear
-                </Button>
-                <Button
-                  variant="outlined"
-                  onClick={onEditMtsPrompt}
-                  size="small"
-                  sx={{
-                    minHeight: 28,
-                    py: 0.25,
-                    color: panelText,
-                    borderColor: "transparent",
-                    bgcolor: isLightMode ? panelCard : "transparent",
-                    "&:hover": { bgcolor: panelCardHover, borderColor: "transparent" },
-                  }}
-                >
-                  Edit Prompt
-                </Button>
-                <Button
-                  variant="text"
-                  size="small"
-                  onClick={onGenerateMtsDefinition}
-                  disabled={!canGenerateMtsDefinition}
-                  startIcon={
-                    generationState.loading ? (
-                      <CircularProgress size={16} color="inherit" />
-                    ) : null
-                  }
-                  sx={{
-                    minHeight: 28,
-                    py: 0.25,
-                    bgcolor: "transparent",
-                    color: isLightMode ? "#ffffff" : panelAction,
-                    bgcolor: isLightMode ? panelAction : "transparent",
-                    boxShadow: "none",
-                    "&:hover": {
-                      bgcolor: isLightMode ? "#45bfd2" : "rgba(198, 120, 221, 0.12)",
-                      color: isLightMode ? "#ffffff" : "#d08ae5",
-                    },
-                  }}
-                >
-                  {generationState.loading ? "Generating..." : "AI Define"}
-                </Button>
-              </Stack>
-            ) : (
-              <Button
-                variant="outlined"
-                onClick={onClearActiveTab}
-                size="small"
-                sx={{
-                  minHeight: 28,
-                  py: 0.25,
-                  color: panelText,
-                  borderColor: "transparent",
-                  bgcolor: isLightMode ? panelCard : "transparent",
-                  "&:hover": { bgcolor: panelCardHover, borderColor: "transparent" },
-                }}
-              >
-                Clear
-              </Button>
-            )}
+            <Box />
           </Stack>
           {generationState.error && activeTab === "MTS Definition" ? (
             <Box sx={{ px: 1.45 }}>
               <Alert severity="error">{generationState.error}</Alert>
             </Box>
           ) : null}
-          <Box sx={{ px: 1.45, flex: 1, minHeight: 0, display: "flex" }}>
-            <TextField
-              multiline
-              minRows={10}
-              fullWidth
-              placeholder={`Draft the ${activeTab} content here...`}
-              value={notesByTab[activeTab] || ""}
-              onChange={(event) => onNotesChange(activeTab, event.target.value)}
-              sx={{ flex: 1 }}
-              InputProps={{
-                sx: {
-                  height: "100%",
-                  alignItems: "flex-start",
-                  fontSize: "0.95rem",
-                  lineHeight: 1.5,
-                  fontWeight: 400,
-                  color: panelText,
-                  bgcolor: panelCard,
-                  borderRadius: 1,
-                  overscrollBehavior: "contain",
-                  "& .MuiInputBase-inputMultiline": {
-                    height: "100% !important",
-                    minHeight: "100% !important",
-                    boxSizing: "border-box",
-                  },
-                  "& textarea": {
-                    fontWeight: 400,
-                    color: panelText,
-                    overflowY: "auto !important",
-                  },
-                  "& textarea::placeholder": {
-                    color: panelMutedText,
-                    opacity: 1,
-                  },
-                  "& fieldset": {
-                    borderColor: "transparent",
-                    borderWidth: 0,
-                  },
-                  "&:hover fieldset": {
-                    borderColor: "transparent",
-                    borderWidth: 0,
-                  },
-                  "&.Mui-focused fieldset": {
-                    borderColor: "transparent",
-                    borderWidth: 0,
-                  },
-                },
+          <Box
+            sx={{
+              px: 2.4,
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+            }}
+          >
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                display: "flex",
+                flexDirection: "column",
+                bgcolor: activeTab === "Risks" ? "transparent" : panelCard,
+                borderRadius: 0.5,
+                overflow: "hidden",
               }}
-            />
+            >
+              {activeTab === "Risks" ? null : (
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  justifyContent="flex-start"
+                  sx={{
+                    px: 1,
+                    py: 0.45,
+                    bgcolor: isLightMode ? "#39424c" : "#2a323d",
+                    borderBottom: "1px solid rgba(255,255,255,0.2)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
+                    <Button
+                      variant="text"
+                      onClick={onClearActiveTab}
+                      size="small"
+                      sx={{
+                        minHeight: 26,
+                        py: 0.2,
+                        minWidth: 0,
+                        color: panelText,
+                        borderColor: "transparent",
+                        bgcolor: "transparent",
+                        boxShadow: "none",
+                        "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
+                      }}
+                    >
+                      Clear
+                    </Button>
+                    {activeTab === "MTS Definition" ? (
+                      <>
+                        <Button
+                          variant="text"
+                          onClick={onEditMtsPrompt}
+                          size="small"
+                          sx={{
+                            minHeight: 26,
+                            py: 0.2,
+                            minWidth: 0,
+                            color: panelText,
+                            borderColor: "transparent",
+                            bgcolor: "transparent",
+                            boxShadow: "none",
+                            "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
+                          }}
+                        >
+                          Edit Prompt
+                        </Button>
+                        <Button
+                          variant="text"
+                          size="small"
+                          onClick={onGenerateMtsDefinition}
+                          disabled={!canGenerateMtsDefinition}
+                          startIcon={
+                            generationState.loading ? (
+                              <CircularProgress size={16} color="inherit" />
+                            ) : null
+                          }
+                          sx={{
+                            minHeight: 26,
+                            py: 0.2,
+                            minWidth: 0,
+                            bgcolor: "transparent",
+                            color: "#d58bf2",
+                            boxShadow: "none",
+                            "&:hover": {
+                              bgcolor: "transparent",
+                              color: "#e2aaf7",
+                            },
+                          }}
+                        >
+                          {generationState.loading ? "Generating..." : "AI Define"}
+                        </Button>
+                      </>
+                    ) : null}
+                  </Stack>
+                </Stack>
+              )}
+              {activeTab === "Risks" ? (
+                <Box
+                  sx={{
+                    flex: 1,
+                    minHeight: 0,
+                    overflowY: "auto",
+                    p: 1.2,
+                    ...subtleScrollbarSx,
+                  }}
+                >
+                  <Stack spacing={1.2}>
+                    <Box sx={{ display: "flex", justifyContent: "flex-start" }}>
+                      <Button
+                        variant="contained"
+                        startIcon={<PlaylistAddRounded />}
+                        onClick={openRiskDialog}
+                        sx={{
+                          minHeight: 36,
+                          px: 1.4,
+                          borderRadius: 0.75,
+                          bgcolor: "#0f1720",
+                          color: "#f5f7fa",
+                          boxShadow: "0 0 0 1px rgba(255,255,255,0.14)",
+                          "&:hover": {
+                            bgcolor: "#151d27",
+                            boxShadow: "0 0 0 1px rgba(255,255,255,0.2)",
+                          },
+                        }}
+                      >
+                        Add Risk
+                      </Button>
+                    </Box>
+                    {riskEntries.length ? null : (
+                      <Typography variant="body2" sx={{ color: panelMutedText, px: 0.4 }}>
+                        No risks added yet. Use `Add Risk` to capture a risk, mitigation,
+                        and supporting details for this section.
+                      </Typography>
+                    )}
+                    {riskEntries.map((entry, index) => {
+                      return (
+                        <Paper
+                          key={entry.id}
+                          variant="outlined"
+                          sx={{
+                            p: 1,
+                            borderRadius: 0.5,
+                            bgcolor: "rgba(0,0,0,0.08)",
+                            borderColor: "rgba(255,255,255,0.12)",
+                          }}
+                        >
+                          <Stack spacing={1}>
+                            <Stack
+                              direction="row"
+                              alignItems="center"
+                              justifyContent="space-between"
+                              spacing={1}
+                            >
+                              <Typography variant="body2" sx={{ color: panelText, fontWeight: 600 }}>
+                                Risk {index + 1}
+                              </Typography>
+                              <Button
+                                variant="text"
+                                size="small"
+                                onClick={() =>
+                                  onNotesChange(
+                                    "Risks",
+                                    serializeRiskRegister(
+                                      riskEntries.filter((candidate) => candidate.id !== entry.id),
+                                    ),
+                                  )
+                                }
+                                sx={{
+                                  minWidth: 0,
+                                  px: 0.6,
+                                  color: panelMutedText,
+                                  bgcolor: "transparent",
+                                }}
+                              >
+                                Remove
+                              </Button>
+                            </Stack>
+                            <Typography variant="body2" sx={{ color: panelText }}>
+                              <Box component="span" sx={{ fontWeight: 600 }}>Risk:</Box> {entry.risk}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: panelText }}>
+                              <Box component="span" sx={{ fontWeight: 600 }}>Mitigation:</Box> {entry.mitigation}
+                            </Typography>
+                            {entry.notes ? (
+                              <Typography variant="body2" sx={{ color: panelMutedText }}>
+                                {entry.notes}
+                              </Typography>
+                            ) : null}
+                            {(entry.impact || entry.likelihood || entry.status) ? (
+                              <Typography variant="body2" sx={{ color: panelMutedText }}>
+                                {[entry.impact && `Impact: ${entry.impact}`, entry.likelihood && `Likelihood: ${entry.likelihood}`, entry.status && `Status: ${entry.status}`]
+                                  .filter(Boolean)
+                                  .join("  |  ")}
+                              </Typography>
+                            ) : null}
+                          </Stack>
+                        </Paper>
+                      );
+                    })}
+                  </Stack>
+                </Box>
+              ) : (
+                <TextField
+                  multiline
+                  minRows={10}
+                  fullWidth
+                  placeholder={`Draft the ${activeTab} content here...`}
+                  value={notesByTab[activeTab] || ""}
+                  onChange={(event) => onNotesChange(activeTab, event.target.value)}
+                  sx={{ flex: 1 }}
+                  InputProps={{
+                    sx: {
+                      height: "100%",
+                      alignItems: "flex-start",
+                      fontSize: "0.95rem",
+                      lineHeight: 1.5,
+                      fontWeight: 400,
+                      color: panelText,
+                      bgcolor: "transparent",
+                      borderRadius: 0,
+                      overscrollBehavior: "contain",
+                      "& .MuiInputBase-inputMultiline": {
+                        height: "100% !important",
+                        minHeight: "100% !important",
+                        boxSizing: "border-box",
+                      },
+                      "& textarea": {
+                        fontWeight: 400,
+                        color: panelText,
+                        overflowY: "auto !important",
+                        scrollbarWidth: "thin",
+                        scrollbarColor: "rgba(255,255,255,0.18) transparent",
+                      },
+                      "& textarea::-webkit-scrollbar": {
+                        width: 6,
+                      },
+                      "& textarea::-webkit-scrollbar-track": {
+                        background: "transparent",
+                      },
+                      "& textarea::-webkit-scrollbar-thumb": {
+                        backgroundColor: "rgba(255,255,255,0.18)",
+                        borderRadius: 999,
+                        border: "1px solid transparent",
+                        backgroundClip: "padding-box",
+                      },
+                      "& textarea:hover::-webkit-scrollbar-thumb": {
+                        backgroundColor: "rgba(255,255,255,0.28)",
+                      },
+                      "& textarea::placeholder": {
+                        color: panelMutedText,
+                        opacity: 1,
+                      },
+                      "& fieldset": {
+                        borderColor: "transparent",
+                        borderWidth: 0,
+                      },
+                      "&:hover fieldset": {
+                        borderColor: "transparent",
+                        borderWidth: 0,
+                      },
+                      "&.Mui-focused fieldset": {
+                        borderColor: "transparent",
+                        borderWidth: 0,
+                      },
+                    },
+                  }}
+                />
+              )}
+            </Box>
           </Box>
         </Stack>
       </Box>
+      <Dialog open={riskDialogOpen} onClose={closeRiskDialog} fullWidth maxWidth="sm">
+        <DialogTitle>Add Risk</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.25} sx={{ pt: 0.5 }}>
+            <TextField
+              fullWidth
+              required
+              label="Risk"
+              placeholder="Describe the risk event or condition."
+              value={riskDraft.risk}
+              onChange={(event) => updateRiskDraft("risk", event.target.value)}
+            />
+            <TextField
+              fullWidth
+              required
+              label="Mitigation"
+              placeholder="Describe the mitigation approach."
+              value={riskDraft.mitigation}
+              onChange={(event) => updateRiskDraft("mitigation", event.target.value)}
+            />
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+              <TextField
+                fullWidth
+                select
+                label="Impact"
+                value={riskDraft.impact}
+                onChange={(event) => updateRiskDraft("impact", event.target.value)}
+              >
+                <MenuItem value="">Select impact</MenuItem>
+                <MenuItem value="High">High</MenuItem>
+                <MenuItem value="Medium">Medium</MenuItem>
+                <MenuItem value="Low">Low</MenuItem>
+              </TextField>
+              <TextField
+                fullWidth
+                select
+                label="Likelihood"
+                value={riskDraft.likelihood}
+                onChange={(event) => updateRiskDraft("likelihood", event.target.value)}
+              >
+                <MenuItem value="">Select likelihood</MenuItem>
+                <MenuItem value="High">High</MenuItem>
+                <MenuItem value="Medium">Medium</MenuItem>
+                <MenuItem value="Low">Low</MenuItem>
+              </TextField>
+            </Stack>
+            <TextField
+              fullWidth
+              select
+              label="Status"
+              value={riskDraft.status}
+              onChange={(event) => updateRiskDraft("status", event.target.value)}
+            >
+              <MenuItem value="">Select status</MenuItem>
+              <MenuItem value="Open">Open</MenuItem>
+              <MenuItem value="Monitoring">Monitoring</MenuItem>
+              <MenuItem value="Mitigated">Mitigated</MenuItem>
+              <MenuItem value="Accepted">Accepted</MenuItem>
+            </TextField>
+            <TextField
+              multiline
+              minRows={3}
+              fullWidth
+              label="Notes"
+              placeholder="Dependencies, triggers, assumptions, or evidence."
+              value={riskDraft.notes}
+              onChange={(event) => updateRiskDraft("notes", event.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeRiskDialog}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={saveRiskDraft}
+            disabled={!riskDraft.risk.trim() || !riskDraft.mitigation.trim()}
+          >
+            Add Risk
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 }
@@ -1048,6 +1407,40 @@ export function StudioApp() {
       buildDefaultMtsDefinitionPrompt(activeSection.label)
     );
   }, [activeSection, stormWorkspacePrompts]);
+  const completedStormSectionIds = useMemo(() => {
+    return new Set(
+      Object.entries(stormWorkspaceNotes).flatMap(([sectionId, notes]) => {
+        const isComplete = STORM_WORKSPACE_TABS.every(
+          (tab) => String(notes?.[tab] || "").trim().length > 0,
+        );
+        return isComplete ? [sectionId] : [];
+      }),
+    );
+  }, [stormWorkspaceNotes]);
+  const currentProjectLabel = useMemo(() => {
+    if (!workspace.projectId) {
+      return "";
+    }
+
+    const matchingProject = availablePackageProjects.find(
+      (project) => project?.project_id === workspace.projectId,
+    );
+
+    return (
+      String(
+        matchingProject?.display_name ||
+          matchingProject?.project_id ||
+          workspace.projectId,
+      ).trim() || ""
+    );
+  }, [availablePackageProjects, workspace.projectId]);
+  const currentWorkLabel = useMemo(() => {
+    return String(
+      workspace.sourceFilename ||
+        workspace.sourceFormat ||
+        "PWS",
+    ).trim();
+  }, [workspace.sourceFilename, workspace.sourceFormat]);
 
   const isHomeScreen = !sections.length;
 
@@ -2407,7 +2800,7 @@ export function StudioApp() {
           right: 0,
           borderBottom: "1px solid var(--studio-appbar-border)",
           backdropFilter: "none",
-          bgcolor: "var(--studio-appbar-bg)",
+          bgcolor: "#161b22",
           pl: 0,
           pr: 0,
           py: 0,
@@ -2419,14 +2812,17 @@ export function StudioApp() {
         <Toolbar
           disableGutters
           sx={{
-            minHeight: "34px !important",
-            height: 34,
+            minHeight: "40px !important",
+            height: 40,
             py: 0,
             pl: { xs: 0.9, xl: 1.2 },
             pr: { xs: 0.45, xl: 0.6 },
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
           }}
         >
-          <Box sx={{ flexGrow: 1 }}>
+          <Box sx={{ flexGrow: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 1.4 }}>
             <Typography
               variant="h5"
               sx={{
@@ -2435,82 +2831,115 @@ export function StudioApp() {
                 letterSpacing: -0.03,
                 lineHeight: 1,
                 fontSize: "1.08rem",
+                flexShrink: 0,
               }}
             >
               StormSurge
             </Typography>
+            {!isHomeScreen ? (
+              <Stack
+                direction="row"
+                spacing={1.1}
+                alignItems="center"
+                sx={{ minWidth: 0, overflow: "hidden" }}
+              >
+                {currentProjectLabel ? (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "rgba(230, 237, 243, 0.88)",
+                      fontSize: "0.8rem",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    Project: {currentProjectLabel}
+                  </Typography>
+                ) : null}
+                {currentWorkLabel ? (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "rgba(230, 237, 243, 0.66)",
+                      fontSize: "0.8rem",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    Working: {currentWorkLabel}
+                  </Typography>
+                ) : null}
+              </Stack>
+            ) : null}
           </Box>
+          {!isHomeScreen ? (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                minWidth: 0,
+                overflowX: "auto",
+                py: 0.1,
+                ...subtleScrollbarSx,
+              }}
+            >
+              <Button
+                variant="text"
+                startIcon={mode === "dark" ? <LightModeRounded /> : <DarkModeRounded />}
+                onClick={toggleMode}
+                sx={RIBBON_TOOL_BUTTON_SX}
+              >
+                {mode === "dark" ? "Light Mode" : "Dark Mode"}
+              </Button>
+              <Button
+                variant="text"
+                startIcon={<UndoRounded />}
+                onClick={handleUndo}
+                disabled={!undoHistory.length}
+                sx={RIBBON_TOOL_BUTTON_SX}
+              >
+                Undo
+              </Button>
+              <Button
+                variant="text"
+                startIcon={<RedoRounded />}
+                onClick={handleRedo}
+                disabled={!redoHistory.length}
+                sx={RIBBON_TOOL_BUTTON_SX}
+              >
+                Redo
+              </Button>
+              <Button
+                variant="text"
+                startIcon={<SaveRounded />}
+                onClick={handleSaveProject}
+                disabled={!sections.length}
+                sx={RIBBON_TOOL_BUTTON_SX}
+              >
+                Save Project
+              </Button>
+              <Button
+                variant="text"
+                startIcon={<PlaylistAddRounded />}
+                onClick={handleOpenReqImportDialog}
+                sx={RIBBON_TOOL_BUTTON_SX}
+              >
+                Import Reqs
+              </Button>
+              <Button
+                variant="text"
+                startIcon={<HomeRounded />}
+                onClick={handleGoHome}
+                sx={RIBBON_TOOL_BUTTON_SX}
+              >
+                Home
+              </Button>
+            </Box>
+          ) : null}
         </Toolbar>
-        {!isHomeScreen ? (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
-              width: "100%",
-              px: { xs: 0.9, xl: 1.2 },
-              py: 0.25,
-              minHeight: 34,
-              bgcolor: "#171c22",
-              borderTop: "1px solid rgba(255,255,255,0.04)",
-              borderBottom: "1px solid rgba(255,255,255,0.05)",
-              overflowX: "auto",
-              ...subtleScrollbarSx,
-            }}
-          >
-            <Button
-              variant="text"
-              startIcon={mode === "dark" ? <LightModeRounded /> : <DarkModeRounded />}
-              onClick={toggleMode}
-              sx={RIBBON_TOOL_BUTTON_SX}
-            >
-              {mode === "dark" ? "Light Mode" : "Dark Mode"}
-            </Button>
-            <Button
-              variant="text"
-              startIcon={<UndoRounded />}
-              onClick={handleUndo}
-              disabled={!undoHistory.length}
-              sx={RIBBON_TOOL_BUTTON_SX}
-            >
-              Undo
-            </Button>
-            <Button
-              variant="text"
-              startIcon={<RedoRounded />}
-              onClick={handleRedo}
-              disabled={!redoHistory.length}
-              sx={RIBBON_TOOL_BUTTON_SX}
-            >
-              Redo
-            </Button>
-            <Button
-              variant="text"
-              startIcon={<SaveRounded />}
-              onClick={handleSaveProject}
-              disabled={!sections.length}
-              sx={RIBBON_TOOL_BUTTON_SX}
-            >
-              Save Project
-            </Button>
-            <Button
-              variant="text"
-              startIcon={<PlaylistAddRounded />}
-              onClick={handleOpenReqImportDialog}
-              sx={RIBBON_TOOL_BUTTON_SX}
-            >
-              Import Reqs
-            </Button>
-            <Button
-              variant="text"
-              startIcon={<HomeRounded />}
-              onClick={handleGoHome}
-              sx={RIBBON_TOOL_BUTTON_SX}
-            >
-              Home
-            </Button>
-          </Box>
-        ) : null}
       </AppBar>
 
       <Box
@@ -2567,6 +2996,7 @@ export function StudioApp() {
                         key={section.id}
                         section={section}
                         selected={section.id === activeSectionId}
+                        completed={completedStormSectionIds.has(section.id)}
                         onSelect={selectSection}
                         onRename={handleRenameSection}
                         onOpenMenu={handleOpenSectionMenu}
@@ -2581,6 +3011,7 @@ export function StudioApp() {
                         <SectionTabContent
                           section={UNASSIGNED_SECTION}
                           selected={activeSectionId === "unassigned"}
+                          completed={completedStormSectionIds.has("unassigned")}
                         />
                       </ListItemButton>
                     ) : null}

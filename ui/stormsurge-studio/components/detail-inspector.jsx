@@ -1166,7 +1166,7 @@ export function DetailInspector({
                   left: 0,
                   right: 0,
                   height: "16px",
-                  bgcolor: inspectorChromeBg,
+                  bgcolor: "transparent",
                   pointerEvents: "none",
                 },
               }}
