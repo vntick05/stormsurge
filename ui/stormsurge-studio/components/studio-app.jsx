@@ -6,7 +6,6 @@ import ChevronRightRounded from "@mui/icons-material/ChevronRightRounded";
 import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
 import CloudUploadRounded from "@mui/icons-material/CloudUploadRounded";
-import DragIndicatorRounded from "@mui/icons-material/DragIndicatorRounded";
 import HomeRounded from "@mui/icons-material/HomeRounded";
 import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
 import RedoRounded from "@mui/icons-material/RedoRounded";
@@ -464,28 +463,8 @@ function RailShell({
             display: { xs: "none", xl: "flex" },
             alignItems: "center",
             justifyContent: "center",
-            "&::before": {
-              content: '""',
-              width: 5,
-              height: 56,
-              borderRadius: 999,
-              bgcolor: "rgba(255, 255, 255, 0.08)",
-              bgcolor: GITHUB_BORDER,
-            },
-            "&:hover::before": {
-              bgcolor: "#484f58",
-            },
           }}
-        >
-          <DragIndicatorRounded
-            sx={{
-              position: "absolute",
-              color: GITHUB_TEXT_MUTED,
-              fontSize: 18,
-              transform: "rotate(90deg)",
-            }}
-          />
-        </Box>
+        />
       ) : null}
     </Box>
   );
@@ -1649,6 +1628,21 @@ export function StudioApp() {
     setReqImportWorkspace(buildEmptyWorkspace());
     setReqImportSectionId("");
     setReqImportCheckedIds(new Set());
+  }
+
+  if (!mounted) {
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "grid",
+          placeItems: "center",
+          bgcolor: GITHUB_SURFACE,
+        }}
+      >
+        <CircularProgress size={28} />
+      </Box>
+    );
   }
 
   async function handleReqImportUpload(file) {

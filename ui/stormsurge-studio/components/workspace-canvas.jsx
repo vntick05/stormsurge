@@ -28,8 +28,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { getChildren, getRequirementById, getSectionRoots, resequenceGroup } from "@/lib/studio-graph";
 
-const REQUIREMENT_INDENT_PX = 12;
+const REQUIREMENT_INDENT_STEP = "14px";
 const REQUIREMENT_MAX_INDENT_LEVELS = 4;
+const REQUIREMENT_ROW_GAP = 1.1;
+const REQUIREMENT_CHILD_BLOCK_GAP = 1.1;
 const GITHUB_BORDER = "#30363d";
 const GITHUB_PANEL = "#161b22";
 const GITHUB_PANEL_HOVER = "#1c2128";
@@ -81,7 +83,7 @@ function RequirementCard({
   const accent = getRequirementAccent(requirement);
 
   return (
-    <Box ref={setNodeRef} style={style} sx={{ mb: 0.85 }}>
+    <Box ref={setNodeRef} style={style} sx={{ mb: REQUIREMENT_ROW_GAP }}>
       <Box
         onClick={() => onSelect(requirement.id)}
         sx={{
@@ -198,7 +200,7 @@ function RequirementCard({
           </Stack>
         </Stack>
       </Box>
-      {children ? <Box sx={{ mt: 0.85 }}>{children}</Box> : null}
+      {children ? <Box sx={{ mt: REQUIREMENT_CHILD_BLOCK_GAP }}>{children}</Box> : null}
     </Box>
   );
 }
@@ -236,21 +238,21 @@ function SortableRequirementNode({
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
-        marginLeft:
-          Math.min(depth, REQUIREMENT_MAX_INDENT_LEVELS) * REQUIREMENT_INDENT_PX,
       }}
     >
       {childRequirements.length && !collapsed ? (
-        <RequirementList
-          requirements={childRequirements}
-          allRequirements={allRequirements}
-          selectedRequirementId={selectedRequirementId}
-          onSelectRequirement={onSelectRequirement}
-          onReorderRequirements={onReorderRequirements}
-          collapsedIds={collapsedIds}
-          onToggleCollapsed={onToggleCollapsed}
-          depth={depth + 1}
-        />
+        <Box sx={{ ml: REQUIREMENT_INDENT_STEP }}>
+          <RequirementList
+            requirements={childRequirements}
+            allRequirements={allRequirements}
+            selectedRequirementId={selectedRequirementId}
+            onSelectRequirement={onSelectRequirement}
+            onReorderRequirements={onReorderRequirements}
+            collapsedIds={collapsedIds}
+            onToggleCollapsed={onToggleCollapsed}
+            depth={depth + 1}
+          />
+        </Box>
       ) : null}
     </RequirementCard>
   );
