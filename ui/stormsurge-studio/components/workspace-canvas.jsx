@@ -28,10 +28,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { getChildren, getRequirementById, getSectionRoots, resequenceGroup } from "@/lib/studio-graph";
 
-const REQUIREMENT_INDENT_STEP = "14px";
+const REQUIREMENT_INDENT_STEP = "18px";
 const REQUIREMENT_MAX_INDENT_LEVELS = 4;
-const REQUIREMENT_ROW_GAP = 1.1;
-const REQUIREMENT_CHILD_BLOCK_GAP = 1.1;
+const REQUIREMENT_ROW_GAP = 1.3;
+const REQUIREMENT_CHILD_BLOCK_GAP = 1.25;
 const GITHUB_BORDER = "#30363d";
 const GITHUB_PANEL = "#161b22";
 const GITHUB_PANEL_HOVER = "#1c2128";
@@ -88,11 +88,12 @@ function RequirementCard({
         onClick={() => onSelect(requirement.id)}
         sx={{
           position: "relative",
-          px: 1.1,
-          py: 0.55,
-          minHeight: 0,
+          pl: 0.55,
+          pr: 0.8,
+          py: 0.72,
+          minHeight: 44,
           cursor: "pointer",
-          borderRadius: 1,
+          borderRadius: 0.65,
           bgcolor: selected ? GITHUB_PANEL_SELECTED : GITHUB_PANEL,
           boxShadow: "none",
           transition: "background-color 120ms ease",
@@ -107,8 +108,8 @@ function RequirementCard({
               {...dragHandleProps}
               onClick={(event) => event.stopPropagation()}
               sx={{
-                width: 28,
-                height: 28,
+                width: 24,
+                height: 24,
                 flexShrink: 0,
                 cursor: "grab",
                 opacity: 0.9,
@@ -116,7 +117,7 @@ function RequirementCard({
                 alignItems: "center",
                 justifyContent: "center",
                 color: GITHUB_TEXT_MUTED,
-                borderRadius: 1.25,
+                borderRadius: 0.9,
                 bgcolor: "transparent",
               }}
             >
@@ -127,10 +128,10 @@ function RequirementCard({
                 flexGrow: 1,
                 minWidth: 0,
                 pr: 0.15,
-                py: 0,
+                py: 0.1,
                 display: "flex",
                 alignItems: "center",
-                minHeight: 0,
+                minHeight: 28,
               }}
             >
               <Typography
@@ -183,11 +184,11 @@ function RequirementCard({
                 minWidth: 32,
                 px: 0.4,
                 mt: 0,
-                ml: 0.1,
+                ml: 0,
                 color: hasChildren ? "#e6edf3" : "transparent",
                 visibility: hasChildren ? "visible" : "hidden",
                 alignSelf: "center",
-                borderRadius: 1.25,
+                borderRadius: 0.9,
                 bgcolor: "transparent",
               }}
             >

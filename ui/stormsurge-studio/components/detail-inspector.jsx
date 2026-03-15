@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import PlaylistAddRounded from "@mui/icons-material/PlaylistAddRounded";
 import AutoAwesomeRounded from "@mui/icons-material/AutoAwesomeRounded";
+import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
 import SearchRounded from "@mui/icons-material/SearchRounded";
 import {
   Box,
@@ -31,6 +32,7 @@ const GITHUB_PANEL = "#161b22";
 const GITHUB_PANEL_HOVER = "#1c2128";
 const GITHUB_BORDER = "#30363d";
 const GITHUB_TEXT_MUTED = "#7d8590";
+const AI_ACTION = "#c678dd";
 
 export function DetailInspector({
   projectId,
@@ -410,17 +412,72 @@ export function DetailInspector({
         >
           {activeTab === "Edit" ? (
             <Stack spacing={1.5}>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Stack
+                direction="row"
+                spacing={1}
+                flexWrap="wrap"
+                useFlexGap
+                justifyContent="flex-start"
+              >
                 <Button
                   size="small"
-                  variant="contained"
+                  variant="text"
                   startIcon={<PlaylistAddRounded />}
                   onClick={onCreateTopLevelRequirement}
+                  sx={{
+                    justifyContent: "flex-start",
+                    color: "#e6edf3",
+                    textTransform: "none",
+                    px: 0.7,
+                    py: 0.35,
+                    minHeight: 32,
+                    borderRadius: 1,
+                    "&:hover": {
+                      bgcolor: "rgba(255, 255, 255, 0.06)",
+                    },
+                  }}
                 >
                   Add new req
                 </Button>
-                <Button size="small" variant="contained" onClick={onCreateChildRequirement}>
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<PlaylistAddRounded />}
+                  onClick={onCreateChildRequirement}
+                  sx={{
+                    justifyContent: "flex-start",
+                    color: "#e6edf3",
+                    textTransform: "none",
+                    px: 0.7,
+                    py: 0.35,
+                    minHeight: 32,
+                    borderRadius: 1,
+                    "&:hover": {
+                      bgcolor: "rgba(255, 255, 255, 0.06)",
+                    },
+                  }}
+                >
                   Add child
+                </Button>
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<DeleteOutlineRounded />}
+                  onClick={onDeleteRequirement}
+                  sx={{
+                    justifyContent: "flex-start",
+                    color: "#f85149",
+                    textTransform: "none",
+                    px: 0.7,
+                    py: 0.35,
+                    minHeight: 32,
+                    borderRadius: 1,
+                    "&:hover": {
+                      bgcolor: "rgba(248, 81, 73, 0.12)",
+                    },
+                  }}
+                >
+                  Delete requirement
                 </Button>
               </Stack>
               <TextField
@@ -428,9 +485,29 @@ export function DetailInspector({
                 value={requirement.sourceRef || ""}
                 onChange={(event) => onRequirementChange("sourceRef", event.target.value)}
                 placeholder="Requirement title"
+                variant="outlined"
                 InputProps={{
                   sx: {
-                    bgcolor: GITHUB_SURFACE,
+                    fontSize: "0.86rem",
+                    fontWeight: 600,
+                    color: "#e6edf3",
+                    bgcolor: "rgba(255, 255, 255, 0.035)",
+                    borderRadius: 1,
+                    "& fieldset": {
+                      borderColor: "transparent",
+                      borderWidth: 0,
+                    },
+                    "&:hover": {
+                      bgcolor: "rgba(255, 255, 255, 0.06)",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "transparent",
+                      borderWidth: 0,
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "transparent",
+                      borderWidth: 0,
+                    },
                   },
                 }}
               />
@@ -441,6 +518,7 @@ export function DetailInspector({
                 value={requirement.text}
                 onChange={(event) => onRequirementChange("text", event.target.value)}
                 placeholder="Requirement text"
+                variant="outlined"
                 InputLabelProps={{
                   sx: {
                     fontSize: "0.875rem",
@@ -451,20 +529,26 @@ export function DetailInspector({
                     fontSize: "0.875rem",
                     lineHeight: 1.4,
                     alignItems: "flex-start",
-                    bgcolor: GITHUB_SURFACE,
+                    bgcolor: "rgba(255, 255, 255, 0.035)",
+                    borderRadius: 1,
+                    "& fieldset": {
+                      borderColor: "transparent",
+                      borderWidth: 0,
+                    },
+                    "&:hover": {
+                      bgcolor: "rgba(255, 255, 255, 0.06)",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "transparent",
+                      borderWidth: 0,
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "transparent",
+                      borderWidth: 0,
+                    },
                   },
                 }}
               />
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color="error"
-                  onClick={onDeleteRequirement}
-                >
-                  Delete requirement
-                </Button>
-              </Stack>
             </Stack>
           ) : null}
 
@@ -671,6 +755,14 @@ export function DetailInspector({
                   startIcon={<AutoAwesomeRounded />}
                   onClick={handleSendAiPrompt}
                   disabled={!aiPrompt.trim() || aiLoading}
+                  sx={{
+                    bgcolor: AI_ACTION,
+                    color: "#140d18",
+                    boxShadow: "0 0 0 1px rgba(198, 120, 221, 0.18)",
+                    "&:hover": {
+                      bgcolor: "#d08ae5",
+                    },
+                  }}
                 >
                   Send
                 </Button>

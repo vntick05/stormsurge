@@ -8,6 +8,7 @@ import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
 import CloudUploadRounded from "@mui/icons-material/CloudUploadRounded";
 import HomeRounded from "@mui/icons-material/HomeRounded";
 import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
+import PlaylistAddRounded from "@mui/icons-material/PlaylistAddRounded";
 import RedoRounded from "@mui/icons-material/RedoRounded";
 import SaveRounded from "@mui/icons-material/SaveRounded";
 import UndoRounded from "@mui/icons-material/UndoRounded";
@@ -110,6 +111,7 @@ const GITHUB_PANEL_HOVER = "#1c2128";
 const GITHUB_BORDER = "#30363d";
 const GITHUB_BORDER_MUTED = "#21262d";
 const GITHUB_TEXT_MUTED = "#7d8590";
+const AI_ACTION = "#c678dd";
 const TOPBAR_BUTTON_SX = {
   height: 22,
   minHeight: 24,
@@ -186,12 +188,14 @@ function buildSectionBarSx(selected) {
     position: "relative",
     overflow: "hidden",
     alignItems: "center",
+    width: "calc(100% - 10px)",
+    mx: "auto",
     borderRadius: 1,
-    mb: 0.55,
-    px: 1,
-    py: 0.2,
-    minHeight: 48,
-    maxHeight: 48,
+    mb: 0.95,
+    px: 0.75,
+    py: 0.32,
+    minHeight: 52,
+    maxHeight: 52,
     bgcolor: selected ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.035)",
     border: "none",
     boxShadow: "none",
@@ -216,10 +220,14 @@ function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
           alignItems: "center",
           justifyContent: "center",
           alignSelf: "stretch",
-          width: 22,
+          width: 24,
+          height: 24,
+          my: "auto",
           flexShrink: 0,
           color: GITHUB_TEXT_MUTED,
           cursor: dragHandleProps ? "grab" : "default",
+          borderRadius: 0.9,
+          bgcolor: "transparent",
         }}
       >
         <MoreVertRounded sx={{ fontSize: 15 }} />
@@ -229,11 +237,12 @@ function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
           sx={{
             flexGrow: 1,
             minWidth: 0,
-            minHeight: 40,
+            minHeight: 44,
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-start",
-            px: 0.4,
+            pl: 0.5,
+            pr: 0.25,
           }}
         >
           <Typography
@@ -268,7 +277,7 @@ function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
                 color: GITHUB_TEXT_MUTED,
                 opacity: selected ? 0.72 : 0,
                 transition: "opacity 120ms ease",
-                p: 0.35,
+                p: 0.25,
               }}
             >
               <MoreVertRounded fontSize="small" />
@@ -341,12 +350,12 @@ function RailShell({
         overscrollBehavior: "contain",
         backdropFilter: "blur(10px)",
         borderRadius: 0,
-        borderRight: isLeft ? "1px solid" : 0,
-        borderLeft: !isLeft ? "1px solid" : 0,
+        borderRight: 0,
+        borderLeft: 0,
         mt: { xs: 0, xl: 0 },
         mb: { xs: 0, xl: 0 },
-        ml: { xs: 0, xl: isLeft ? 1.5 : 0 },
-        mr: { xs: 0, xl: isLeft ? 0 : 1.5 },
+        ml: { xs: 0, xl: isLeft ? 0.2 : 0 },
+        mr: { xs: 0, xl: isLeft ? 0 : 0.2 },
         pt: 0,
         ...sx,
       }}
@@ -490,22 +499,12 @@ function buildEmptyStormWorkspace() {
 function buildDefaultMtsDefinitionPrompt(sectionLabel) {
   const scopedSection = String(sectionLabel || "this section").trim();
   return [
-    `Draft an MTS Definition for ${scopedSection}.`,
-    "MTS means Meets the Standard.",
-    "Read the requirements as a group.",
-    "Treat the checked requirements in this request as the full working requirement set for the response.",
-    "Identify the common baseline expectation across them.",
-    "Define the minimum credible, compliant, and executable approach.",
-    "Focus on what would make a government evaluator conclude the offeror understands the work and can perform it with acceptable risk.",
-    "Include expected elements such as approach, process, staffing, tools, governance, deliverables, and performance controls only if they are clearly implied by the requirements.",
-    "Do not write strengths, discriminators, or win themes.",
-    "Do not just restate the requirements.",
-    "Do not use marketing language.",
-    "Write in practical evaluator-facing language.",
-    "Use 2 to 3 short paragraphs.",
-    "Do not use headings, bullets, markdown emphasis, or labels.",
-    "Do not mention requirement counts, source expansion limits, hidden context, or that additional information could be retrieved later.",
-    "Do not mention source metadata, internal tooling, or the phrase 'Meets the Standard' in the response body.",
+    `Write a concise Meets the standard definition for ${scopedSection} from these selected requirements as a grouped objective.`,
+    "Do not restate the requirements.",
+    "State what an evaluator is really looking for: the minimum credible and executable technical and operational approach, the level of control and integration required, and any unusual requirement that signals risk or likely evaluator scrutiny.",
+    "Focus on feasibility, completeness, realism, and performance risk.",
+    "Use a tech-dense style with a few short bullets.",
+    "No headings, no marketing, no strengths, no fluff.",
   ].join(" ");
 }
 
@@ -596,8 +595,7 @@ function StormWorkspaceBar({
     >
       <Box
         sx={{
-          borderBottom: "1px solid",
-          borderColor: GITHUB_BORDER,
+          borderBottom: 0,
           px: 1.35,
           py: 0.8,
           background: GITHUB_BASE,
@@ -717,14 +715,25 @@ function StormWorkspaceBar({
             </Box>
             {activeTab === "MTS Definition" ? (
               <Stack direction="row" spacing={1} alignItems="center">
-                <Button variant="outlined" onClick={onClearActiveTab}>
+                <Button
+                  variant="outlined"
+                  onClick={onClearActiveTab}
+                  size="small"
+                  sx={{ minHeight: 30, py: 0.35 }}
+                >
                   Clear
                 </Button>
-                <Button variant="outlined" onClick={onEditMtsPrompt}>
+                <Button
+                  variant="outlined"
+                  onClick={onEditMtsPrompt}
+                  size="small"
+                  sx={{ minHeight: 30, py: 0.35 }}
+                >
                   Edit Prompt
                 </Button>
                 <Button
                   variant="contained"
+                  size="small"
                   onClick={onGenerateMtsDefinition}
                   disabled={!canGenerateMtsDefinition}
                   startIcon={
@@ -732,8 +741,18 @@ function StormWorkspaceBar({
                       <CircularProgress size={16} color="inherit" />
                     ) : null
                   }
+                  sx={{
+                    minHeight: 30,
+                    py: 0.35,
+                    bgcolor: AI_ACTION,
+                    color: "#140d18",
+                    boxShadow: "0 0 0 1px rgba(198, 120, 221, 0.18)",
+                    "&:hover": {
+                      bgcolor: "#d08ae5",
+                    },
+                  }}
                 >
-                  {generationState.loading ? "Generating..." : "Generate Definition"}
+                  {generationState.loading ? "Generating..." : "AI Define"}
                 </Button>
               </Stack>
             ) : (
@@ -759,6 +778,18 @@ function StormWorkspaceBar({
                 lineHeight: 1.5,
                 bgcolor: GITHUB_PANEL,
                 overscrollBehavior: "contain",
+                "& fieldset": {
+                  borderColor: "transparent",
+                  borderWidth: 0,
+                },
+                "&:hover fieldset": {
+                  borderColor: "transparent",
+                  borderWidth: 0,
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: "transparent",
+                  borderWidth: 0,
+                },
               },
             }}
           />
@@ -1816,6 +1847,11 @@ export function StudioApp() {
     setMtsPromptDialogOpen(false);
   }
 
+  function handleUseDefaultMtsPrompt() {
+    const sectionLabel = activeSection?.label || "this section";
+    setMtsPromptDraft(buildDefaultMtsDefinitionPrompt(sectionLabel));
+  }
+
   function handleSaveMtsPrompt() {
     if (!activeSection?.id) {
       return;
@@ -2258,7 +2294,7 @@ export function StudioApp() {
           >
             {uploadState.error ? <Alert severity="error">{uploadState.error}</Alert> : null}
 
-            <Box sx={{ flex: "1 1 auto", minHeight: 0 }}>
+            <Box sx={{ minHeight: 0 }}>
               <DndContext
                 sensors={sectionTabSensors}
                 collisionDetection={closestCenter}
@@ -2270,7 +2306,7 @@ export function StudioApp() {
                 >
                   <List
                     sx={{
-                      mt: 0.2,
+                      mt: 0.7,
                       p: 0,
                       bgcolor: "transparent",
                       border: 0,
@@ -2303,27 +2339,47 @@ export function StudioApp() {
                 </SortableContext>
               </DndContext>
             </Box>
-            <Stack spacing={1.1} sx={{ pt: 1.25, mt: "auto" }}>
+            <Stack spacing={1.1} sx={{ pt: 1.1 }}>
               <Button
-                variant="outlined"
+                variant="text"
+                startIcon={<PlaylistAddRounded />}
                 onClick={handleOpenReqImportDialog}
                 sx={{
                   justifyContent: "flex-start",
-                  borderColor: GITHUB_BORDER,
                   color: "#e6edf3",
                   textTransform: "none",
+                  px: 0.7,
+                  py: 0.55,
+                  minHeight: 40,
+                  width: "calc(100% - 10px)",
+                  mx: "auto",
+                  alignSelf: "center",
+                  borderRadius: 1,
+                  "&:hover": {
+                    bgcolor: "rgba(255, 255, 255, 0.06)",
+                  },
                 }}
               >
                 Import Reqs
               </Button>
               <Button
-                variant="outlined"
+                variant="text"
+                startIcon={<PlaylistAddRounded />}
                 onClick={handleCreateSectionFromRequirement}
                 sx={{
                   justifyContent: "flex-start",
-                  borderColor: GITHUB_BORDER,
                   color: "#e6edf3",
                   textTransform: "none",
+                  px: 0.7,
+                  py: 0.55,
+                  minHeight: 40,
+                  width: "calc(100% - 10px)",
+                  mx: "auto",
+                  alignSelf: "center",
+                  borderRadius: 1,
+                  "&:hover": {
+                    bgcolor: "rgba(255, 255, 255, 0.06)",
+                  },
                 }}
               >
                 New Section From Req
@@ -2362,7 +2418,7 @@ export function StudioApp() {
             overflowY: isHomeScreen ? "hidden" : "auto",
             ...(isHomeScreen ? {} : subtleScrollbarSx),
             overscrollBehavior: "contain",
-            px: isHomeScreen ? 3 : { xs: 0.75, xl: 0.9 },
+            px: isHomeScreen ? 3 : { xs: 0.5, xl: 0.45 },
             py: isHomeScreen ? 3 : { xs: 0.5, xl: 0.35 },
             display: "flex",
             alignItems: isHomeScreen ? "center" : "stretch",
@@ -2653,6 +2709,7 @@ export function StudioApp() {
           />
         </DialogContent>
         <DialogActions>
+          <Button onClick={handleUseDefaultMtsPrompt}>Use Default</Button>
           <Button onClick={handleCloseMtsPromptDialog}>Cancel</Button>
           <Button onClick={handleSaveMtsPrompt} variant="contained">
             Save Prompt
