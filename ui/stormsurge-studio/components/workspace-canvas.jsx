@@ -32,11 +32,11 @@ const REQUIREMENT_INDENT_STEP = "18px";
 const REQUIREMENT_MAX_INDENT_LEVELS = 4;
 const REQUIREMENT_ROW_GAP = 1.3;
 const REQUIREMENT_CHILD_BLOCK_GAP = 1.25;
-const GITHUB_BORDER = "#30363d";
-const GITHUB_PANEL = "#161b22";
-const GITHUB_PANEL_HOVER = "#1c2128";
-const GITHUB_PANEL_SELECTED = "#1f2937";
-const GITHUB_TEXT_MUTED = "#7d8590";
+const GITHUB_BORDER = "var(--studio-border)";
+const GITHUB_PANEL = "var(--studio-panel)";
+const GITHUB_PANEL_HOVER = "var(--studio-panel-hover)";
+const GITHUB_PANEL_SELECTED = "var(--studio-panel-selected)";
+const GITHUB_TEXT_MUTED = "var(--studio-text-muted)";
 const GITHUB_FONT_STACK =
   '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
 
@@ -95,10 +95,15 @@ function RequirementCard({
           cursor: "pointer",
           borderRadius: 0.65,
           bgcolor: selected ? GITHUB_PANEL_SELECTED : GITHUB_PANEL,
-          boxShadow: "none",
-          transition: "background-color 120ms ease",
+          boxShadow: selected
+            ? "0 0 0 1px rgba(88, 166, 255, 0.18), 0 8px 16px rgba(21, 31, 41, 0.12)"
+            : "0 1px 0 rgba(17, 24, 39, 0.05), 0 3px 8px rgba(17, 24, 39, 0.08)",
+          transition: "background-color 120ms ease, box-shadow 120ms ease",
           "&:hover": {
             bgcolor: selected ? GITHUB_PANEL_SELECTED : GITHUB_PANEL_HOVER,
+            boxShadow: selected
+              ? "0 0 0 1px rgba(88, 166, 255, 0.22), 0 10px 18px rgba(21, 31, 41, 0.14)"
+              : "0 1px 0 rgba(17, 24, 39, 0.06), 0 5px 12px rgba(17, 24, 39, 0.1)",
           },
         }}
       >
@@ -165,7 +170,7 @@ function RequirementCard({
                   component="span"
                   sx={{
                     fontFamily: GITHUB_FONT_STACK,
-                    color: "#e6edf3",
+                    color: "var(--studio-text)",
                     fontWeight: 400,
                     letterSpacing: 0,
                   }}
@@ -185,7 +190,7 @@ function RequirementCard({
                 px: 0.4,
                 mt: 0,
                 ml: 0,
-                color: hasChildren ? "#e6edf3" : "transparent",
+                color: hasChildren ? "var(--studio-text)" : "transparent",
                 visibility: hasChildren ? "visible" : "hidden",
                 alignSelf: "center",
                 borderRadius: 0.9,

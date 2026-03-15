@@ -2,10 +2,6 @@ export const runtime = "nodejs";
 
 const documentServiceUrl =
   process.env.DOCUMENT_SERVICE_URL || "http://document-service:8181";
-const normalizationServiceUrl =
-  process.env.NORMALIZATION_SERVICE_URL || "http://normalization-service:8091";
-const retrievalServiceUrl =
-  process.env.RETRIEVAL_SERVICE_URL || "http://retrieval-service:8381";
 
 export async function POST(request) {
   const formData = await request.formData();
@@ -21,6 +17,7 @@ export async function POST(request) {
   }
 
   try {
+    const uploaded = [];
     for (const file of files) {
       const uploadFormData = new FormData();
       uploadFormData.append("project_id", projectId);
@@ -36,40 +33,23 @@ export async function POST(request) {
           String(uploadPayload?.detail || "").trim() || `Document upload failed for ${file.name}`,
         );
       }
-    }
 
-    const normalizeResponse = await fetch(`${normalizationServiceUrl}/v1/normalize/project`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project_id: projectId, skip_existing: true }),
-    });
-    const normalizePayload = await normalizeResponse.json().catch(() => null);
-    if (!normalizeResponse.ok) {
-      throw new Error(
-        String(normalizePayload?.detail || "").trim() || "Project normalization failed",
-      );
-    }
-
-    const indexResponse = await fetch(`${retrievalServiceUrl}/v1/index/project`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project_id: projectId }),
-    });
-    const indexPayload = await indexResponse.json().catch(() => null);
-    if (!indexResponse.ok) {
-      throw new Error(
-        String(indexPayload?.detail || "").trim() || "Project indexing failed",
-      );
+      uploaded.push({
+        documentId: String(uploadPayload?.document_id || "").trim(),
+        filename: String(uploadPayload?.filename || file.name).trim(),
+        extractedTextChars: Number(uploadPayload?.extracted_text_chars) || 0,
+        status: String(uploadPayload?.status || "extracted").trim(),
+      });
     }
 
     return Response.json({
       projectId,
       uploadedCount: files.length,
-      normalizedCount: Number(normalizePayload?.normalized_count) || 0,
-      skippedCount: Number(normalizePayload?.skipped_count) || 0,
-      failedCount: Number(normalizePayload?.failed_count) || 0,
-      indexedChunks: Number(indexPayload?.chunks_indexed) || 0,
-      message: `Uploaded ${files.length} document${files.length === 1 ? "" : "s"} and refreshed project search.`,
+      uploaded,
+      processingTriggered: false,
+      message: `Uploaded ${files.length} document${
+        files.length === 1 ? "" : "s"
+      }. Normalization and indexing were not started.`,
     });
   } catch (error) {
     return Response.json(

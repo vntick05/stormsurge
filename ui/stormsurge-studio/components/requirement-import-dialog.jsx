@@ -19,12 +19,12 @@ import {
 } from "@mui/material";
 import { getChildren, getSectionRoots } from "@/lib/studio-graph";
 
-const GITHUB_SURFACE = "#0d1117";
-const GITHUB_PANEL = "#161b22";
-const GITHUB_PANEL_HOVER = "#1c2128";
-const GITHUB_PANEL_SELECTED = "#1f2937";
-const GITHUB_BORDER = "#30363d";
-const GITHUB_TEXT_MUTED = "#7d8590";
+const GITHUB_SURFACE = "var(--studio-surface)";
+const GITHUB_PANEL = "var(--studio-panel)";
+const GITHUB_PANEL_HOVER = "var(--studio-panel-hover)";
+const GITHUB_PANEL_SELECTED = "var(--studio-panel-selected)";
+const GITHUB_BORDER = "var(--studio-border)";
+const GITHUB_TEXT_MUTED = "var(--studio-text-muted)";
 const GITHUB_FONT_STACK =
   '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
 
@@ -79,7 +79,7 @@ function ImportRequirementNode({
                 WebkitLineClamp: 3,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
-                color: "#e6edf3",
+                color: "var(--studio-text)",
               }}
             >
               <Box component="span" sx={{ color: "#8FB7FF", fontWeight: 600, mr: 0.45 }}>
@@ -95,7 +95,7 @@ function ImportRequirementNode({
               sx={{
                 minWidth: 28,
                 px: 0.3,
-                color: "#e6edf3",
+                color: "var(--studio-text)",
                 borderRadius: 1,
               }}
             >
@@ -221,7 +221,7 @@ export function RequirementImportDialog({
               }}
             >
               <Stack spacing={0.9}>
-                <Typography variant="subtitle2" sx={{ color: "#ffffff", fontWeight: 700 }}>
+                <Typography variant="subtitle2" sx={{ color: "var(--studio-title)", fontWeight: 700 }}>
                   Imported Sections
                 </Typography>
                 {sections.length ? (
@@ -235,10 +235,10 @@ export function RequirementImportDialog({
                         px: 1,
                         py: 0.8,
                         borderRadius: 1,
-                        color: section.id === selectedSectionId ? "#e6edf3" : GITHUB_TEXT_MUTED,
+                        color: section.id === selectedSectionId ? "var(--studio-text)" : GITHUB_TEXT_MUTED,
                         bgcolor:
                           section.id === selectedSectionId
-                            ? "rgba(255,255,255,0.08)"
+                            ? "var(--studio-selection-soft)"
                             : "transparent",
                         textTransform: "none",
                       }}

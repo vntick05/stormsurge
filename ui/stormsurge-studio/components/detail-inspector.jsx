@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import PlaylistAddRounded from "@mui/icons-material/PlaylistAddRounded";
 import AutoAwesomeRounded from "@mui/icons-material/AutoAwesomeRounded";
 import AddRounded from "@mui/icons-material/AddRounded";
+import EditNoteRounded from "@mui/icons-material/EditNoteRounded";
 import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
+import AccountTreeRounded from "@mui/icons-material/AccountTreeRounded";
 import SearchRounded from "@mui/icons-material/SearchRounded";
 import {
   Box,
@@ -18,23 +20,32 @@ import {
   Tabs,
   TextField,
   Typography,
+  useTheme,
 } from "@mui/material";
 import { RichTextContent } from "@/components/rich-text-content";
 
-const INSPECTOR_TABS = ["Edit", "Search", "AI Helper", "Structure"];
+const INSPECTOR_TABS = ["STORM", "Edit", "Search", "AI Helper", "Structure"];
 const INSPECTOR_TAB_ACCENTS = {
   Edit: "#f78166",
   Search: "#58a6ff",
   "AI Helper": "#3fb950",
   Structure: "#d29922",
+  STORM: "#64d3e3",
 };
-const GITHUB_BASE = "#010409";
-const GITHUB_SURFACE = "#0d1117";
-const GITHUB_PANEL = "#161b22";
-const GITHUB_PANEL_HOVER = "#1c2128";
-const GITHUB_BORDER = "#30363d";
-const GITHUB_TEXT_MUTED = "#7d8590";
-const INSPECTOR_TEXT = "rgba(230, 237, 243, 0.84)";
+const INSPECTOR_TAB_ICONS = {
+  STORM: AutoAwesomeRounded,
+  Edit: EditNoteRounded,
+  Search: SearchRounded,
+  "AI Helper": AutoAwesomeRounded,
+  Structure: AccountTreeRounded,
+};
+const GITHUB_BASE = "var(--studio-base)";
+const GITHUB_SURFACE = "var(--studio-surface)";
+const GITHUB_PANEL = "var(--studio-panel)";
+const GITHUB_PANEL_HOVER = "var(--studio-panel-hover)";
+const GITHUB_BORDER = "var(--studio-border)";
+const GITHUB_TEXT_MUTED = "var(--studio-chrome-text)";
+const INSPECTOR_TEXT = "var(--studio-chrome-text)";
 const AI_ACTION = "#c678dd";
 
 export function DetailInspector({
@@ -58,6 +69,7 @@ export function DetailInspector({
   onDemoteRequirement,
   onCreateSectionFromRequirement,
   onDeleteRequirement,
+  sectionSolutionPanel,
 }) {
   const [activeTab, setActiveTab] = useState(INSPECTOR_TABS[0]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -76,6 +88,25 @@ export function DetailInspector({
     error: "",
     message: "",
   });
+  const theme = useTheme();
+  const isLightMode = theme.palette.mode === "light";
+  const railSurface = isLightMode ? "#374351" : GITHUB_BASE;
+  const panelSurface = "transparent";
+  const panelSurfaceSoft = "transparent";
+  const panelSurfaceHover = "rgba(255,255,255,0.04)";
+  const panelBorder = "transparent";
+  const inspectorText = isLightMode ? "var(--studio-chrome-text)" : INSPECTOR_TEXT;
+  const inspectorMutedText = isLightMode ? "var(--studio-chrome-text)" : GITHUB_TEXT_MUTED;
+  const inspectorAction = isLightMode ? "#64d3e3" : AI_ACTION;
+  const inspectorChromeBg = "rgba(9, 14, 20, 0.56)";
+  const primaryButtonSx = {
+    bgcolor: "#64d3e3",
+    color: isLightMode ? "#ffffff" : "#140d18",
+    boxShadow: isLightMode ? "0 10px 18px rgba(100, 211, 227, 0.22)" : "0 0 0 1px rgba(198, 120, 221, 0.18)",
+    "&:hover": {
+      bgcolor: "#45bfd2",
+    },
+  };
   const [selectedProjectId, setSelectedProjectId] = useState(projectId || "");
   const aiMessagesEndRef = useRef(null);
   const docUploadInputRef = useRef(null);
@@ -439,14 +470,14 @@ export function DetailInspector({
         sx={{
           p: 2.5,
           borderRadius: 1,
-          bgcolor: GITHUB_PANEL,
-          borderColor: GITHUB_BORDER,
+          bgcolor: panelSurface,
+          borderColor: panelBorder,
         }}
       >
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
               Inspector
             </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+        <Typography variant="body2" sx={{ mt: 1, color: "var(--studio-chrome-text)" }}>
           Select a node in the hierarchy to inspect and edit it.
         </Typography>
       </Paper>
@@ -454,15 +485,16 @@ export function DetailInspector({
   }
 
   return (
-    <Stack spacing={2} sx={{ height: "100%", minHeight: 0 }}>
+    <Stack spacing={0} sx={{ height: "100%", minHeight: 0 }}>
       <Box
         sx={{
-          px: 0,
+          px: 1.35,
           py: 0,
+          pt: 0,
           border: "none",
           bgcolor: "transparent",
           borderRadius: 0,
-          borderBottom: `1px solid ${GITHUB_BORDER}`,
+          borderBottom: "1px solid rgba(255,255,255,0.4)",
         }}
       >
         <Tabs
@@ -483,20 +515,23 @@ export function DetailInspector({
               position: "relative",
               minHeight: 40,
               minWidth: "fit-content",
-              px: 0.1,
+              px: 0.2,
               py: 0,
               mb: "-1px",
               border: "0 !important",
               borderRadius: 0,
               bgcolor: "transparent !important",
               boxShadow: "none",
-              color: GITHUB_TEXT_MUTED,
-              fontSize: "1rem",
+              color: inspectorMutedText,
+              fontSize: "0.92rem",
               lineHeight: 1.05,
               textTransform: "none",
+              "& .MuiSvgIcon-root": {
+                fontSize: 16,
+              },
             },
             "& .MuiTab-root.Mui-selected": {
-              color: "#e6edf3",
+              color: inspectorText,
               fontWeight: 600,
               bgcolor: "transparent !important",
               boxShadow: "none",
@@ -509,13 +544,14 @@ export function DetailInspector({
               position: "absolute",
               left: 0,
               right: 0,
-              bottom: 0,
-              height: 2,
+              bottom: -1,
+              height: 3,
               borderRadius: 999,
               bgcolor: "transparent",
+              opacity: 0.95,
             },
             "& .MuiTab-root:hover": {
-              color: "#e6edf3",
+              color: inspectorText,
               bgcolor: "transparent !important",
             },
             "& .MuiTabs-indicator": {
@@ -525,17 +561,24 @@ export function DetailInspector({
         >
           {INSPECTOR_TABS.map((label) => {
             const accent = INSPECTOR_TAB_ACCENTS[label] || "#f78166";
+            const TabIcon = INSPECTOR_TAB_ICONS[label];
             return (
               <Tab
                 key={label}
                 value={label}
-                label={label}
+                label={
+                  <Stack direction="row" spacing={0.55} alignItems="center">
+                    <TabIcon />
+                    <Box component="span">{label}</Box>
+                  </Stack>
+                }
                 sx={{
                   "&.Mui-selected::after": {
                     bgcolor: accent,
                   },
                   "&:hover::after": {
-                    bgcolor: activeTab === label ? accent : "rgba(255, 255, 255, 0.18)",
+                    bgcolor: activeTab === label ? accent : accent,
+                    opacity: activeTab === label ? 0.95 : 0.45,
                   },
                 }}
               />
@@ -546,10 +589,10 @@ export function DetailInspector({
       <Paper
         variant="outlined"
         sx={{
-          p: 0,
+          p: activeTab === "STORM" ? 0 : 1.35,
           flex: 1,
           minHeight: 0,
-          borderRadius: 0,
+          borderRadius: 1.25,
           bgcolor: "transparent",
           borderColor: "transparent",
           boxShadow: "none",
@@ -558,8 +601,9 @@ export function DetailInspector({
         <Stack
           spacing={2}
           sx={{
-            pt: 0.25,
+            pt: activeTab === "STORM" ? 0 : 0.25,
             height: "100%",
+            bgcolor: "transparent",
           }}
         >
           {activeTab === "Edit" ? (
@@ -578,14 +622,14 @@ export function DetailInspector({
                   onClick={onCreateTopLevelRequirement}
                   sx={{
                     justifyContent: "flex-start",
-                    color: INSPECTOR_TEXT,
+                    color: inspectorText,
                     textTransform: "none",
                     px: 0.7,
                     py: 0.35,
                     minHeight: 32,
                     borderRadius: 1,
                     "&:hover": {
-                      bgcolor: "rgba(255, 255, 255, 0.06)",
+                      bgcolor: "var(--studio-hover-soft)",
                     },
                   }}
                 >
@@ -598,14 +642,14 @@ export function DetailInspector({
                   onClick={onCreateChildRequirement}
                   sx={{
                     justifyContent: "flex-start",
-                    color: INSPECTOR_TEXT,
+                    color: inspectorText,
                     textTransform: "none",
                     px: 0.7,
                     py: 0.35,
                     minHeight: 32,
                     borderRadius: 1,
                     "&:hover": {
-                      bgcolor: "rgba(255, 255, 255, 0.06)",
+                      bgcolor: "var(--studio-hover-soft)",
                     },
                   }}
                 >
@@ -618,14 +662,14 @@ export function DetailInspector({
                   onClick={onCreateSectionFromRequirement}
                   sx={{
                     justifyContent: "flex-start",
-                    color: INSPECTOR_TEXT,
+                    color: inspectorText,
                     textTransform: "none",
                     px: 0.7,
                     py: 0.35,
                     minHeight: 32,
                     borderRadius: 1,
                     "&:hover": {
-                      bgcolor: "rgba(255, 255, 255, 0.06)",
+                      bgcolor: "var(--studio-hover-soft)",
                     },
                   }}
                 >
@@ -664,15 +708,22 @@ export function DetailInspector({
                   sx: {
                     fontSize: "0.86rem",
                     fontWeight: 600,
-                    color: INSPECTOR_TEXT,
-                    bgcolor: "rgba(255, 255, 255, 0.035)",
+                    color: inspectorText,
+                    bgcolor: panelSurface,
                     borderRadius: 1,
+                    "& input": {
+                      color: inspectorText,
+                    },
+                    "& input::placeholder": {
+                      color: inspectorMutedText,
+                      opacity: 1,
+                    },
                     "& fieldset": {
                       borderColor: "transparent",
                       borderWidth: 0,
                     },
                     "&:hover": {
-                      bgcolor: "rgba(255, 255, 255, 0.06)",
+                      bgcolor: panelSurfaceSoft,
                     },
                     "&:hover fieldset": {
                       borderColor: "transparent",
@@ -703,14 +754,22 @@ export function DetailInspector({
                     fontSize: "0.875rem",
                     lineHeight: 1.4,
                     alignItems: "flex-start",
-                    bgcolor: "rgba(255, 255, 255, 0.035)",
+                    color: inspectorText,
+                    bgcolor: panelSurface,
                     borderRadius: 1,
+                    "& textarea": {
+                      color: inspectorText,
+                    },
+                    "& textarea::placeholder": {
+                      color: inspectorMutedText,
+                      opacity: 1,
+                    },
                     "& fieldset": {
                       borderColor: "transparent",
                       borderWidth: 0,
                     },
                     "&:hover": {
-                      bgcolor: "rgba(255, 255, 255, 0.06)",
+                      bgcolor: panelSurfaceSoft,
                     },
                     "&:hover fieldset": {
                       borderColor: "transparent",
@@ -736,9 +795,19 @@ export function DetailInspector({
                   placeholder="Search requirements"
                   InputProps={{
                     sx: {
-                      bgcolor: GITHUB_SURFACE,
+                      bgcolor: panelSurface,
+                      color: inspectorText,
+                      "& input": {
+                        color: inspectorText,
+                      },
+                      "& input::placeholder": {
+                        color: inspectorMutedText,
+                        opacity: 1,
+                      },
                     },
-                    startAdornment: <SearchRounded sx={{ color: "text.secondary", mr: 1 }} />,
+                    startAdornment: (
+                      <SearchRounded sx={{ color: inspectorMutedText, mr: 1 }} />
+                    ),
                   }}
                 />
                 <Button
@@ -747,7 +816,7 @@ export function DetailInspector({
                   startIcon={<AutoAwesomeRounded />}
                   onClick={handleSearchRelatedRequirements}
                   disabled={relatedSearchState.loading || !projectId}
-                  sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
+                  sx={{ flexShrink: 0, whiteSpace: "nowrap", ...primaryButtonSx }}
                 >
                   {relatedSearchState.loading ? "Thinking..." : "AI Assist"}
                 </Button>
@@ -758,21 +827,21 @@ export function DetailInspector({
                 </Typography>
               ) : null}
               {!relatedSearchState.error && relatedSearchState.message ? (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: inspectorMutedText }}>
                   {relatedSearchState.message}
                 </Typography>
               ) : null}
               {searchTerm.trim() ? (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: inspectorMutedText }}>
                   {searchResults.length} result{searchResults.length === 1 ? "" : "s"}
                 </Typography>
               ) : relatedSearchResults.length ? (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: inspectorMutedText }}>
                   {relatedSearchResults.length} AI-assisted match
                   {relatedSearchResults.length === 1 ? "" : "es"}
                 </Typography>
               ) : (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: inspectorMutedText }}>
                   Search manually, or use AI Assist to surface only highly relevant relations to
                   the selected requirement.
                 </Typography>
@@ -789,31 +858,31 @@ export function DetailInspector({
                       cursor: "pointer",
                       bgcolor:
                         candidate.id === requirement.id
-                          ? "#1f2937"
-                          : GITHUB_PANEL,
+                          ? "#e9f7fa"
+                          : panelSurface,
                       borderColor:
                         candidate.id === requirement.id
                           ? "#2f81f7"
-                          : GITHUB_BORDER,
+                          : panelBorder,
                       "&:hover": {
                         bgcolor:
                           candidate.id === requirement.id
-                            ? "#243041"
-                            : GITHUB_PANEL_HOVER,
+                            ? "#def2f6"
+                            : panelSurfaceHover,
                       },
                     }}
                   >
                     <Stack spacing={0.5}>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: INSPECTOR_TEXT }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: inspectorText }}>
                         {candidate.title}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" sx={{ color: inspectorMutedText }}>
                         {String(candidate.sourceRef || candidate.intent || "Working draft").toUpperCase()}
                       </Typography>
                       <Typography
                         variant="body2"
-                        color="text.secondary"
                         sx={{
+                          color: inspectorText,
                           display: "-webkit-box",
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: "vertical",
@@ -826,12 +895,12 @@ export function DetailInspector({
                   </Paper>
                 ))}
                 {searchTerm.trim() && !searchResults.length ? (
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: inspectorMutedText }}>
                     No requirements matched that search.
                   </Typography>
                 ) : null}
                 {!searchTerm.trim() && relatedSearchResults.length === 0 && relatedSearchState.message ? (
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: inspectorMutedText }}>
                     No related requirements were found.
                   </Typography>
                 ) : null}
@@ -853,14 +922,15 @@ export function DetailInspector({
                   sx={{
                     px: 1,
                     py: 0.9,
-                    bgcolor: "rgba(255, 255, 255, 0.035)",
+                    bgcolor: panelSurface,
+                    border: `1px solid ${panelBorder}`,
                     borderRadius: 1,
                   }}
                 >
                   <Typography
                     variant="body2"
                     sx={{
-                      color: INSPECTOR_TEXT,
+                      color: inspectorText,
                       fontWeight: 500,
                       lineHeight: 1.35,
                     }}
@@ -876,7 +946,7 @@ export function DetailInspector({
                     >
                       {String(requirement.sourceRef || requirement.title || requirement.id).toUpperCase()}
                     </Box>
-                    <Box component="span" sx={{ color: GITHUB_TEXT_MUTED, mr: 0.55 }}>
+                    <Box component="span" sx={{ color: inspectorMutedText, mr: 0.55 }}>
                       Selected Requirement
                     </Box>
                     <Box component="span">
@@ -892,8 +962,9 @@ export function DetailInspector({
                   flex: 1,
                   minHeight: 0,
                   overflowY: "auto",
-                  bgcolor: "transparent",
-                  border: 0,
+                  bgcolor: panelSurface,
+                  border: `1px solid ${panelBorder}`,
+                  borderRadius: 1,
                   boxShadow: "none",
                 }}
               >
@@ -912,7 +983,7 @@ export function DetailInspector({
                         sx={{
                           display: "block",
                           mb: 0.6,
-                          color: message.role === "user" ? "#58a6ff" : GITHUB_TEXT_MUTED,
+                          color: message.role === "user" ? "#58a6ff" : inspectorMutedText,
                           textTransform: "uppercase",
                           letterSpacing: 0.55,
                         }}
@@ -923,7 +994,7 @@ export function DetailInspector({
                     </Box>
                   ))}
                   {aiLoading ? (
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ color: GITHUB_TEXT_MUTED }}>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ color: inspectorMutedText }}>
                       <CircularProgress size={14} />
                       <Typography variant="caption">Thinking...</Typography>
                     </Stack>
@@ -945,7 +1016,7 @@ export function DetailInspector({
                   </Typography>
                 ) : null}
                 {!docUploadState.error && docUploadState.message ? (
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: inspectorMutedText }}>
                     {docUploadState.message}
                   </Typography>
                 ) : null}
@@ -967,9 +1038,10 @@ export function DetailInspector({
                           disabled={docUploadState.loading}
                           sx={{
                             mr: 0.5,
-                            color: GITHUB_TEXT_MUTED,
+                            color: inspectorMutedText,
                             borderRadius: 999,
-                            border: "1px solid rgba(255, 255, 255, 0.08)",
+                            border: `1px solid ${panelBorder}`,
+                            bgcolor: panelSurface,
                           }}
                         >
                           {docUploadState.loading ? (
@@ -984,7 +1056,15 @@ export function DetailInspector({
                       fontSize: "0.875rem",
                       lineHeight: 1.4,
                       alignItems: "center",
-                      bgcolor: GITHUB_SURFACE,
+                      bgcolor: panelSurface,
+                      color: inspectorText,
+                      "& textarea": {
+                        color: inspectorText,
+                      },
+                      "& textarea::placeholder": {
+                        color: inspectorMutedText,
+                        opacity: 1,
+                      },
                     },
                   }}
                 />
@@ -1001,12 +1081,7 @@ export function DetailInspector({
                     onClick={handleSendAiPrompt}
                     disabled={!aiPrompt.trim() || aiLoading}
                     sx={{
-                      bgcolor: AI_ACTION,
-                      color: "#140d18",
-                      boxShadow: "0 0 0 1px rgba(198, 120, 221, 0.18)",
-                      "&:hover": {
-                        bgcolor: "#d08ae5",
-                      },
+                      ...primaryButtonSx,
                     }}
                   >
                     Send
@@ -1064,11 +1139,40 @@ export function DetailInspector({
                   Collapse all
                 </Button>
               </Stack>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" sx={{ color: inspectorMutedText }}>
                 Use these controls to reorganize the selected requirement within the current
                 hierarchy.
               </Typography>
             </Stack>
+          ) : null}
+
+          {activeTab === "STORM" ? (
+            <Box
+              sx={{
+                mx: "-14px",
+                mb: "-14px",
+                mt: "-16px",
+                pt: "16px",
+                position: "relative",
+                display: "flex",
+                flexDirection: "column",
+                flex: 1,
+                minHeight: 0,
+                bgcolor: "transparent",
+                "&::before": {
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: "16px",
+                  bgcolor: inspectorChromeBg,
+                  pointerEvents: "none",
+                },
+              }}
+            >
+              {sectionSolutionPanel}
+            </Box>
           ) : null}
         </Stack>
       </Paper>

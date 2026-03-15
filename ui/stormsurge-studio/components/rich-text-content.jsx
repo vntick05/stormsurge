@@ -2,9 +2,9 @@
 
 import { Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 
-const GITHUB_BORDER = "#30363d";
-const GITHUB_PANEL = "#161b22";
-const GITHUB_TEXT_MUTED = "#7d8590";
+const GITHUB_BORDER = "var(--studio-border)";
+const GITHUB_PANEL = "var(--studio-panel)";
+const GITHUB_TEXT_MUTED = "var(--studio-text-muted)";
 
 function isMarkdownTableSeparator(line) {
   const trimmed = line.trim();
@@ -111,7 +111,7 @@ export function RichTextContent({ content, dense = false }) {
                       <TableCell
                         key={`head-${cellIndex}`}
                         sx={{
-                          color: "#e6edf3",
+                          color: "var(--studio-text)",
                           fontWeight: 700,
                           borderColor: GITHUB_BORDER,
                           whiteSpace: "nowrap",
@@ -129,7 +129,7 @@ export function RichTextContent({ content, dense = false }) {
                         <TableCell
                           key={`cell-${rowIndex}-${cellIndex}`}
                           sx={{
-                            color: "#e6edf3",
+                            color: "var(--studio-text)",
                             borderColor: GITHUB_BORDER,
                             verticalAlign: "top",
                           }}
@@ -166,7 +166,7 @@ export function RichTextContent({ content, dense = false }) {
             sx={{
               whiteSpace: "pre-wrap",
               lineHeight: 1.5,
-              color: dense ? "#e6edf3" : "inherit",
+              color: dense ? "var(--studio-text)" : "inherit",
             }}
           >
             {block.text}

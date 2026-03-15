@@ -57,9 +57,10 @@ export function UploadWorkspaceCard({
       sx={{
         p: 3,
         borderRadius: 1,
-        bgcolor: "#161b22",
-        borderColor: "#30363d",
-        boxShadow: "0 18px 28px rgba(0, 0, 0, 0.22)",
+        bgcolor: "var(--studio-panel)",
+        borderColor: "var(--studio-border)",
+        boxShadow: "var(--studio-card-shadow)",
+        borderBottom: "3px solid var(--studio-ai-action)",
       }}
     >
       <Stack spacing={2}>
@@ -91,7 +92,7 @@ export function UploadWorkspaceCard({
           }
           InputProps={{
             sx: {
-              bgcolor: "#0d1117",
+              bgcolor: "var(--studio-surface)",
             },
           }}
         >

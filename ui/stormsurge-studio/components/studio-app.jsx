@@ -6,12 +6,18 @@ import ChevronRightRounded from "@mui/icons-material/ChevronRightRounded";
 import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
 import CloudUploadRounded from "@mui/icons-material/CloudUploadRounded";
+import DarkModeRounded from "@mui/icons-material/DarkModeRounded";
 import HomeRounded from "@mui/icons-material/HomeRounded";
+import LightModeRounded from "@mui/icons-material/LightModeRounded";
 import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
+import AssignmentTurnedInRounded from "@mui/icons-material/AssignmentTurnedInRounded";
 import PlaylistAddRounded from "@mui/icons-material/PlaylistAddRounded";
 import RedoRounded from "@mui/icons-material/RedoRounded";
 import SaveRounded from "@mui/icons-material/SaveRounded";
+import TrackChangesRounded from "@mui/icons-material/TrackChangesRounded";
 import UndoRounded from "@mui/icons-material/UndoRounded";
+import TrendingUpRounded from "@mui/icons-material/TrendingUpRounded";
+import WarningAmberRounded from "@mui/icons-material/WarningAmberRounded";
 import {
   closestCenter,
   DndContext,
@@ -50,7 +56,9 @@ import {
   Toolbar,
   Tooltip,
   Typography,
+  useTheme,
 } from "@mui/material";
+import { useStudioThemeMode } from "@/app/theme-registry";
 import { DetailInspector } from "@/components/detail-inspector";
 import { PackageProjectCard } from "@/components/package-project-card";
 import { RequirementImportDialog } from "@/components/requirement-import-dialog";
@@ -79,9 +87,6 @@ const LEFT_RAIL_MIN_WIDTH = 240;
 const RIGHT_RAIL_MIN_WIDTH = 64;
 const LEFT_RAIL_MAX_WIDTH = 520;
 const RIGHT_RAIL_MAX_WIDTH = 900;
-const BOTTOM_DOCK_DEFAULT_HEIGHT = 340;
-const BOTTOM_DOCK_MIN_HEIGHT = 220;
-const BOTTOM_DOCK_MAX_HEIGHT = 520;
 const STUDIO_STATE_STORAGE_KEY = "stormsurge-studio-state-v1";
 const SAVED_PROJECTS_STORAGE_KEY = "stormsurge-studio-saved-projects-v1";
 const AUTOSAVE_PROJECT_ID = "autosave-current-workspace";
@@ -91,14 +96,20 @@ const UNDO_HISTORY_LIMIT = 5;
 const STORM_WORKSPACE_TABS = [
   "MTS Definition",
   "MTS Solution",
-  "Exceeds the Standard",
+  "Exceeds MTS",
   "Risks",
 ];
 const STORM_WORKSPACE_TAB_ACCENTS = {
-  "MTS Definition": "#f78166",
-  "MTS Solution": "#58a6ff",
-  "Exceeds the Standard": "#3fb950",
+  "MTS Definition": "#58a6ff",
+  "MTS Solution": "#f78166",
+  "Exceeds MTS": "#3fb950",
   Risks: "#d29922",
+};
+const STORM_WORKSPACE_TAB_ICONS = {
+  "MTS Definition": TrackChangesRounded,
+  "MTS Solution": AssignmentTurnedInRounded,
+  "Exceeds MTS": TrendingUpRounded,
+  Risks: WarningAmberRounded,
 };
 const UNASSIGNED_SECTION = {
   id: "unassigned",
@@ -107,41 +118,54 @@ const UNASSIGNED_SECTION = {
   sourceKind: "system",
   sectionNumber: null,
 };
-const GITHUB_BASE = "#010409";
-const GITHUB_SURFACE = "#0d1117";
-const GITHUB_PANEL = "#161b22";
-const GITHUB_PANEL_HOVER = "#1c2128";
-const GITHUB_BORDER = "#30363d";
-const GITHUB_BORDER_MUTED = "#21262d";
-const GITHUB_TEXT_MUTED = "#7d8590";
-const AI_ACTION = "#c678dd";
-const TOPBAR_BUTTON_SX = {
-  height: 22,
-  minHeight: 24,
-  px: 0.9,
-  py: 0,
-  borderRadius: 1,
-  fontSize: "0.71rem",
+const GITHUB_BASE = "var(--studio-base)";
+const GITHUB_SURFACE = "var(--studio-surface)";
+const GITHUB_PANEL = "var(--studio-panel)";
+const GITHUB_PANEL_HOVER = "var(--studio-panel-hover)";
+const GITHUB_BORDER = "var(--studio-border)";
+const GITHUB_BORDER_MUTED = "var(--studio-border-muted)";
+const GITHUB_TEXT_MUTED = "var(--studio-text-muted)";
+const AI_ACTION = "var(--studio-ai-action)";
+const CHROME_BG = "var(--studio-chrome-bg)";
+const CHROME_BG_SOFT = "var(--studio-chrome-bg-soft)";
+const CHROME_TEXT = "var(--studio-chrome-text)";
+const CHROME_TEXT_MUTED = "var(--studio-chrome-text)";
+const CHROME_BORDER = "var(--studio-chrome-border)";
+const RIBBON_TOOL_BUTTON_SX = {
+  minWidth: 0,
+  height: 28,
+  px: 0.85,
+  py: 0.25,
+  borderRadius: 0.9,
+  border: "1px solid transparent",
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 0.15,
+  textTransform: "none",
   lineHeight: 1,
-  alignSelf: "center",
-  borderColor: "transparent",
+  fontSize: "0.73rem",
+  fontWeight: 600,
+  color: CHROME_TEXT,
   bgcolor: "transparent",
-  color: "#58a6ff",
+  boxShadow: "none",
   "& .MuiButton-startIcon": {
-    mr: 0.35,
-    "& > *:nth-of-type(1)": {
-      fontSize: 14,
-    },
+    mr: 0.45,
+    ml: 0,
+  },
+  "& .MuiSvgIcon-root": {
+    fontSize: 14,
   },
   "&:hover": {
-    borderColor: "transparent",
-    bgcolor: "rgba(255, 255, 255, 0.06)",
-    color: "#79c0ff",
+    bgcolor: CHROME_BG_SOFT,
+    borderColor: CHROME_BORDER,
+    boxShadow: "none",
   },
 };
 const subtleScrollbarSx = {
   scrollbarWidth: "thin",
-  scrollbarColor: "#30363d transparent",
+  scrollbarColor: "var(--studio-scrollbar) transparent",
   "&::-webkit-scrollbar": {
     width: 8,
     height: 8,
@@ -150,22 +174,18 @@ const subtleScrollbarSx = {
     background: "transparent",
   },
   "&::-webkit-scrollbar-thumb": {
-    backgroundColor: "#30363d",
+    backgroundColor: "var(--studio-scrollbar)",
     borderRadius: 999,
     border: "2px solid transparent",
     backgroundClip: "padding-box",
   },
   "&:hover::-webkit-scrollbar-thumb": {
-    backgroundColor: "#484f58",
+    backgroundColor: "var(--studio-text-muted)",
   },
 };
 
 function clampRailWidth(width, minWidth, maxWidth) {
   return Math.min(Math.max(width, minWidth), maxWidth);
-}
-
-function clampDockHeight(height) {
-  return Math.min(Math.max(height, BOTTOM_DOCK_MIN_HEIGHT), BOTTOM_DOCK_MAX_HEIGHT);
 }
 
 function buildSectionShortLabel(label, fallback = "CUST") {
@@ -202,17 +222,17 @@ function buildSectionBarSx(selected) {
     width: "calc(100% - 10px)",
     mx: "auto",
     borderRadius: 1,
-    mb: 0.95,
+    mb: 0.8,
     px: 0.75,
-    py: 0.18,
-    minHeight: 44,
-    maxHeight: 44,
-    bgcolor: selected ? "rgba(255, 255, 255, 0.055)" : "rgba(255, 255, 255, 0.02)",
+    py: 0.08,
+    minHeight: 38,
+    maxHeight: 38,
+    bgcolor: selected ? "var(--studio-selection-soft)" : "transparent",
     border: "none",
     boxShadow: "none",
     transition: "background-color 120ms ease",
     "&:hover": {
-      bgcolor: selected ? "rgba(255, 255, 255, 0.075)" : "rgba(255, 255, 255, 0.04)",
+      bgcolor: selected ? "var(--studio-hover-strong)" : "var(--studio-hover-soft)",
       "& .section-tab-menu": {
         opacity: 1,
       },
@@ -235,7 +255,7 @@ function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
           height: 24,
           my: "auto",
           flexShrink: 0,
-          color: GITHUB_TEXT_MUTED,
+          color: CHROME_TEXT_MUTED,
           cursor: dragHandleProps ? "grab" : "default",
           borderRadius: 0.9,
           bgcolor: "transparent",
@@ -254,7 +274,7 @@ function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
             flex: "1 1 auto",
             minWidth: 0,
             maxWidth: "calc(100% - 28px)",
-            minHeight: 36,
+            minHeight: 30,
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-start",
@@ -269,7 +289,7 @@ function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
               fontWeight: selected ? 500 : 400,
               fontSize: "0.88rem",
               lineHeight: 1.15,
-              color: selected ? "#e6edf3" : GITHUB_TEXT_MUTED,
+              color: selected ? CHROME_TEXT : CHROME_TEXT_MUTED,
               textAlign: "left",
               whiteSpace: "nowrap",
               overflow: "hidden",
@@ -293,7 +313,7 @@ function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
               sx={{
                 alignSelf: "center",
                 flexShrink: 0,
-                color: GITHUB_TEXT_MUTED,
+                color: CHROME_TEXT_MUTED,
                 opacity: selected ? 0.72 : 0,
                 transition: "opacity 120ms ease",
                 width: 24,
@@ -348,7 +368,9 @@ function RailShell({
   sx,
   children,
 }) {
+  const theme = useTheme();
   const isLeft = side === "left";
+  const isLightMode = theme.palette.mode === "light";
 
   return (
     <Box
@@ -362,8 +384,8 @@ function RailShell({
         borderRight: 0,
         borderLeft: 0,
         borderBottom: 0,
-        borderColor: isLeft ? GITHUB_BORDER_MUTED : GITHUB_BORDER,
-        bgcolor: GITHUB_BASE,
+        borderColor: isLeft ? CHROME_BORDER : GITHUB_BORDER,
+        bgcolor: CHROME_BG,
         backgroundImage: "none",
         boxShadow: "none",
         transition: "width 180ms ease",
@@ -373,22 +395,26 @@ function RailShell({
         borderRadius: 0,
         borderRight: isLeft ? "1px solid" : 0,
         borderLeft: !isLeft ? "1px solid" : 0,
+        boxShadow: isLeft
+          ? "inset -3px 0 0 rgba(8, 12, 16, 0.18)"
+          : "inset 3px 0 0 rgba(8, 12, 16, 0.24)",
         mt: { xs: 0, xl: 0 },
         mb: { xs: 0, xl: 0 },
-        ml: { xs: 0, xl: isLeft ? 0.2 : 0 },
-        mr: { xs: 0, xl: isLeft ? 0 : 0.2 },
+        ml: 0,
+        mr: 0,
         pt: 0,
         ...sx,
       }}
     >
       <Box
         sx={{
-          px: isLeft ? 1.4 : 1.2,
+          px: isLeft ? 1.4 : 1.75,
           py: 0.9,
           display: "flex",
-          justifyContent: isLeft ? "flex-end" : "flex-start",
+          justifyContent: "space-between",
           alignItems: "center",
           flexDirection: "row",
+          gap: 0.55,
           flexShrink: 0,
           borderBottom: 0,
           background: "transparent",
@@ -401,24 +427,31 @@ function RailShell({
           <Typography
             variant="subtitle1"
             sx={{
-              position: "absolute",
-              left: "50%",
-              transform: "translateX(-50%)",
-              color: "#ffffff",
+              position: "static",
+              left: "auto",
+              transform: "none",
+              color: !isLeft && isLightMode ? "#ffffff" : CHROME_TEXT,
               fontWeight: 700,
               fontSize: "1rem",
               letterSpacing: -0.01,
               lineHeight: 1.1,
-              textAlign: "center",
-              pointerEvents: "none",
+              textAlign: "left",
+              pointerEvents: "auto",
               whiteSpace: "nowrap",
+              order: 1,
+              ml: isLeft ? 0 : 1.45,
+              flexGrow: 1,
             }}
           >
             {title}
           </Typography>
         ) : null}
         <Tooltip title={collapsed ? `Expand ${title}` : `Collapse ${title}`}>
-          <IconButton onClick={onToggleCollapsed} size="small">
+          <IconButton
+            onClick={onToggleCollapsed}
+            size="small"
+            sx={{ order: 2, color: "#ffffff" }}
+          >
             {isLeft ? (
               collapsed ? <ChevronRightRounded /> : <ChevronLeftRounded />
             ) : collapsed ? (
@@ -462,7 +495,7 @@ function RailShell({
       ) : (
         <Box
           sx={{
-            p: isLeft ? 2 : 1.75,
+            p: isLeft ? 2 : 0,
             pt: 0.1,
             display: "flex",
             flexDirection: "column",
@@ -479,20 +512,42 @@ function RailShell({
         </Box>
       )}
 
-      {!isLeft ? (
+      {!collapsed ? (
         <Box
           onMouseDown={onResizeStart}
           sx={{
             position: "absolute",
             top: 80,
             bottom: 0,
-            left: -5,
+            left: isLeft ? "auto" : -5,
+            right: isLeft ? -5 : "auto",
             width: 10,
             cursor: "col-resize",
             zIndex: 10,
             display: { xs: "none", xl: "flex" },
             alignItems: "center",
             justifyContent: "center",
+            "&::after": {
+              content: '""',
+              width: 3,
+              height: "100%",
+              borderRadius: 999,
+              bgcolor: "rgba(18, 24, 31, 0.28)",
+              boxShadow: "0 0 0 1px rgba(11, 15, 20, 0.32)",
+            },
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: 6,
+              height: 54,
+              borderRadius: 999,
+              bgcolor: "rgba(255, 255, 255, 0.82)",
+              boxShadow:
+                "0 0 0 1px rgba(17, 24, 39, 0.14), 0 2px 8px rgba(15, 23, 42, 0.18)",
+            },
           }}
         />
       ) : null}
@@ -539,9 +594,17 @@ function normalizeStormWorkspaceNotes(notesBySection) {
       return accumulator;
     }
 
+    const legacyStormValue = notes.STORM;
+    const legacySolutionValue = notes["MTS Solution"];
     accumulator[sectionId] = {
       ...buildEmptyStormWorkspace(),
       ...notes,
+      "MTS Solution":
+        typeof legacySolutionValue === "string"
+          ? legacySolutionValue
+          : typeof legacyStormValue === "string"
+            ? legacyStormValue
+            : "",
     };
     return accumulator;
   }, {});
@@ -575,8 +638,6 @@ function getSectionRequirementScope(requirements, sectionId) {
 }
 
 function StormWorkspaceBar({
-  collapsed,
-  onToggleCollapsed,
   activeTab,
   onTabChange,
   notesByTab,
@@ -587,7 +648,21 @@ function StormWorkspaceBar({
   generationState,
   activeSection,
   activeSectionRequirementCount,
+  hideCollapseToggle = false,
 }) {
+  const theme = useTheme();
+  const isLightMode = theme.palette.mode === "light";
+  const panelBg = isLightMode ? "#374351" : GITHUB_BASE;
+  const panelBorder = isLightMode ? "rgba(255,255,255,0.18)" : GITHUB_BORDER;
+  const panelCard = isLightMode ? "#4d5968" : "#344150";
+  const panelCardHover = isLightMode ? "#566475" : "#3b4959";
+  const panelText = isLightMode ? "var(--studio-chrome-text)" : CHROME_TEXT;
+  const panelMutedText = isLightMode ? "var(--studio-chrome-text)" : CHROME_TEXT_MUTED;
+  const panelAction = isLightMode ? "#64d3e3" : AI_ACTION;
+  const tabChromeBg = "transparent";
+  const activeTabSurface = isLightMode ? "#44505e" : "#2b3542";
+  const activeTabText = isLightMode ? "#f5f7fa" : panelText;
+  const inactiveTabText = isLightMode ? "rgba(230, 237, 243, 0.78)" : panelMutedText;
   const canGenerateMtsDefinition =
     activeTab === "MTS Definition" &&
     Boolean(activeSection?.id) &&
@@ -595,7 +670,7 @@ function StormWorkspaceBar({
     !generationState.loading;
 
   return (
-    <Paper
+      <Paper
       variant="outlined"
       sx={{
         borderRadius: { xs: 0.5, xl: 0 },
@@ -603,131 +678,144 @@ function StormWorkspaceBar({
         flexDirection: "column",
         overflow: "hidden",
         height: "100%",
-        bgcolor: GITHUB_BASE,
+        bgcolor: "transparent",
         backgroundImage: "none",
         boxShadow: { xs: "0 18px 32px rgba(0, 0, 0, 0.12)", xl: "none" },
         borderTop: 0,
         borderLeft: 0,
         borderRight: 0,
         borderBottom: 0,
-        borderColor: GITHUB_BORDER,
+        borderColor: panelBorder,
       }}
     >
       <Box
         sx={{
-          borderBottom: "1px solid rgba(255, 255, 255, 0.12)",
-          px: 1.35,
-          py: 0.7,
-          background: GITHUB_BASE,
+          px: 3.8,
+          pt: 0,
+          pb: 0,
+          background: "rgba(9, 14, 20, 0.56)",
+          borderBottom: 0,
         }}
       >
         <Stack
           direction={{ xs: "column", md: "row" }}
           spacing={1}
           alignItems={{ xs: "stretch", md: "center" }}
-          justifyContent="space-between"
+          justifyContent="flex-start"
         >
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            Section Solution
-          </Typography>
           <Stack
             direction="row"
             spacing={1}
             alignItems="center"
             sx={{
-              ml: { xs: 0, md: "auto" },
-              width: { xs: "100%", md: "auto" },
-              justifyContent: { xs: "space-between", md: "flex-end" },
+              ml: 0,
+              width: "100%",
+              justifyContent: "flex-start",
             }}
           >
-            {!collapsed ? (
-              <Box
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "stretch",
-                  justifyContent: "flex-end",
-                  flexWrap: "wrap",
-                  gap: { xs: 1.6, md: 2.8 },
-                  width: { xs: "100%", md: "auto" },
-                  minWidth: 0,
-                }}
-              >
-                {STORM_WORKSPACE_TABS.map((label) => {
-                  const selected = activeTab === label;
-                  const accentColor = STORM_WORKSPACE_TAB_ACCENTS[label] || "#f78166";
-                  return (
-                    <Button
-                      key={label}
-                      onClick={() => onTabChange(label)}
-                      variant="text"
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "end",
+                justifyContent: "flex-start",
+                gap: 1.15,
+                width: "100%",
+              }}
+            >
+              {STORM_WORKSPACE_TABS.map((label) => {
+                const selected = activeTab === label;
+                const TabIcon = STORM_WORKSPACE_TAB_ICONS[label] || TrackChangesRounded;
+                return (
+                  <Button
+                    key={label}
+                    onClick={() => onTabChange(label)}
+                    variant="text"
+                    sx={{
+                      position: "relative",
+                      minHeight: 46,
+                      minWidth: 124,
+                      px: 0.72,
+                      py: 0.6,
+                      mb: "-1px",
+                      borderRadius: "4px 4px 0 0",
+                      color: selected ? activeTabText : inactiveTabText,
+                      bgcolor: selected ? activeTabSurface : "rgba(255,255,255,0.03)",
+                      border: "0 solid transparent",
+                      borderBottomColor: selected ? activeTabSurface : "transparent",
+                      boxShadow: "none",
+                      fontSize: "0.76rem",
+                      lineHeight: 1.1,
+                      fontWeight: 500,
+                      justifyContent: "center",
+                      textAlign: "center",
+                      textTransform: "none",
+                      overflow: "hidden",
+                      "&:hover": {
+                        bgcolor: selected
+                          ? activeTabSurface
+                          : isLightMode
+                            ? "rgba(255,255,255,0.05)"
+                            : "rgba(255,255,255,0.07)",
+                        color: selected ? activeTabText : panelText,
+                      },
+                    }}
+                  >
+                    <Box
+                      component="span"
                       sx={{
-                        position: "relative",
-                        minHeight: 40,
-                        px: 0.4,
-                        borderRadius: 0,
-                        color: selected ? "#e6edf3" : GITHUB_TEXT_MUTED,
-                        bgcolor: "transparent",
-                        border: 0,
-                        boxShadow: "none",
-                        fontSize: "0.94rem",
-                        lineHeight: 1.05,
-                        fontWeight: selected ? 600 : 500,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 0.55,
                         justifyContent: "center",
-                        "&::after": {
-                          content: '""',
-                          position: "absolute",
-                          left: 0,
-                          right: 0,
-                          bottom: -9,
-                          height: 2,
-                          bgcolor: selected ? accentColor : "transparent",
-                          borderRadius: 999,
-                        },
-                        "&:hover": {
-                          bgcolor: "transparent",
-                          color: "#e6edf3",
-                          "&::after": {
-                            bgcolor: selected ? accentColor : "rgba(255, 255, 255, 0.2)",
-                          },
-                        },
+                        width: "100%",
                       }}
                     >
-                      {label}
-                    </Button>
-                  );
-                })}
-              </Box>
-            ) : null}
-            <Tooltip title={collapsed ? "Expand Section Solution" : "Collapse Section Solution"}>
-              <IconButton size="small" onClick={onToggleCollapsed}>
-                {collapsed ? <ExpandLessRounded /> : <ExpandMoreRounded />}
-              </IconButton>
-            </Tooltip>
+                      <TabIcon sx={{ fontSize: 14, color: "inherit", flexShrink: 0 }} />
+                      <Box component="span">{label}</Box>
+                    </Box>
+                  </Button>
+                );
+              })}
+            </Box>
+            {hideCollapseToggle ? null : (
+              <Tooltip title="Section Solution">
+                <IconButton size="small" disabled>
+                  <ExpandMoreRounded />
+                </IconButton>
+              </Tooltip>
+            )}
           </Stack>
         </Stack>
       </Box>
-      {collapsed ? null : (
       <Box
         sx={{
-          p: 1.6,
+          pt: 0.45,
+          pb: 1.2,
+          pl: 0,
+          pr: 0,
           flex: "1 1 auto",
           minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
           overflowY: "auto",
           overscrollBehavior: "contain",
-          backgroundColor: GITHUB_BASE,
+          backgroundColor: activeTabSurface,
+          borderTop: 0,
           ...subtleScrollbarSx,
         }}
       >
-        <Stack spacing={1.5}>
+        <Stack spacing={1.5} sx={{ flex: 1, minHeight: 0 }}>
           <Stack
             direction={{ xs: "column", md: "row" }}
             spacing={1.5}
             alignItems={{ xs: "flex-start", md: "center" }}
             justifyContent="space-between"
+            sx={{ px: 1.45 }}
           >
             <Box>
               {activeSection ? (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: panelMutedText }}>
                   {activeSection.label} · {activeSectionRequirementCount} requirement
                   {activeSectionRequirementCount === 1 ? "" : "s"}
                 </Typography>
@@ -742,9 +830,10 @@ function StormWorkspaceBar({
                   sx={{
                     minHeight: 28,
                     py: 0.25,
+                    color: panelText,
                     borderColor: "transparent",
-                    bgcolor: "transparent",
-                    "&:hover": { bgcolor: "rgba(255,255,255,0.06)", borderColor: "transparent" },
+                    bgcolor: isLightMode ? panelCard : "transparent",
+                    "&:hover": { bgcolor: panelCardHover, borderColor: "transparent" },
                   }}
                 >
                   Clear
@@ -756,9 +845,10 @@ function StormWorkspaceBar({
                   sx={{
                     minHeight: 28,
                     py: 0.25,
+                    color: panelText,
                     borderColor: "transparent",
-                    bgcolor: "transparent",
-                    "&:hover": { bgcolor: "rgba(255,255,255,0.06)", borderColor: "transparent" },
+                    bgcolor: isLightMode ? panelCard : "transparent",
+                    "&:hover": { bgcolor: panelCardHover, borderColor: "transparent" },
                   }}
                 >
                   Edit Prompt
@@ -777,11 +867,12 @@ function StormWorkspaceBar({
                     minHeight: 28,
                     py: 0.25,
                     bgcolor: "transparent",
-                    color: AI_ACTION,
+                    color: isLightMode ? "#ffffff" : panelAction,
+                    bgcolor: isLightMode ? panelAction : "transparent",
                     boxShadow: "none",
                     "&:hover": {
-                      bgcolor: "rgba(198, 120, 221, 0.12)",
-                      color: "#d08ae5",
+                      bgcolor: isLightMode ? "#45bfd2" : "rgba(198, 120, 221, 0.12)",
+                      color: isLightMode ? "#ffffff" : "#d08ae5",
                     },
                   }}
                 >
@@ -796,9 +887,10 @@ function StormWorkspaceBar({
                 sx={{
                   minHeight: 28,
                   py: 0.25,
+                  color: panelText,
                   borderColor: "transparent",
-                  bgcolor: "transparent",
-                  "&:hover": { bgcolor: "rgba(255,255,255,0.06)", borderColor: "transparent" },
+                  bgcolor: isLightMode ? panelCard : "transparent",
+                  "&:hover": { bgcolor: panelCardHover, borderColor: "transparent" },
                 }}
               >
                 Clear
@@ -806,56 +898,69 @@ function StormWorkspaceBar({
             )}
           </Stack>
           {generationState.error && activeTab === "MTS Definition" ? (
-            <Alert severity="error">{generationState.error}</Alert>
+            <Box sx={{ px: 1.45 }}>
+              <Alert severity="error">{generationState.error}</Alert>
+            </Box>
           ) : null}
-          <TextField
-            multiline
-            minRows={10}
-            fullWidth
-            placeholder={`Draft the ${activeTab} content here...`}
-            value={notesByTab[activeTab] || ""}
-            onChange={(event) => onNotesChange(activeTab, event.target.value)}
-            InputProps={{
-              sx: {
-                alignItems: "flex-start",
-                fontSize: "0.95rem",
-                lineHeight: 1.5,
-                fontWeight: 400,
-                color: "rgba(210, 218, 228, 0.72)",
-                bgcolor: "rgba(255,255,255,0.035)",
-                borderRadius: 1,
-                overscrollBehavior: "contain",
-                "& textarea": {
+          <Box sx={{ px: 1.45, flex: 1, minHeight: 0, display: "flex" }}>
+            <TextField
+              multiline
+              minRows={10}
+              fullWidth
+              placeholder={`Draft the ${activeTab} content here...`}
+              value={notesByTab[activeTab] || ""}
+              onChange={(event) => onNotesChange(activeTab, event.target.value)}
+              sx={{ flex: 1 }}
+              InputProps={{
+                sx: {
+                  height: "100%",
+                  alignItems: "flex-start",
+                  fontSize: "0.95rem",
+                  lineHeight: 1.5,
                   fontWeight: 400,
-                  color: "rgba(210, 218, 228, 0.72)",
+                  color: panelText,
+                  bgcolor: panelCard,
+                  borderRadius: 1,
+                  overscrollBehavior: "contain",
+                  "& .MuiInputBase-inputMultiline": {
+                    height: "100% !important",
+                    minHeight: "100% !important",
+                    boxSizing: "border-box",
+                  },
+                  "& textarea": {
+                    fontWeight: 400,
+                    color: panelText,
+                    overflowY: "auto !important",
+                  },
+                  "& textarea::placeholder": {
+                    color: panelMutedText,
+                    opacity: 1,
+                  },
+                  "& fieldset": {
+                    borderColor: "transparent",
+                    borderWidth: 0,
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "transparent",
+                    borderWidth: 0,
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "transparent",
+                    borderWidth: 0,
+                  },
                 },
-                "& textarea::placeholder": {
-                  color: "rgba(125, 133, 144, 0.72)",
-                  opacity: 1,
-                },
-                "& fieldset": {
-                  borderColor: "transparent",
-                  borderWidth: 0,
-                },
-                "&:hover fieldset": {
-                  borderColor: "transparent",
-                  borderWidth: 0,
-                },
-                "&.Mui-focused fieldset": {
-                  borderColor: "transparent",
-                  borderWidth: 0,
-                },
-              },
-            }}
-          />
+              }}
+            />
+          </Box>
         </Stack>
       </Box>
-      )}
     </Paper>
   );
 }
 
 export function StudioApp() {
+  const { mode, toggleMode } = useStudioThemeMode();
+  const middleCanvasBg = mode === "light" ? "#e9edf2" : GITHUB_SURFACE;
   const [mounted, setMounted] = useState(false);
   const [workspace, setWorkspace] = useState(buildEmptyWorkspace);
   const [undoHistory, setUndoHistory] = useState([]);
@@ -880,8 +985,6 @@ export function StudioApp() {
     open: false,
     action: "",
   });
-  const [stormWorkspaceHeight, setStormWorkspaceHeight] = useState(BOTTOM_DOCK_DEFAULT_HEIGHT);
-  const [stormWorkspaceCollapsed, setStormWorkspaceCollapsed] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState("");
   const [selectedRequirementId, setSelectedRequirementId] = useState("");
   const [uploadState, setUploadState] = useState({
@@ -956,7 +1059,6 @@ export function StudioApp() {
       stormWorkspaceTab,
       stormWorkspaceNotes,
       stormWorkspacePrompts,
-      stormWorkspaceHeight,
       leftRailWidth,
       rightRailWidth,
       leftRailCollapsed,
@@ -973,7 +1075,6 @@ export function StudioApp() {
     setStormWorkspacePrompts({});
     setActiveSectionId("");
     setSelectedRequirementId("");
-    setStormWorkspaceCollapsed(false);
     setCollapsedRequirementIds(new Set());
     setUploadState({ loading: false, error: "" });
     setSelectedPackageProjectId("");
@@ -992,7 +1093,9 @@ export function StudioApp() {
     );
     setStormWorkspaceTab(
       typeof snapshot?.stormWorkspaceTab === "string"
-        ? snapshot.stormWorkspaceTab
+        ? snapshot.stormWorkspaceTab === "STORM"
+          ? "MTS Solution"
+          : snapshot.stormWorkspaceTab
         : STORM_WORKSPACE_TABS[0],
     );
     setStormWorkspaceNotes(normalizeStormWorkspaceNotes(snapshot?.stormWorkspaceNotes));
@@ -1003,12 +1106,6 @@ export function StudioApp() {
         ? snapshot.stormWorkspacePrompts
         : {},
     );
-    setStormWorkspaceHeight(
-      typeof snapshot?.stormWorkspaceHeight === "number"
-        ? clampDockHeight(snapshot.stormWorkspaceHeight)
-        : BOTTOM_DOCK_DEFAULT_HEIGHT,
-    );
-    setStormWorkspaceCollapsed(false);
     setLeftRailWidth(
         typeof snapshot?.leftRailWidth === "number"
         ? clampRailWidth(snapshot.leftRailWidth, LEFT_RAIL_MIN_WIDTH, LEFT_RAIL_MAX_WIDTH)
@@ -1215,7 +1312,6 @@ export function StudioApp() {
         stormWorkspaceTab,
         stormWorkspaceNotes,
         stormWorkspacePrompts,
-        stormWorkspaceHeight,
         leftRailWidth,
         rightRailWidth,
         leftRailCollapsed,
@@ -1230,7 +1326,6 @@ export function StudioApp() {
     stormWorkspaceTab,
     stormWorkspaceNotes,
     stormWorkspacePrompts,
-    stormWorkspaceHeight,
     leftRailWidth,
     rightRailWidth,
     leftRailCollapsed,
@@ -1271,7 +1366,6 @@ export function StudioApp() {
     stormWorkspaceTab,
     stormWorkspaceNotes,
     stormWorkspacePrompts,
-    stormWorkspaceHeight,
     leftRailWidth,
     rightRailWidth,
     leftRailCollapsed,
@@ -1326,23 +1420,6 @@ export function StudioApp() {
       window.addEventListener("mousemove", handleMove);
       window.addEventListener("mouseup", handleUp);
     };
-  }
-
-  function startDockResize(event) {
-    event.preventDefault();
-
-    const handleMove = (moveEvent) => {
-      const nextHeight = window.innerHeight - moveEvent.clientY - 12;
-      setStormWorkspaceHeight(clampDockHeight(nextHeight));
-    };
-
-    const handleUp = () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
-    };
-
-    window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleUp);
   }
 
   function selectSection(sectionId) {
@@ -2328,11 +2405,11 @@ export function StudioApp() {
           display: "flex",
           left: 0,
           right: 0,
-          borderBottom: "1px solid rgba(255, 255, 255, 0.22)",
+          borderBottom: "1px solid var(--studio-appbar-border)",
           backdropFilter: "none",
-          bgcolor: "#000000",
-          pl: { xs: 0.9, xl: 1.2 },
-          pr: { xs: 0.45, xl: 0.6 },
+          bgcolor: "var(--studio-appbar-bg)",
+          pl: 0,
+          pr: 0,
           py: 0,
           transition: "padding 180ms ease",
           boxShadow: "none",
@@ -2345,15 +2422,15 @@ export function StudioApp() {
             minHeight: "34px !important",
             height: 34,
             py: 0,
-            pl: 0,
-            pr: 0,
+            pl: { xs: 0.9, xl: 1.2 },
+            pr: { xs: 0.45, xl: 0.6 },
           }}
         >
           <Box sx={{ flexGrow: 1 }}>
             <Typography
               variant="h5"
               sx={{
-                color: "#ffffff",
+                color: "var(--studio-title)",
                 fontWeight: 700,
                 letterSpacing: -0.03,
                 lineHeight: 1,
@@ -2363,62 +2440,77 @@ export function StudioApp() {
               StormSurge
             </Typography>
           </Box>
-          {!isHomeScreen ? (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                height: 34,
-                gap: 0.85,
-                ml: "auto",
-              }}
-            >
-              <Button
-                variant="text"
-                startIcon={<UndoRounded />}
-                onClick={handleUndo}
-                disabled={!undoHistory.length}
-                sx={TOPBAR_BUTTON_SX}
-              >
-                Undo
-              </Button>
-              <Button
-                variant="text"
-                startIcon={<RedoRounded />}
-                onClick={handleRedo}
-                disabled={!redoHistory.length}
-                sx={TOPBAR_BUTTON_SX}
-              >
-                Redo
-              </Button>
-              <Button
-                variant="text"
-                startIcon={<SaveRounded />}
-                onClick={handleSaveProject}
-                disabled={!sections.length}
-                sx={TOPBAR_BUTTON_SX}
-              >
-                Save Project
-              </Button>
-              <Button
-                variant="text"
-                startIcon={<PlaylistAddRounded />}
-                onClick={handleOpenReqImportDialog}
-                sx={TOPBAR_BUTTON_SX}
-              >
-                Import Reqs
-              </Button>
-              <Button
-                variant="text"
-                startIcon={<HomeRounded />}
-                onClick={handleGoHome}
-                sx={TOPBAR_BUTTON_SX}
-              >
-                Home
-              </Button>
-            </Box>
-          ) : null}
         </Toolbar>
+        {!isHomeScreen ? (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              width: "100%",
+              px: { xs: 0.9, xl: 1.2 },
+              py: 0.25,
+              minHeight: 34,
+              bgcolor: "#171c22",
+              borderTop: "1px solid rgba(255,255,255,0.04)",
+              borderBottom: "1px solid rgba(255,255,255,0.05)",
+              overflowX: "auto",
+              ...subtleScrollbarSx,
+            }}
+          >
+            <Button
+              variant="text"
+              startIcon={mode === "dark" ? <LightModeRounded /> : <DarkModeRounded />}
+              onClick={toggleMode}
+              sx={RIBBON_TOOL_BUTTON_SX}
+            >
+              {mode === "dark" ? "Light Mode" : "Dark Mode"}
+            </Button>
+            <Button
+              variant="text"
+              startIcon={<UndoRounded />}
+              onClick={handleUndo}
+              disabled={!undoHistory.length}
+              sx={RIBBON_TOOL_BUTTON_SX}
+            >
+              Undo
+            </Button>
+            <Button
+              variant="text"
+              startIcon={<RedoRounded />}
+              onClick={handleRedo}
+              disabled={!redoHistory.length}
+              sx={RIBBON_TOOL_BUTTON_SX}
+            >
+              Redo
+            </Button>
+            <Button
+              variant="text"
+              startIcon={<SaveRounded />}
+              onClick={handleSaveProject}
+              disabled={!sections.length}
+              sx={RIBBON_TOOL_BUTTON_SX}
+            >
+              Save Project
+            </Button>
+            <Button
+              variant="text"
+              startIcon={<PlaylistAddRounded />}
+              onClick={handleOpenReqImportDialog}
+              sx={RIBBON_TOOL_BUTTON_SX}
+            >
+              Import Reqs
+            </Button>
+            <Button
+              variant="text"
+              startIcon={<HomeRounded />}
+              onClick={handleGoHome}
+              sx={RIBBON_TOOL_BUTTON_SX}
+            >
+              Home
+            </Button>
+          </Box>
+        ) : null}
       </AppBar>
 
       <Box
@@ -2515,7 +2607,7 @@ export function StudioApp() {
             py: isHomeScreen ? 0 : { xs: 0, xl: 0 },
             overflow: "hidden",
             overscrollBehavior: "contain",
-            bgcolor: GITHUB_SURFACE,
+            bgcolor: middleCanvasBg,
             borderLeft: 0,
             borderRight: 0,
             borderColor: GITHUB_BORDER,
@@ -2536,7 +2628,7 @@ export function StudioApp() {
             display: "flex",
             alignItems: isHomeScreen ? "center" : "stretch",
             justifyContent: isHomeScreen ? "center" : "flex-start",
-            bgcolor: isHomeScreen ? "transparent" : GITHUB_SURFACE,
+            bgcolor: isHomeScreen ? "transparent" : middleCanvasBg,
           }}
         >
           <Stack
@@ -2684,7 +2776,7 @@ export function StudioApp() {
                   flex: "1 1 auto",
                   minWidth: 0,
                   borderRadius: 1,
-                  bgcolor: GITHUB_SURFACE,
+                  bgcolor: middleCanvasBg,
                 }}
               >
                 <WorkspaceCanvas
@@ -2700,57 +2792,6 @@ export function StudioApp() {
             ) : null}
           </Stack>
         </Box>
-        {!isHomeScreen ? (
-          <Box
-            sx={{
-              flexShrink: 0,
-              height: stormWorkspaceCollapsed ? 58 : stormWorkspaceHeight,
-              position: "relative",
-            }}
-          >
-            {stormWorkspaceCollapsed ? null : (
-              <Box
-                onMouseDown={startDockResize}
-                sx={{
-                  position: "absolute",
-                  top: -8,
-                  left: 0,
-                  right: 0,
-                  height: 16,
-                  cursor: "row-resize",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  zIndex: 1,
-                  "&::before": {
-                    content: '""',
-                    width: 72,
-                    height: 6,
-                    borderRadius: 999,
-                    bgcolor: GITHUB_BORDER,
-                  },
-                  "&:hover::before": {
-                    bgcolor: "#8b949e",
-                  },
-                }}
-              />
-            )}
-            <StormWorkspaceBar
-              collapsed={stormWorkspaceCollapsed}
-              onToggleCollapsed={() => setStormWorkspaceCollapsed((current) => !current)}
-              activeTab={stormWorkspaceTab}
-              onTabChange={setStormWorkspaceTab}
-              notesByTab={activeSectionStormWorkspaceNotes}
-              onNotesChange={handleStormWorkspaceNoteChange}
-              onGenerateMtsDefinition={() => handleOpenMtsConfirm("generate")}
-              onClearActiveTab={() => handleOpenMtsConfirm("clear")}
-              onEditMtsPrompt={handleEditMtsPrompt}
-              generationState={mtsDefinitionGenerationState}
-              activeSection={activeSection}
-              activeSectionRequirementCount={activeSectionRequirements.length}
-            />
-          </Box>
-        ) : null}
         </Box>
 
         {!isHomeScreen ? (
@@ -2764,6 +2805,8 @@ export function StudioApp() {
             onResizeStart={startRailResize("right")}
             sx={{
               order: 3,
+              bgcolor: { xs: "var(--studio-chrome-bg)", xl: "var(--studio-chrome-bg)" },
+              borderLeftColor: "var(--studio-chrome-border)",
               "@media (max-width: 1600px)": {
                 display: "none",
               },
@@ -2790,6 +2833,21 @@ export function StudioApp() {
               onDemoteRequirement={handleDemoteRequirement}
               onCreateSectionFromRequirement={handleCreateSectionFromRequirement}
               onDeleteRequirement={handleDeleteRequirement}
+              sectionSolutionPanel={
+                <StormWorkspaceBar
+                  activeTab={stormWorkspaceTab}
+                  onTabChange={setStormWorkspaceTab}
+                  notesByTab={activeSectionStormWorkspaceNotes}
+                  onNotesChange={handleStormWorkspaceNoteChange}
+                  onGenerateMtsDefinition={() => handleOpenMtsConfirm("generate")}
+                  onClearActiveTab={() => handleOpenMtsConfirm("clear")}
+                  onEditMtsPrompt={handleEditMtsPrompt}
+                  generationState={mtsDefinitionGenerationState}
+                  activeSection={activeSection}
+                  activeSectionRequirementCount={activeSectionRequirements.length}
+                  hideCollapseToggle
+                />
+              }
             />
           </RailShell>
         ) : null}
@@ -2912,7 +2970,7 @@ export function StudioApp() {
         >
           <Stack spacing={1}>
             <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
-              <Typography variant="body2" sx={{ fontWeight: 600, color: "#e6edf3" }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--studio-text)" }}>
                 {projectSetupState.message || "Running package ingest pipeline"}
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -2925,7 +2983,7 @@ export function StudioApp() {
               sx={{
                 height: 8,
                 borderRadius: 999,
-                bgcolor: "rgba(255, 255, 255, 0.08)",
+                bgcolor: "var(--studio-selection-soft)",
               }}
             />
           </Stack>
