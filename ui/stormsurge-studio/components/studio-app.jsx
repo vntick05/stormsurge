@@ -112,6 +112,10 @@ const STORM_WORKSPACE_TAB_ICONS = {
   "Exceeds MTS": TrendingUpRounded,
   Risks: WarningAmberRounded,
 };
+const MTS_DEFINITION_PANELS = [
+  { id: "definition_1", label: "Dependencies" },
+  { id: "definition_2", label: "Definition 2" },
+];
 const STORM_WORKSPACE_TAB_TEXT_COLORS = {
   "MTS Definition": null,
   "MTS Solution": "#3fb950",
@@ -138,6 +142,9 @@ const CHROME_BG_SOFT = "var(--studio-chrome-bg-soft)";
 const CHROME_TEXT = "var(--studio-chrome-text)";
 const CHROME_TEXT_MUTED = "var(--studio-chrome-text)";
 const CHROME_BORDER = "var(--studio-chrome-border)";
+const LIGHT_SHARED_SURFACE = "#f7f9fb";
+const LIGHT_SHARED_SURFACE_HOVER = "#f0f4f8";
+const LIGHT_CANVAS_SURFACE = "#e9edf2";
 const RIBBON_TOOL_BUTTON_SX = {
   minWidth: 0,
   height: 28,
@@ -395,6 +402,9 @@ function RailShell({
   const theme = useTheme();
   const isLeft = side === "left";
   const isLightMode = theme.palette.mode === "light";
+  const rightRailBg = isLightMode ? LIGHT_CANVAS_SURFACE : CHROME_BG;
+  const rightRailBorder = isLightMode ? "rgba(82, 90, 100, 0.2)" : GITHUB_BORDER;
+  const rightRailText = isLightMode ? "#313841" : CHROME_TEXT;
 
   return (
     <Box
@@ -408,18 +418,21 @@ function RailShell({
         borderRight: 0,
         borderLeft: 0,
         borderBottom: 0,
-        borderColor: isLeft ? CHROME_BORDER : GITHUB_BORDER,
-        bgcolor: CHROME_BG,
+        borderColor: isLeft ? CHROME_BORDER : rightRailBorder,
+        bgcolor: isLeft ? CHROME_BG : rightRailBg,
         backgroundImage: "none",
-        boxShadow: "none",
+        boxShadow: isLeft
+          ? "none"
+          : isLightMode
+            ? "-9px 0 16px -10px rgba(24, 39, 56, 0.46)"
+            : "-9px 0 16px -10px rgba(0, 0, 0, 0.52)",
         transition: "width 180ms ease",
         overflow: "hidden",
         overscrollBehavior: "contain",
         backdropFilter: "blur(10px)",
         borderRadius: 0,
-        borderRight: isLeft ? "1px solid" : 0,
-        borderLeft: !isLeft ? "1px solid" : 0,
-        boxShadow: "none",
+        borderRight: 0,
+        borderLeft: 0,
         mt: { xs: 0, xl: 0 },
         mb: { xs: 0, xl: 0 },
         ml: 0,
@@ -452,7 +465,7 @@ function RailShell({
               position: "static",
               left: "auto",
               transform: "none",
-              color: !isLeft && isLightMode ? "#ffffff" : CHROME_TEXT,
+              color: !isLeft ? rightRailText : CHROME_TEXT,
               fontWeight: 400,
               fontSize: "1rem",
               letterSpacing: -0.01,
@@ -472,7 +485,7 @@ function RailShell({
           <IconButton
             onClick={onToggleCollapsed}
             size="small"
-            sx={{ order: 2, color: "#ffffff" }}
+            sx={{ order: 2, color: !isLeft ? rightRailText : "#ffffff" }}
           >
             {isLeft ? (
               collapsed ? <ChevronRightRounded /> : <ChevronLeftRounded />
@@ -554,8 +567,8 @@ function RailShell({
               width: 3,
               height: "100%",
               borderRadius: 999,
-              bgcolor: "rgba(18, 24, 31, 0.28)",
-              boxShadow: "0 0 0 1px rgba(11, 15, 20, 0.32)",
+              bgcolor: "transparent",
+              boxShadow: "none",
             },
             "&::before": {
               content: '""',
@@ -595,15 +608,140 @@ function buildEmptyStormWorkspace() {
 }
 
 function buildDefaultMtsDefinitionPrompt(sectionLabel) {
+  return buildDefaultMtsDefinitionPanelPrompt(sectionLabel, "Dependencies");
+}
+
+function buildDefaultMtsDefinitionPanelPrompt(sectionLabel, panelLabel) {
   const scopedSection = String(sectionLabel || "this section").trim();
+  const scopedPanel = String(panelLabel || "Dependencies").trim();
+
+  if (scopedPanel === "Dependencies") {
+    return [
+      `Create a complete list of every document reference mentioned for ${scopedSection}.`,
+      "Include all document types you see, such as appendices, attachments, annexes, exhibits, schedules, PWSs, SOWs, SOOs, guides, manuals, plans, standards, specifications, drawings, forms, templates, reports, reference documents, and similar named documents.",
+      "List the document whenever the text refers to a separate document, appendix, attachment, sectioned artifact, or named reference.",
+      "Do not stop early. Capture every document reference you can find.",
+      "Output only a simple list, one item per line, using the document title and a very short context note if helpful.",
+    ].join(" ");
+  }
+
   return [
-    `Write a concise Meets the standard definition for ${scopedSection} from these selected requirements as a grouped objective.`,
+    `Write a concise Meets the standard definition for ${scopedSection} as ${scopedPanel} from these selected requirements as a grouped objective.`,
     "Do not restate the requirements.",
     "State what an evaluator is really looking for: the minimum credible and executable technical and operational approach, the level of control and integration required, and any unusual requirement that signals risk or likely evaluator scrutiny.",
     "Focus on feasibility, completeness, realism, and performance risk.",
     "Use a tech-dense style with a few short bullets.",
     "No headings, no marketing, no strengths, no fluff.",
   ].join(" ");
+}
+
+function buildEmptyMtsDefinitionPanels() {
+  return MTS_DEFINITION_PANELS.reduce((accumulator, panel) => {
+    accumulator[panel.id] = "";
+    return accumulator;
+  }, {});
+}
+
+function parseMtsDefinitionPanels(rawValue) {
+  const emptyPanels = buildEmptyMtsDefinitionPanels();
+  const trimmedValue = String(rawValue || "").trim();
+  if (!trimmedValue) {
+    return emptyPanels;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmedValue);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return MTS_DEFINITION_PANELS.reduce((accumulator, panel) => {
+        accumulator[panel.id] = String(parsed?.[panel.id] || "").trim();
+        return accumulator;
+      }, {});
+    }
+  } catch {
+    return {
+      ...emptyPanels,
+      definition_1: trimmedValue,
+    };
+  }
+
+  return emptyPanels;
+}
+
+function serializeMtsDefinitionPanels(panelsById) {
+  const normalizedPanels = MTS_DEFINITION_PANELS.reduce((accumulator, panel) => {
+    accumulator[panel.id] = String(panelsById?.[panel.id] || "").trim();
+    return accumulator;
+  }, {});
+
+  const hasAnyContent = Object.values(normalizedPanels).some((value) => value);
+  return hasAnyContent ? JSON.stringify(normalizedPanels) : "";
+}
+
+function normalizeMtsPromptSet(rawPromptSet, sectionLabel) {
+  const defaults = MTS_DEFINITION_PANELS.reduce((accumulator, panel) => {
+    accumulator[panel.id] = buildDefaultMtsDefinitionPanelPrompt(sectionLabel, panel.label);
+    return accumulator;
+  }, {});
+  const legacyDefinitionOnePrompt = buildDefaultMtsDefinitionPanelPrompt(sectionLabel, "Definition 1");
+  const legacyDependenciesPrompts = new Set([
+    [
+      `List the titles only for any appendices, attachments, exhibits, referenced plans, standards, or external documents that must be considered for ${sectionLabel}.`,
+      "Use one short line per title.",
+      "Do not describe or summarize them.",
+      "If none are referenced, say None.",
+    ].join(" "),
+    [
+      `List any appendices, attachments, exhibits, referenced plans, standards, or external documents that must be considered for ${sectionLabel}.`,
+      "Use one short line per item with the title plus a very brief context note.",
+      "Keep the context to a few words only.",
+      "If none are referenced, say None.",
+    ].join(" "),
+    [
+      `List only other referenced documents mentioned for ${sectionLabel}.`,
+      "Include documents of any type, but only if they are separate referenced documents.",
+      "Do not list requirement topics, activities, systems, deliverables, or concepts unless they are named documents.",
+      "Use one short line per item with the title plus a very brief context note.",
+      "Keep the context to a few words only.",
+    ].join(" "),
+    [
+      `List every other document or document-like artifact referenced for ${sectionLabel}.`,
+      "Include appendices, attachments, annexes, exhibits, schedules, plans, manuals, standards, specifications, drawings, forms, templates, reports, reference documents, data item descriptions, and any other named or clearly referenced document.",
+      "Capture it if the text points to a separate document even when the title is partial or generic.",
+      "Do not list plain topics, systems, activities, capabilities, or deliverables unless they are explicitly treated as a document.",
+      "Use one short line per document with the title plus a very brief context note.",
+      "Keep the context to a few words only.",
+    ].join(" "),
+    [
+      `List every appendix or separate referenced document mentioned for ${sectionLabel}.`,
+      "Explicitly include appendices, attachments, annexes, exhibits, schedules, plans, manuals, standards, specifications, drawings, forms, templates, reports, and reference documents.",
+      "Treat it as a dependency only if the text points to a separate document, sectioned artifact, attachment, or named reference.",
+      "Do not list related requirements, requirement groups, topics, systems, activities, capabilities, deliverables, or compliance areas unless they are explicitly named as a document or appendix.",
+      "Use one short line per document with the title plus a very brief context note.",
+      "Keep the context to a few words only.",
+    ].join(" "),
+  ]);
+
+  if (rawPromptSet && typeof rawPromptSet === "object" && !Array.isArray(rawPromptSet)) {
+    return MTS_DEFINITION_PANELS.reduce((accumulator, panel) => {
+      const value = String(rawPromptSet?.[panel.id] || "").trim();
+      accumulator[panel.id] =
+        panel.id === "definition_1" &&
+        (value === legacyDefinitionOnePrompt || legacyDependenciesPrompts.has(value))
+          ? defaults[panel.id]
+          : value || defaults[panel.id];
+      return accumulator;
+    }, {});
+  }
+
+  const legacyPrompt = String(rawPromptSet || "").trim();
+  if (!legacyPrompt) {
+    return defaults;
+  }
+
+  return MTS_DEFINITION_PANELS.reduce((accumulator, panel) => {
+    accumulator[panel.id] = legacyPrompt;
+    return accumulator;
+  }, {});
 }
 
 function createRiskRegisterEntry() {
@@ -701,6 +839,7 @@ function normalizeStormWorkspaceNotes(notesBySection) {
     accumulator[sectionId] = {
       ...buildEmptyStormWorkspace(),
       ...notes,
+      "MTS Definition": serializeMtsDefinitionPanels(parseMtsDefinitionPanels(notes["MTS Definition"])),
       "MTS Solution":
         typeof legacySolutionValue === "string"
           ? legacySolutionValue
@@ -751,23 +890,26 @@ function StormWorkspaceBar({
   activeSection,
   activeSectionRequirementCount,
   hideCollapseToggle = false,
+  definitionPanels,
+  definitionPrompts,
 }) {
   const theme = useTheme();
   const isLightMode = theme.palette.mode === "light";
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
   const [riskDraft, setRiskDraft] = useState(createRiskRegisterEntry());
-  const panelBg = isLightMode ? "#374351" : GITHUB_BASE;
-  const panelBorder = isLightMode ? "rgba(255,255,255,0.18)" : GITHUB_BORDER;
-  const activeTabSurface = isLightMode ? "#44505e" : "#2b3542";
-  const panelCard = activeTabSurface;
-  const panelCardHover = activeTabSurface;
-  const panelText = isLightMode ? "var(--studio-chrome-text)" : CHROME_TEXT;
-  const panelMutedText = isLightMode ? "var(--studio-chrome-text)" : CHROME_TEXT_MUTED;
+  const panelBg = isLightMode ? LIGHT_CANVAS_SURFACE : GITHUB_BASE;
+  const panelBorder = isLightMode ? "rgba(99, 111, 128, 0.18)" : GITHUB_BORDER;
+  const activeTabSurface = isLightMode ? LIGHT_SHARED_SURFACE : "#2b3542";
+  const panelCard = isLightMode ? LIGHT_SHARED_SURFACE : activeTabSurface;
+  const panelCardHover = isLightMode ? LIGHT_SHARED_SURFACE_HOVER : activeTabSurface;
+  const panelText = isLightMode ? "#313841" : CHROME_TEXT;
+  const panelMutedText = isLightMode ? "#636f80" : CHROME_TEXT_MUTED;
   const panelAction = isLightMode ? "#64d3e3" : AI_ACTION;
   const tabChromeBg = "transparent";
-  const activeTabText = isLightMode ? "#f5f7fa" : panelText;
-  const selectedTabBg = isLightMode ? "#1d242c" : "#141a21";
-  const inactiveTabText = isLightMode ? "rgba(230, 237, 243, 0.78)" : panelMutedText;
+  const activeTabText = isLightMode ? "#ffffff" : panelText;
+  const selectedTabBg = isLightMode ? "#58a6ff" : "#141a21";
+  const inactiveTabText = isLightMode ? "#ffffff" : panelMutedText;
+  const inactiveTabBg = isLightMode ? "#6a737d" : "rgba(255,255,255,0.03)";
   const riskEntries = useMemo(
     () => (activeTab === "Risks" ? parseRiskRegister(notesByTab.Risks) : []),
     [activeTab, notesByTab.Risks],
@@ -812,7 +954,7 @@ function StormWorkspaceBar({
         flexDirection: "column",
         overflow: "hidden",
         height: "100%",
-        bgcolor: "transparent",
+        bgcolor: panelBg,
         backgroundImage: "none",
         boxShadow: { xs: "0 18px 32px rgba(0, 0, 0, 0.12)", xl: "none" },
         borderTop: 0,
@@ -824,7 +966,7 @@ function StormWorkspaceBar({
     >
       <Box
         sx={{
-          px: 2.2,
+          px: 0,
           pt: 0.9,
           pb: 0,
           background: "transparent",
@@ -842,13 +984,16 @@ function StormWorkspaceBar({
             spacing={1}
             alignItems="center"
             sx={{
-              ml: 0,
+              position: "relative",
+              px: 3.75,
               width: "100%",
               justifyContent: "flex-start",
             }}
           >
             <Box
               sx={{
+                flex: 1,
+                minWidth: 0,
                 display: "flex",
                 flexWrap: "nowrap",
                 alignItems: "stretch",
@@ -860,7 +1005,6 @@ function StormWorkspaceBar({
               {STORM_WORKSPACE_TABS.map((label) => {
                 const selected = activeTab === label;
                 const TabIcon = STORM_WORKSPACE_TAB_ICONS[label] || TrackChangesRounded;
-                const semanticTextColor = STORM_WORKSPACE_TAB_TEXT_COLORS[label];
                 return (
                   <Button
                     key={label}
@@ -875,8 +1019,8 @@ function StormWorkspaceBar({
                       py: 0.72,
                       mb: 0,
                       borderRadius: 0.5,
-                      color: semanticTextColor || (selected ? activeTabText : inactiveTabText),
-                      bgcolor: selected ? selectedTabBg : "rgba(255,255,255,0.03)",
+                      color: selected ? activeTabText : inactiveTabText,
+                      bgcolor: selected ? selectedTabBg : inactiveTabBg,
                       border: "0 solid transparent",
                       boxShadow: "none",
                       fontSize: "0.82rem",
@@ -890,10 +1034,9 @@ function StormWorkspaceBar({
                         bgcolor: selected
                           ? activeTabSurface
                           : isLightMode
-                            ? "rgba(255,255,255,0.05)"
+                            ? "#c8e2fa"
                             : "rgba(255,255,255,0.07)",
-                        color:
-                          semanticTextColor || (selected ? activeTabText : panelText),
+                        color: selected ? activeTabText : inactiveTabText,
                       },
                     }}
                   >
@@ -916,7 +1059,16 @@ function StormWorkspaceBar({
             </Box>
             {hideCollapseToggle ? null : (
               <Tooltip title="Section Solution">
-                <IconButton size="small" disabled>
+                <IconButton
+                  size="small"
+                  disabled
+                  sx={{
+                    position: "absolute",
+                    right: 3.75,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                  }}
+                >
                   <ExpandMoreRounded />
                 </IconButton>
               </Tooltip>
@@ -927,7 +1079,7 @@ function StormWorkspaceBar({
       <Box
         sx={{
           pt: 1.35,
-          pb: 1.2,
+          pb: 2.2,
           pl: 0,
           pr: 0,
           flex: "1 1 auto",
@@ -958,12 +1110,166 @@ function StormWorkspaceBar({
           ) : null}
           <Box
             sx={{
-              px: 2.4,
+              px: 3.75,
               flex: 1,
               minHeight: 0,
               display: "flex",
             }}
           >
+            {activeTab === "MTS Definition" ? (
+              <Stack
+                spacing={1.25}
+                sx={{
+                  flex: 1,
+                  minHeight: 0,
+                }}
+              >
+                {MTS_DEFINITION_PANELS.map((panel) => {
+                  const isGeneratingThisPanel = generationState.loading === panel.id;
+                  const panelValue = definitionPanels?.[panel.id] || "";
+                  const panelPrompt = definitionPrompts?.[panel.id] || "";
+                  return (
+                    <Stack key={panel.id} spacing={0.55} sx={{ flex: 1, minHeight: 0 }}>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                        justifyContent="space-between"
+                        sx={{ px: 0.2 }}
+                      >
+                        <Typography variant="body2" sx={{ color: panelText, fontWeight: 600 }}>
+                          {panel.label}
+                        </Typography>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Button
+                            variant="text"
+                            onClick={() => onEditMtsPrompt(panel.id)}
+                            size="small"
+                            sx={{
+                              minHeight: 26,
+                              py: 0.2,
+                              minWidth: 0,
+                              color: panelText,
+                              borderColor: "transparent",
+                              bgcolor: "transparent",
+                              boxShadow: "none",
+                              "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
+                            }}
+                          >
+                            Edit Prompt
+                          </Button>
+                          <Button
+                            variant="text"
+                            size="small"
+                            onClick={() => onGenerateMtsDefinition(panel.id)}
+                            disabled={!canGenerateMtsDefinition}
+                            startIcon={
+                              isGeneratingThisPanel ? (
+                                <CircularProgress size={16} color="inherit" />
+                              ) : null
+                            }
+                            sx={{
+                              minHeight: 26,
+                              py: 0.2,
+                              minWidth: 0,
+                              bgcolor: "transparent",
+                              color: "#d58bf2",
+                              boxShadow: "none",
+                              "&:hover": {
+                                bgcolor: "transparent",
+                                color: "#e2aaf7",
+                              },
+                            }}
+                          >
+                            {isGeneratingThisPanel ? "Generating..." : "AI Define"}
+                          </Button>
+                        </Stack>
+                      </Stack>
+                      <Box
+                        sx={{
+                          flex: 1,
+                          minHeight: 0,
+                          display: "flex",
+                          flexDirection: "column",
+                          bgcolor: panelCard,
+                          borderRadius: 0.5,
+                          overflow: "hidden",
+                          boxShadow: isLightMode
+                            ? "0 1px 0 rgba(17, 24, 39, 0.05), 0 3px 8px rgba(17, 24, 39, 0.08)"
+                            : "none",
+                        }}
+                      >
+                        <TextField
+                          multiline
+                          minRows={6}
+                          fullWidth
+                          placeholder={`Draft ${panel.label.toLowerCase()} here...`}
+                          value={panelValue}
+                          onChange={(event) => onNotesChange(activeTab, event.target.value, panel.id)}
+                          sx={{ flex: 1 }}
+                          InputProps={{
+                            sx: {
+                              height: "100%",
+                              alignItems: "flex-start",
+                              fontSize: "0.95rem",
+                              lineHeight: 1.5,
+                              fontWeight: 400,
+                              color: panelText,
+                              bgcolor: "transparent",
+                              borderRadius: 0,
+                              overscrollBehavior: "contain",
+                              "& .MuiInputBase-inputMultiline": {
+                                height: "100% !important",
+                                minHeight: "100% !important",
+                                boxSizing: "border-box",
+                              },
+                              "& textarea": {
+                                fontWeight: 400,
+                                color: panelText,
+                                overflowY: "auto !important",
+                                scrollbarWidth: "thin",
+                                scrollbarColor: "rgba(17,24,39,0.14) transparent",
+                              },
+                              "& textarea::-webkit-scrollbar": {
+                                width: 4,
+                              },
+                              "& textarea::-webkit-scrollbar-track": {
+                                background: "transparent",
+                              },
+                              "& textarea::-webkit-scrollbar-thumb": {
+                                backgroundColor: "rgba(17,24,39,0.14)",
+                                borderRadius: 999,
+                                border: "1px solid transparent",
+                                backgroundClip: "padding-box",
+                              },
+                              "& textarea:hover::-webkit-scrollbar-thumb": {
+                                backgroundColor: "rgba(17,24,39,0.22)",
+                              },
+                              "& textarea::placeholder": {
+                                color: panelMutedText,
+                                opacity: 1,
+                              },
+                              "& fieldset": {
+                                borderColor: "transparent",
+                                borderWidth: 0,
+                              },
+                              "&:hover fieldset": {
+                                borderColor: "transparent",
+                                borderWidth: 0,
+                              },
+                              "&.Mui-focused fieldset": {
+                                borderColor: "transparent",
+                                borderWidth: 0,
+                              },
+                            },
+                          }}
+                        />
+                      </Box>
+                    </Stack>
+                  );
+                })}
+              </Stack>
+            ) : (
             <Box
               sx={{
                 flex: 1,
@@ -973,6 +1279,12 @@ function StormWorkspaceBar({
                 bgcolor: activeTab === "Risks" ? "transparent" : panelCard,
                 borderRadius: 0.5,
                 overflow: "hidden",
+                boxShadow:
+                  activeTab === "Risks"
+                    ? "none"
+                    : isLightMode
+                      ? "0 1px 0 rgba(17, 24, 39, 0.05), 0 3px 8px rgba(17, 24, 39, 0.08)"
+                      : "none",
               }}
             >
               {activeTab === "Risks" ? null : (
@@ -984,7 +1296,7 @@ function StormWorkspaceBar({
                   sx={{
                     px: 1,
                     py: 0.45,
-                    bgcolor: isLightMode ? "#39424c" : "#2a323d",
+                    bgcolor: isLightMode ? "#919ba6" : "#2a323d",
                     borderBottom: "1px solid rgba(255,255,255,0.2)",
                     flexShrink: 0,
                   }}
@@ -1076,12 +1388,12 @@ function StormWorkspaceBar({
                           minHeight: 36,
                           px: 1.4,
                           borderRadius: 0.75,
-                          bgcolor: "#0f1720",
+                          bgcolor: "#4a535d",
                           color: "#f5f7fa",
-                          boxShadow: "0 0 0 1px rgba(255,255,255,0.14)",
+                          boxShadow: "0 0 0 1px rgba(255,255,255,0.12)",
                           "&:hover": {
-                            bgcolor: "#151d27",
-                            boxShadow: "0 0 0 1px rgba(255,255,255,0.2)",
+                            bgcolor: "#414952",
+                            boxShadow: "0 0 0 1px rgba(255,255,255,0.18)",
                           },
                         }}
                       >
@@ -1229,6 +1541,7 @@ function StormWorkspaceBar({
                 />
               )}
             </Box>
+            )}
           </Box>
         </Stack>
       </Box>
@@ -1339,10 +1652,12 @@ export function StudioApp() {
   const [projectSetupProgress, setProjectSetupProgress] = useState(0);
   const [mtsPromptDialogOpen, setMtsPromptDialogOpen] = useState(false);
   const [mtsPromptDraft, setMtsPromptDraft] = useState("");
+  const [mtsPromptTargetPanelId, setMtsPromptTargetPanelId] = useState(MTS_DEFINITION_PANELS[0].id);
   const [homeDialogOpen, setHomeDialogOpen] = useState(false);
   const [mtsConfirmDialog, setMtsConfirmDialog] = useState({
     open: false,
     action: "",
+    panelId: "",
   });
   const [activeSectionId, setActiveSectionId] = useState("");
   const [selectedRequirementId, setSelectedRequirementId] = useState("");
@@ -1351,7 +1666,7 @@ export function StudioApp() {
     error: "",
   });
   const [mtsDefinitionGenerationState, setMtsDefinitionGenerationState] = useState({
-    loading: false,
+    loading: "",
     error: "",
   });
   const [leftRailWidth, setLeftRailWidth] = useState(LEFT_RAIL_DEFAULT_WIDTH);
@@ -1397,21 +1712,27 @@ export function StudioApp() {
       ...(stormWorkspaceNotes[activeSection.id] || {}),
     };
   }, [activeSection, stormWorkspaceNotes]);
-  const activeSectionMtsPrompt = useMemo(() => {
-    if (!activeSection?.id) {
-      return buildDefaultMtsDefinitionPrompt("this section");
-    }
-
-    return (
-      String(stormWorkspacePrompts[activeSection.id] || "").trim() ||
-      buildDefaultMtsDefinitionPrompt(activeSection.label)
+  const activeSectionMtsPrompts = useMemo(() => {
+    const sectionLabel = activeSection?.label || "this section";
+    return normalizeMtsPromptSet(
+      activeSection?.id ? stormWorkspacePrompts[activeSection.id] : {},
+      sectionLabel,
     );
   }, [activeSection, stormWorkspacePrompts]);
+  const activeSectionDefinitionPanels = useMemo(
+    () => parseMtsDefinitionPanels(activeSectionStormWorkspaceNotes["MTS Definition"]),
+    [activeSectionStormWorkspaceNotes],
+  );
   const completedStormSectionIds = useMemo(() => {
     return new Set(
       Object.entries(stormWorkspaceNotes).flatMap(([sectionId, notes]) => {
         const isComplete = STORM_WORKSPACE_TABS.every(
-          (tab) => String(notes?.[tab] || "").trim().length > 0,
+          (tab) =>
+            tab === "MTS Definition"
+              ? MTS_DEFINITION_PANELS.every(
+                  (panel) => String(parseMtsDefinitionPanels(notes?.[tab])?.[panel.id] || "").trim().length > 0,
+                )
+              : String(notes?.[tab] || "").trim().length > 0,
         );
         return isComplete ? [sectionId] : [];
       }),
@@ -1473,7 +1794,7 @@ export function StudioApp() {
     setSelectedPackageProjectId("");
     setProjectSetupState({ loading: false, error: "", jobId: "", message: "" });
     setProjectSetupProgress(0);
-    setMtsDefinitionGenerationState({ loading: false, error: "" });
+    setMtsDefinitionGenerationState({ loading: "", error: "" });
   }
 
   function restoreStudioSnapshot(snapshot) {
@@ -1522,7 +1843,7 @@ export function StudioApp() {
     );
     setProjectSetupState({ loading: false, error: "", jobId: "", message: "" });
     setProjectSetupProgress(0);
-    setMtsDefinitionGenerationState({ loading: false, error: "" });
+    setMtsDefinitionGenerationState({ loading: "", error: "" });
   }
 
   useEffect(() => {
@@ -1688,7 +2009,7 @@ export function StudioApp() {
   }, [mounted, sections, requirements, activeSectionId, selectedRequirementId]);
 
   useEffect(() => {
-    setMtsDefinitionGenerationState({ loading: false, error: "" });
+    setMtsDefinitionGenerationState({ loading: "", error: "" });
   }, [activeSectionId]);
 
   useEffect(() => {
@@ -2383,7 +2704,7 @@ export function StudioApp() {
     handleRenameSection(sectionId);
   }
 
-  function handleStormWorkspaceNoteChange(tab, value) {
+  function handleStormWorkspaceNoteChange(tab, value, panelId = "") {
     if (!activeSection?.id) {
       return;
     }
@@ -2393,12 +2714,18 @@ export function StudioApp() {
       [activeSection.id]: {
         ...buildEmptyStormWorkspace(),
         ...(current[activeSection.id] || {}),
-        [tab]: value,
+        [tab]:
+          tab === "MTS Definition" && panelId
+            ? serializeMtsDefinitionPanels({
+                ...parseMtsDefinitionPanels(current[activeSection.id]?.[tab]),
+                [panelId]: value,
+              })
+            : value,
       },
     }));
   }
 
-  function handleClearStormWorkspaceTab() {
+  function handleClearStormWorkspaceTab(panelId = "") {
     if (!activeSection?.id) {
       return;
     }
@@ -2408,21 +2735,30 @@ export function StudioApp() {
       [activeSection.id]: {
         ...buildEmptyStormWorkspace(),
         ...(current[activeSection.id] || {}),
-        [stormWorkspaceTab]: "",
+        [stormWorkspaceTab]:
+          stormWorkspaceTab === "MTS Definition" && panelId
+            ? serializeMtsDefinitionPanels({
+                ...parseMtsDefinitionPanels(current[activeSection.id]?.[stormWorkspaceTab]),
+                [panelId]: "",
+              })
+            : "",
       },
     }));
   }
 
-  function handleOpenMtsConfirm(action) {
-    const currentTabText = String(activeSectionStormWorkspaceNotes[stormWorkspaceTab] || "").trim();
+  function handleOpenMtsConfirm(action, panelId = "") {
+    const currentTabText =
+      stormWorkspaceTab === "MTS Definition" && panelId
+        ? String(activeSectionDefinitionPanels[panelId] || "").trim()
+        : String(activeSectionStormWorkspaceNotes[stormWorkspaceTab] || "").trim();
     if (!currentTabText) {
       if (action === "clear") {
-        handleClearStormWorkspaceTab();
+        handleClearStormWorkspaceTab(panelId);
         return;
       }
 
       if (action === "generate") {
-        void handleGenerateMtsDefinition();
+        void handleGenerateMtsDefinition(panelId);
         return;
       }
     }
@@ -2430,6 +2766,7 @@ export function StudioApp() {
     setMtsConfirmDialog({
       open: true,
       action,
+      panelId,
     });
   }
 
@@ -2437,28 +2774,32 @@ export function StudioApp() {
     setMtsConfirmDialog({
       open: false,
       action: "",
+      panelId: "",
     });
   }
 
   async function handleConfirmMtsAction() {
     const action = mtsConfirmDialog.action;
+    const panelId = mtsConfirmDialog.panelId;
     handleCloseMtsConfirm();
 
     if (action === "clear") {
-      handleClearStormWorkspaceTab();
+      handleClearStormWorkspaceTab(panelId);
       return;
     }
 
     if (action === "generate") {
-      await handleGenerateMtsDefinition();
+      await handleGenerateMtsDefinition(panelId);
     }
   }
 
-  function handleEditMtsPrompt() {
+  function handleEditMtsPrompt(panelId) {
     if (!activeSection?.id) {
       return;
     }
-    setMtsPromptDraft(activeSectionMtsPrompt);
+    const nextPanelId = panelId || MTS_DEFINITION_PANELS[0].id;
+    setMtsPromptTargetPanelId(nextPanelId);
+    setMtsPromptDraft(activeSectionMtsPrompts[nextPanelId] || "");
     setMtsPromptDialogOpen(true);
   }
 
@@ -2468,7 +2809,10 @@ export function StudioApp() {
 
   function handleUseDefaultMtsPrompt() {
     const sectionLabel = activeSection?.label || "this section";
-    setMtsPromptDraft(buildDefaultMtsDefinitionPrompt(sectionLabel));
+    const activePanel =
+      MTS_DEFINITION_PANELS.find((panel) => panel.id === mtsPromptTargetPanelId) ||
+      MTS_DEFINITION_PANELS[0];
+    setMtsPromptDraft(buildDefaultMtsDefinitionPanelPrompt(sectionLabel, activePanel.label));
   }
 
   function handleSaveMtsPrompt() {
@@ -2483,28 +2827,35 @@ export function StudioApp() {
 
     setStormWorkspacePrompts((current) => ({
       ...current,
-      [activeSection.id]: trimmedPrompt,
+      [activeSection.id]: {
+        ...normalizeMtsPromptSet(current[activeSection.id], activeSection.label),
+        [mtsPromptTargetPanelId]: trimmedPrompt,
+      },
     }));
     setMtsPromptDialogOpen(false);
   }
 
-  async function handleGenerateMtsDefinition() {
+  async function handleGenerateMtsDefinition(panelId = MTS_DEFINITION_PANELS[0].id) {
     if (!activeSection || !activeSectionRequirements.length) {
       setMtsDefinitionGenerationState({
-        loading: false,
+        loading: "",
         error: "Select a section that has requirements before generating.",
       });
       return;
     }
 
-    setMtsDefinitionGenerationState({ loading: true, error: "" });
+    const targetPanelId = panelId || MTS_DEFINITION_PANELS[0].id;
+    setMtsDefinitionGenerationState({ loading: targetPanelId, error: "" });
     setStormWorkspaceTab("MTS Definition");
     setStormWorkspaceNotes((current) => ({
       ...current,
       [activeSection.id]: {
         ...buildEmptyStormWorkspace(),
         ...(current[activeSection.id] || {}),
-        ["MTS Definition"]: "",
+        ["MTS Definition"]: serializeMtsDefinitionPanels({
+          ...parseMtsDefinitionPanels(current[activeSection.id]?.["MTS Definition"]),
+          [targetPanelId]: "",
+        }),
       },
     }));
 
@@ -2516,7 +2867,7 @@ export function StudioApp() {
         },
         body: JSON.stringify({
           sectionLabel: activeSection.label,
-          prompt: activeSectionMtsPrompt,
+          prompt: activeSectionMtsPrompts[targetPanelId],
           requirements: activeSectionRequirements.map(({ requirement }) => ({
             id: requirement.sourceRef || requirement.title || requirement.id,
             section: activeSection.label,
@@ -2546,7 +2897,10 @@ export function StudioApp() {
           [activeSection.id]: {
             ...buildEmptyStormWorkspace(),
             ...(current[activeSection.id] || {}),
-            ["MTS Definition"]: nextDefinition,
+            ["MTS Definition"]: serializeMtsDefinitionPanels({
+              ...parseMtsDefinitionPanels(current[activeSection.id]?.["MTS Definition"]),
+              [targetPanelId]: nextDefinition,
+            }),
           },
         }));
       };
@@ -2617,10 +2971,10 @@ export function StudioApp() {
         throw new Error("MTS definition generation returned no content");
       }
 
-      setMtsDefinitionGenerationState({ loading: false, error: "" });
+      setMtsDefinitionGenerationState({ loading: "", error: "" });
     } catch (error) {
       setMtsDefinitionGenerationState({
-        loading: false,
+        loading: "",
         error: error instanceof Error ? error.message : "MTS definition generation failed",
       });
     }
@@ -3055,7 +3409,8 @@ export function StudioApp() {
             ...(isHomeScreen ? {} : subtleScrollbarSx),
             overscrollBehavior: "contain",
             px: isHomeScreen ? 3 : { xs: 0.5, xl: 0.45 },
-            py: isHomeScreen ? 3 : { xs: 0.5, xl: 0.35 },
+            pt: isHomeScreen ? 3 : { xs: 0.18, xl: 0.08 },
+            pb: isHomeScreen ? 3 : { xs: 0.5, xl: 0.35 },
             display: "flex",
             alignItems: isHomeScreen ? "center" : "stretch",
             justifyContent: isHomeScreen ? "center" : "flex-start",
@@ -3236,8 +3591,6 @@ export function StudioApp() {
             onResizeStart={startRailResize("right")}
             sx={{
               order: 3,
-              bgcolor: { xs: "var(--studio-chrome-bg)", xl: "var(--studio-chrome-bg)" },
-              borderLeftColor: "var(--studio-chrome-border)",
               "@media (max-width: 1600px)": {
                 display: "none",
               },
@@ -3270,12 +3623,14 @@ export function StudioApp() {
                   onTabChange={setStormWorkspaceTab}
                   notesByTab={activeSectionStormWorkspaceNotes}
                   onNotesChange={handleStormWorkspaceNoteChange}
-                  onGenerateMtsDefinition={() => handleOpenMtsConfirm("generate")}
+                  onGenerateMtsDefinition={(panelId) => handleOpenMtsConfirm("generate", panelId)}
                   onClearActiveTab={() => handleOpenMtsConfirm("clear")}
                   onEditMtsPrompt={handleEditMtsPrompt}
                   generationState={mtsDefinitionGenerationState}
                   activeSection={activeSection}
                   activeSectionRequirementCount={activeSectionRequirements.length}
+                  definitionPanels={activeSectionDefinitionPanels}
+                  definitionPrompts={activeSectionMtsPrompts}
                   hideCollapseToggle
                 />
               }
@@ -3289,7 +3644,14 @@ export function StudioApp() {
         fullWidth
         maxWidth="md"
       >
-        <DialogTitle>Edit MTS Definition Prompt</DialogTitle>
+        <DialogTitle>
+          Edit{" "}
+          {(
+            MTS_DEFINITION_PANELS.find((panel) => panel.id === mtsPromptTargetPanelId) ||
+            MTS_DEFINITION_PANELS[0]
+          ).label}{" "}
+          Prompt
+        </DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
@@ -3300,7 +3662,7 @@ export function StudioApp() {
             margin="dense"
             value={mtsPromptDraft}
             onChange={(event) => setMtsPromptDraft(event.target.value)}
-            placeholder="Enter the prompt used when generating the MTS Definition."
+            placeholder="Enter the prompt used when generating this definition box."
             InputProps={{
               sx: {
                 alignItems: "flex-start",

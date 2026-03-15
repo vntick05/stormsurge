@@ -11,6 +11,7 @@ import {
   Paper,
   Stack,
   Typography,
+  useTheme,
 } from "@mui/material";
 import {
   closestCenter,
@@ -39,6 +40,9 @@ const GITHUB_PANEL_SELECTED = "var(--studio-panel-selected)";
 const GITHUB_TEXT_MUTED = "var(--studio-text-muted)";
 const GITHUB_FONT_STACK =
   '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+const LIGHT_SHARED_SURFACE = "#f7f9fb";
+const LIGHT_SHARED_SURFACE_HOVER = "#f0f4f8";
+const LIGHT_SHARED_SURFACE_SELECTED = "#dce9f7";
 
 function formatRequirementMarker(requirement) {
   const source = String(requirement.sourceRef || requirement.title || "").trim();
@@ -81,6 +85,13 @@ function RequirementCard({
   children,
 }) {
   const accent = getRequirementAccent(requirement);
+  const theme = useTheme();
+  const isLightMode = theme.palette.mode === "light";
+  const requirementSurface = isLightMode ? LIGHT_SHARED_SURFACE : GITHUB_PANEL;
+  const requirementSurfaceHover = isLightMode ? LIGHT_SHARED_SURFACE_HOVER : GITHUB_PANEL_HOVER;
+  const requirementSurfaceSelected = isLightMode
+    ? LIGHT_SHARED_SURFACE_SELECTED
+    : GITHUB_PANEL_SELECTED;
 
   return (
     <Box ref={setNodeRef} style={style} sx={{ mb: REQUIREMENT_ROW_GAP }}>
@@ -94,13 +105,13 @@ function RequirementCard({
           minHeight: 44,
           cursor: "pointer",
           borderRadius: 0.65,
-          bgcolor: selected ? GITHUB_PANEL_SELECTED : GITHUB_PANEL,
+          bgcolor: selected ? requirementSurfaceSelected : requirementSurface,
           boxShadow: selected
             ? "0 0 0 1px rgba(88, 166, 255, 0.18), 0 8px 16px rgba(21, 31, 41, 0.12)"
             : "0 1px 0 rgba(17, 24, 39, 0.05), 0 3px 8px rgba(17, 24, 39, 0.08)",
           transition: "background-color 120ms ease, box-shadow 120ms ease",
           "&:hover": {
-            bgcolor: selected ? GITHUB_PANEL_SELECTED : GITHUB_PANEL_HOVER,
+            bgcolor: selected ? requirementSurfaceSelected : requirementSurfaceHover,
             boxShadow: selected
               ? "0 0 0 1px rgba(88, 166, 255, 0.22), 0 10px 18px rgba(21, 31, 41, 0.14)"
               : "0 1px 0 rgba(17, 24, 39, 0.06), 0 5px 12px rgba(17, 24, 39, 0.1)",

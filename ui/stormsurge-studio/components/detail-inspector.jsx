@@ -90,13 +90,13 @@ export function DetailInspector({
   });
   const theme = useTheme();
   const isLightMode = theme.palette.mode === "light";
-  const railSurface = isLightMode ? "#374351" : GITHUB_BASE;
-  const panelSurface = "transparent";
-  const panelSurfaceSoft = "transparent";
-  const panelSurfaceHover = "rgba(255,255,255,0.04)";
-  const panelBorder = "transparent";
-  const inspectorText = isLightMode ? "var(--studio-chrome-text)" : INSPECTOR_TEXT;
-  const inspectorMutedText = isLightMode ? "var(--studio-chrome-text)" : GITHUB_TEXT_MUTED;
+  const railSurface = isLightMode ? "#efefef" : GITHUB_BASE;
+  const panelSurface = isLightMode ? "#f7f7f7" : "transparent";
+  const panelSurfaceSoft = isLightMode ? "#f2f2f2" : "transparent";
+  const panelSurfaceHover = isLightMode ? "rgba(49, 56, 65, 0.05)" : "rgba(255,255,255,0.04)";
+  const panelBorder = isLightMode ? "rgba(99, 111, 128, 0.18)" : "transparent";
+  const inspectorText = isLightMode ? "#313841" : INSPECTOR_TEXT;
+  const inspectorMutedText = isLightMode ? "#636f80" : GITHUB_TEXT_MUTED;
   const inspectorAction = isLightMode ? "#64d3e3" : AI_ACTION;
   const inspectorChromeBg = "rgba(9, 14, 20, 0.56)";
   const primaryButtonSx = {

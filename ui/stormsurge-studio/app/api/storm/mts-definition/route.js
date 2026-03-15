@@ -2,9 +2,9 @@ export const runtime = "nodejs";
 
 const serviceUrl =
   process.env.PWS_STRUCTURING_SERVICE_URL || "http://pws-structuring-service:8193";
-const MAX_REQUIREMENT_COUNT = 16;
-const MAX_REQUIREMENT_TEXT_CHARS = 180;
-const MAX_TOTAL_REQUIREMENT_TEXT_CHARS = 2200;
+const MAX_REQUIREMENT_COUNT = 200;
+const MAX_REQUIREMENT_TEXT_CHARS = 1600;
+const MAX_TOTAL_REQUIREMENT_TEXT_CHARS = 120000;
 
 function cleanRequirementText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
@@ -106,7 +106,7 @@ export async function POST(request) {
       prompt: customPrompt || buildPrompt(sectionLabel),
       checked_requirements: checkedRequirements,
       mode: "ask",
-      use_project_evidence: false,
+      use_project_evidence: true,
       persona: "proposal_manager",
     }),
   });
