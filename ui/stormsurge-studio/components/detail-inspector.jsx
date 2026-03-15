@@ -56,10 +56,17 @@ export function DetailInspector({
   onMoveToUnassigned,
   onPromoteRequirement,
   onDemoteRequirement,
+  onCreateSectionFromRequirement,
   onDeleteRequirement,
 }) {
   const [activeTab, setActiveTab] = useState(INSPECTOR_TABS[0]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [relatedSearchState, setRelatedSearchState] = useState({
+    loading: false,
+    error: "",
+    message: "",
+  });
+  const [relatedSearchResults, setRelatedSearchResults] = useState([]);
   const [aiMessages, setAiMessages] = useState([]);
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -80,6 +87,26 @@ export function DetailInspector({
   useEffect(() => {
     aiMessagesEndRef.current?.scrollIntoView({ block: "end" });
   }, [aiMessages, aiLoading]);
+
+  useEffect(() => {
+    if (searchTerm.trim()) {
+      setRelatedSearchResults([]);
+      setRelatedSearchState((current) => ({
+        ...current,
+        error: "",
+        message: "",
+      }));
+    }
+  }, [searchTerm]);
+
+  useEffect(() => {
+    setRelatedSearchResults([]);
+    setRelatedSearchState({
+      loading: false,
+      error: "",
+      message: "",
+    });
+  }, [requirement?.id]);
 
   const searchResults = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -102,6 +129,7 @@ export function DetailInspector({
       })
       .slice(0, 12);
   }, [allRequirements, searchTerm]);
+  const visibleSearchResults = relatedSearchResults.length ? relatedSearchResults : searchResults;
 
   const aiCheckedRequirements = useMemo(() => {
     if (!requirement) {
@@ -261,6 +289,78 @@ export function DetailInspector({
 
     event.preventDefault();
     void handleSendAiPrompt();
+  }
+
+  async function handleSearchRelatedRequirements() {
+    if (!projectId) {
+      setRelatedSearchState({
+        loading: false,
+        error: "This workspace is not attached to a project yet.",
+        message: "",
+      });
+      return;
+    }
+
+    const sourceText = String(requirement?.text || requirement?.summary || "").trim();
+    if (!sourceText) {
+      setRelatedSearchState({
+        loading: false,
+        error: "Select a requirement with text before running AI Assist.",
+        message: "",
+      });
+      return;
+    }
+
+      setRelatedSearchState({
+        loading: true,
+        error: "",
+        message: "Using AI to find highly relevant related requirements...",
+      });
+
+    try {
+      const response = await fetch("/api/storm/requirements/search-related", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId,
+          sourceText,
+          queryText: sourceText,
+          limit: 12,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.detail || "Related requirement search failed");
+      }
+
+      const results = Array.isArray(payload?.results) ? payload.results : [];
+      setRelatedSearchResults(
+        results.map((item) => ({
+          id: String(item?.requirement_id || crypto.randomUUID()),
+          title: item?.section_heading || item?.section_number || "Related Requirement",
+          sourceRef: String(item?.section_number || item?.requirement_id || "").toUpperCase(),
+          intent: item?.match_reason || "Related requirement",
+          text: item?.requirement_text || "",
+          summary: item?.match_reason || "",
+        }))
+      );
+      setSearchTerm("");
+      setRelatedSearchState({
+        loading: false,
+        error: "",
+        message: `Found ${results.length} highly relevant requirement relation${
+          results.length === 1 ? "" : "s"
+        }.`,
+      });
+    } catch (error) {
+      setRelatedSearchResults([]);
+      setRelatedSearchState({
+        loading: false,
+        error: error instanceof Error ? error.message : "Related requirement search failed",
+        message: "",
+      });
+    }
   }
 
   function handleOpenDocUploadPicker() {
@@ -489,7 +589,7 @@ export function DetailInspector({
                     },
                   }}
                 >
-                  Add new req
+                  Add New
                 </Button>
                 <Button
                   size="small"
@@ -509,7 +609,27 @@ export function DetailInspector({
                     },
                   }}
                 >
-                  Add child
+                  Add Child
+                </Button>
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<PlaylistAddRounded />}
+                  onClick={onCreateSectionFromRequirement}
+                  sx={{
+                    justifyContent: "flex-start",
+                    color: INSPECTOR_TEXT,
+                    textTransform: "none",
+                    px: 0.7,
+                    py: 0.35,
+                    minHeight: 32,
+                    borderRadius: 1,
+                    "&:hover": {
+                      bgcolor: "rgba(255, 255, 255, 0.06)",
+                    },
+                  }}
+                >
+                  Create Section
                 </Button>
                 <Button
                   size="small"
@@ -529,12 +649,12 @@ export function DetailInspector({
                     },
                   }}
                 >
-                  Delete requirement
+                  Delete
                 </Button>
               </Stack>
               <TextField
                 fullWidth
-                value={requirement.sourceRef || ""}
+                value={String(requirement.sourceRef || "").toUpperCase()}
                 onChange={(event) =>
                   onRequirementChange("sourceRef", event.target.value.toUpperCase())
                 }
@@ -608,29 +728,57 @@ export function DetailInspector({
 
           {activeTab === "Search" ? (
             <Stack spacing={1.5}>
-              <TextField
-                fullWidth
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Search requirements"
-                InputProps={{
-                  sx: {
-                    bgcolor: GITHUB_SURFACE,
-                  },
-                  startAdornment: <SearchRounded sx={{ color: "text.secondary", mr: 1 }} />,
-                }}
-              />
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="stretch">
+                <TextField
+                  fullWidth
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="Search requirements"
+                  InputProps={{
+                    sx: {
+                      bgcolor: GITHUB_SURFACE,
+                    },
+                    startAdornment: <SearchRounded sx={{ color: "text.secondary", mr: 1 }} />,
+                  }}
+                />
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<AutoAwesomeRounded />}
+                  onClick={handleSearchRelatedRequirements}
+                  disabled={relatedSearchState.loading || !projectId}
+                  sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
+                >
+                  {relatedSearchState.loading ? "Thinking..." : "AI Assist"}
+                </Button>
+              </Stack>
+              {relatedSearchState.error ? (
+                <Typography variant="body2" color="error">
+                  {relatedSearchState.error}
+                </Typography>
+              ) : null}
+              {!relatedSearchState.error && relatedSearchState.message ? (
+                <Typography variant="body2" color="text.secondary">
+                  {relatedSearchState.message}
+                </Typography>
+              ) : null}
               {searchTerm.trim() ? (
                 <Typography variant="body2" color="text.secondary">
                   {searchResults.length} result{searchResults.length === 1 ? "" : "s"}
                 </Typography>
+              ) : relatedSearchResults.length ? (
+                <Typography variant="body2" color="text.secondary">
+                  {relatedSearchResults.length} AI-assisted match
+                  {relatedSearchResults.length === 1 ? "" : "es"}
+                </Typography>
               ) : (
                 <Typography variant="body2" color="text.secondary">
-                  Search by title, text, source reference, or intent.
+                  Search manually, or use AI Assist to surface only highly relevant relations to
+                  the selected requirement.
                 </Typography>
               )}
               <Stack spacing={1}>
-                {searchResults.map((candidate) => (
+                {visibleSearchResults.map((candidate) => (
                   <Paper
                     key={candidate.id}
                     variant="outlined"
@@ -680,6 +828,11 @@ export function DetailInspector({
                 {searchTerm.trim() && !searchResults.length ? (
                   <Typography variant="body2" color="text.secondary">
                     No requirements matched that search.
+                  </Typography>
+                ) : null}
+                {!searchTerm.trim() && relatedSearchResults.length === 0 && relatedSearchState.message ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No related requirements were found.
                   </Typography>
                 ) : null}
               </Stack>

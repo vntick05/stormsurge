@@ -84,6 +84,9 @@ const BOTTOM_DOCK_MIN_HEIGHT = 220;
 const BOTTOM_DOCK_MAX_HEIGHT = 520;
 const STUDIO_STATE_STORAGE_KEY = "stormsurge-studio-state-v1";
 const SAVED_PROJECTS_STORAGE_KEY = "stormsurge-studio-saved-projects-v1";
+const AUTOSAVE_PROJECT_ID = "autosave-current-workspace";
+const AUTOSAVE_PROJECT_NAME = "Autosave";
+const AUTOSAVE_DELAY_MS = 1500;
 const UNDO_HISTORY_LIMIT = 5;
 const STORM_WORKSPACE_TABS = [
   "MTS Definition",
@@ -121,11 +124,19 @@ const TOPBAR_BUTTON_SX = {
   fontSize: "0.71rem",
   lineHeight: 1,
   alignSelf: "center",
+  borderColor: "transparent",
+  bgcolor: "transparent",
+  color: "#58a6ff",
   "& .MuiButton-startIcon": {
     mr: 0.35,
     "& > *:nth-of-type(1)": {
       fontSize: 14,
     },
+  },
+  "&:hover": {
+    borderColor: "transparent",
+    bgcolor: "rgba(255, 255, 255, 0.06)",
+    color: "#79c0ff",
   },
 };
 const subtleScrollbarSx = {
@@ -193,15 +204,15 @@ function buildSectionBarSx(selected) {
     borderRadius: 1,
     mb: 0.95,
     px: 0.75,
-    py: 0.32,
-    minHeight: 52,
-    maxHeight: 52,
-    bgcolor: selected ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.035)",
+    py: 0.18,
+    minHeight: 44,
+    maxHeight: 44,
+    bgcolor: selected ? "rgba(255, 255, 255, 0.055)" : "rgba(255, 255, 255, 0.02)",
     border: "none",
     boxShadow: "none",
     transition: "background-color 120ms ease",
     "&:hover": {
-      bgcolor: selected ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.06)",
+      bgcolor: selected ? "rgba(255, 255, 255, 0.075)" : "rgba(255, 255, 255, 0.04)",
       "& .section-tab-menu": {
         opacity: 1,
       },
@@ -232,31 +243,38 @@ function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
       >
         <MoreVertRounded sx={{ fontSize: 15 }} />
       </Box>
-      <Stack direction="row" spacing={1.1} alignItems="center" sx={{ width: "100%" }}>
+      <Stack
+        direction="row"
+        spacing={0.7}
+        alignItems="center"
+        sx={{ width: "100%", minWidth: 0, flexWrap: "nowrap" }}
+      >
         <Box
           sx={{
-            flexGrow: 1,
+            flex: "1 1 auto",
             minWidth: 0,
-            minHeight: 44,
+            maxWidth: "calc(100% - 28px)",
+            minHeight: 36,
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-start",
             pl: 0.5,
             pr: 0.25,
+            overflow: "hidden",
           }}
         >
           <Typography
             variant="body2"
             sx={{
-              fontWeight: selected ? 600 : 500,
+              fontWeight: selected ? 500 : 400,
               fontSize: "0.88rem",
               lineHeight: 1.15,
               color: selected ? "#e6edf3" : GITHUB_TEXT_MUTED,
               textAlign: "left",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
+              whiteSpace: "nowrap",
               overflow: "hidden",
+              textOverflow: "ellipsis",
+              width: "100%",
             }}
           >
             {section.label}
@@ -274,9 +292,12 @@ function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu }) {
               }}
               sx={{
                 alignSelf: "center",
+                flexShrink: 0,
                 color: GITHUB_TEXT_MUTED,
                 opacity: selected ? 0.72 : 0,
                 transition: "opacity 120ms ease",
+                width: 24,
+                height: 24,
                 p: 0.25,
               }}
             >
@@ -594,7 +615,7 @@ function StormWorkspaceBar({
     >
       <Box
         sx={{
-          borderBottom: 0,
+          borderBottom: "1px solid rgba(255, 255, 255, 0.12)",
           px: 1.35,
           py: 0.7,
           background: GITHUB_BASE,
@@ -1217,6 +1238,47 @@ export function StudioApp() {
   ]);
 
   useEffect(() => {
+    if (!mounted || (!sections.length && !requirements.length)) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const snapshot = buildStudioSnapshot();
+      setSavedProjects((current) => {
+        const nextProject = {
+          id: AUTOSAVE_PROJECT_ID,
+          name: AUTOSAVE_PROJECT_NAME,
+          savedAt: new Date().toISOString(),
+          snapshot,
+        };
+        const remaining = current.filter((project) => project.id !== AUTOSAVE_PROJECT_ID);
+        return [nextProject, ...remaining].sort((left, right) =>
+          right.savedAt.localeCompare(left.savedAt),
+        );
+      });
+    }, AUTOSAVE_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    mounted,
+    sections.length,
+    requirements.length,
+    workspace,
+    activeSectionId,
+    selectedRequirementId,
+    stormWorkspaceTab,
+    stormWorkspaceNotes,
+    stormWorkspacePrompts,
+    stormWorkspaceHeight,
+    leftRailWidth,
+    rightRailWidth,
+    leftRailCollapsed,
+    rightRailCollapsed,
+  ]);
+
+  useEffect(() => {
     if (!mounted) {
       return;
     }
@@ -1615,6 +1677,7 @@ export function StudioApp() {
       return;
     }
 
+    const requirementId = selectedRequirement.id;
     const defaultLabel =
       selectedRequirement.title || `Custom Section ${sections.length + 1}`;
     const label = window.prompt("New section tab name", defaultLabel);
@@ -1629,17 +1692,24 @@ export function StudioApp() {
 
     const nextSection = buildCustomSection(trimmedLabel, sections.length);
 
-    applyWorkspaceChange((current) => ({
-      ...current,
-      sections: [...current.sections, nextSection],
-      requirements: reassignRequirement(
-        current.requirements,
-        selectedRequirement.id,
-        nextSection.id,
-      ),
-    }), {
+    applyWorkspaceChange((current) => {
+      const targetRequirement = getRequirementById(current.requirements, requirementId);
+      if (!targetRequirement) {
+        return current;
+      }
+
+      return {
+        ...current,
+        sections: [...current.sections, nextSection],
+        requirements: reassignRequirement(
+          current.requirements,
+          requirementId,
+          nextSection.id,
+        ),
+      };
+    }, {
       nextActiveSectionId: nextSection.id,
-      nextSelectedRequirementId: selectedRequirement.id,
+      nextSelectedRequirementId: requirementId,
     });
   }
 
@@ -2304,7 +2374,7 @@ export function StudioApp() {
               }}
             >
               <Button
-                variant="outlined"
+                variant="text"
                 startIcon={<UndoRounded />}
                 onClick={handleUndo}
                 disabled={!undoHistory.length}
@@ -2313,7 +2383,7 @@ export function StudioApp() {
                 Undo
               </Button>
               <Button
-                variant="outlined"
+                variant="text"
                 startIcon={<RedoRounded />}
                 onClick={handleRedo}
                 disabled={!redoHistory.length}
@@ -2322,7 +2392,7 @@ export function StudioApp() {
                 Redo
               </Button>
               <Button
-                variant="contained"
+                variant="text"
                 startIcon={<SaveRounded />}
                 onClick={handleSaveProject}
                 disabled={!sections.length}
@@ -2331,7 +2401,15 @@ export function StudioApp() {
                 Save Project
               </Button>
               <Button
-                variant="outlined"
+                variant="text"
+                startIcon={<PlaylistAddRounded />}
+                onClick={handleOpenReqImportDialog}
+                sx={TOPBAR_BUTTON_SX}
+              >
+                Import Reqs
+              </Button>
+              <Button
+                variant="text"
                 startIcon={<HomeRounded />}
                 onClick={handleGoHome}
                 sx={TOPBAR_BUTTON_SX}
@@ -2419,50 +2497,6 @@ export function StudioApp() {
               </DndContext>
             </Box>
             <Stack spacing={1.1} sx={{ pt: 1.1 }}>
-              <Button
-                variant="text"
-                startIcon={<PlaylistAddRounded />}
-                onClick={handleOpenReqImportDialog}
-                sx={{
-                  justifyContent: "flex-start",
-                  color: "#e6edf3",
-                  textTransform: "none",
-                  px: 0.7,
-                  py: 0.55,
-                  minHeight: 40,
-                  width: "calc(100% - 10px)",
-                  mx: "auto",
-                  alignSelf: "center",
-                  borderRadius: 1,
-                  "&:hover": {
-                    bgcolor: "rgba(255, 255, 255, 0.06)",
-                  },
-                }}
-              >
-                Import Reqs
-              </Button>
-              <Button
-                variant="text"
-                startIcon={<PlaylistAddRounded />}
-                onClick={handleCreateSectionFromRequirement}
-                sx={{
-                  justifyContent: "flex-start",
-                  color: "#e6edf3",
-                  textTransform: "none",
-                  px: 0.7,
-                  py: 0.55,
-                  minHeight: 40,
-                  width: "calc(100% - 10px)",
-                  mx: "auto",
-                  alignSelf: "center",
-                  borderRadius: 1,
-                  "&:hover": {
-                    bgcolor: "rgba(255, 255, 255, 0.06)",
-                  },
-                }}
-              >
-                New Section From Req
-              </Button>
             </Stack>
           </RailShell>
         ) : null}
