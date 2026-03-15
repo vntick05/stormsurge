@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ChevronLeftRounded from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRounded from "@mui/icons-material/ChevronRightRounded";
+import CloseRounded from "@mui/icons-material/CloseRounded";
 import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
 import CloudUploadRounded from "@mui/icons-material/CloudUploadRounded";
@@ -114,7 +115,7 @@ const STORM_WORKSPACE_TAB_ICONS = {
 };
 const MTS_DEFINITION_PANELS = [
   { id: "definition_1", label: "Dependencies" },
-  { id: "definition_2", label: "Definition 2" },
+  { id: "definition_2", label: "MTS Definition" },
 ];
 const STORM_WORKSPACE_TAB_TEXT_COLORS = {
   "MTS Definition": null,
@@ -136,6 +137,8 @@ const GITHUB_PANEL_HOVER = "var(--studio-panel-hover)";
 const GITHUB_BORDER = "var(--studio-border)";
 const GITHUB_BORDER_MUTED = "var(--studio-border-muted)";
 const GITHUB_TEXT_MUTED = "var(--studio-text-muted)";
+const GITHUB_FONT_STACK =
+  '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
 const AI_ACTION = "var(--studio-ai-action)";
 const CHROME_BG = "var(--studio-chrome-bg)";
 const CHROME_BG_SOFT = "var(--studio-chrome-bg-soft)";
@@ -611,6 +614,34 @@ function buildDefaultMtsDefinitionPrompt(sectionLabel) {
   return buildDefaultMtsDefinitionPanelPrompt(sectionLabel, "Dependencies");
 }
 
+function buildDefaultMtsSolutionPrompt(sectionLabel) {
+  const scopedSection = String(sectionLabel || "this section").trim();
+  return [
+    `Draft a technically dense MTS Solution for ${scopedSection}.`,
+    "Read all provided requirements as the full minimum baseline the evaluator will expect to be covered.",
+    "Write the minimum credible, compliant, and executable solution that would satisfy the requirement set.",
+    "Be comprehensive and specific about people, roles, teaming structure, processes, workflows, governance, tooling, systems, environments, controls, deliverables, and quality/performance management.",
+    "Explain how the work would actually be executed, coordinated, monitored, and delivered.",
+    "Focus on minimum evaluator expectations, not discriminators or stretch features.",
+    "Do not restate the requirements one by one.",
+    "Do not use marketing language, headings, bullets, or labels.",
+    "Write in dense evaluator-facing prose.",
+  ].join(" ");
+}
+
+function buildDefaultRiskGenerationPrompt(sectionLabel) {
+  const scopedSection = String(sectionLabel || "this section").trim();
+  return [
+    `Review all provided requirements for ${scopedSection} and identify up to 3 evaluator-visible performance or execution risks.`,
+    "Focus on risks an evaluator could reasonably infer from complexity, ambiguity, coordination burden, staffing burden, tooling burden, integration burden, schedule sensitivity, quality risk, transition risk, compliance exposure, or dependency exposure.",
+    "Each risk must be grounded in the requirement set and written from an evaluator perspective.",
+    "For each risk, provide a concise mitigation that would satisfy minimum evaluator expectations.",
+    "Return strict JSON only as an array with up to 3 objects.",
+    'Each object must use: {"risk":"...","mitigation":"...","impact":"Low|Medium|High","likelihood":"Low|Medium|High","status":"Open","notes":"..."}',
+    "Do not include markdown, commentary, or any text outside the JSON array.",
+  ].join(" ");
+}
+
 function buildDefaultMtsDefinitionPanelPrompt(sectionLabel, panelLabel) {
   const scopedSection = String(sectionLabel || "this section").trim();
   const scopedPanel = String(panelLabel || "Dependencies").trim();
@@ -682,6 +713,7 @@ function normalizeMtsPromptSet(rawPromptSet, sectionLabel) {
     accumulator[panel.id] = buildDefaultMtsDefinitionPanelPrompt(sectionLabel, panel.label);
     return accumulator;
   }, {});
+  defaults["MTS Solution"] = buildDefaultMtsSolutionPrompt(sectionLabel);
   const legacyDefinitionOnePrompt = buildDefaultMtsDefinitionPanelPrompt(sectionLabel, "Definition 1");
   const legacyDependenciesPrompts = new Set([
     [
@@ -722,7 +754,7 @@ function normalizeMtsPromptSet(rawPromptSet, sectionLabel) {
   ]);
 
   if (rawPromptSet && typeof rawPromptSet === "object" && !Array.isArray(rawPromptSet)) {
-    return MTS_DEFINITION_PANELS.reduce((accumulator, panel) => {
+    const normalizedDefinitions = MTS_DEFINITION_PANELS.reduce((accumulator, panel) => {
       const value = String(rawPromptSet?.[panel.id] || "").trim();
       accumulator[panel.id] =
         panel.id === "definition_1" &&
@@ -731,6 +763,9 @@ function normalizeMtsPromptSet(rawPromptSet, sectionLabel) {
           : value || defaults[panel.id];
       return accumulator;
     }, {});
+    normalizedDefinitions["MTS Solution"] =
+      String(rawPromptSet?.["MTS Solution"] || "").trim() || defaults["MTS Solution"];
+    return normalizedDefinitions;
   }
 
   const legacyPrompt = String(rawPromptSet || "").trim();
@@ -795,6 +830,47 @@ function parseRiskRegister(rawValue) {
         risk: trimmedValue,
       },
     ];
+  }
+
+  return [];
+}
+
+function parseGeneratedRiskRegister(rawValue) {
+  const rawText = String(rawValue || "").trim();
+  if (!rawText) {
+    return [];
+  }
+
+  const candidates = [rawText];
+  const firstBracket = rawText.indexOf("[");
+  const lastBracket = rawText.lastIndexOf("]");
+  if (firstBracket >= 0 && lastBracket > firstBracket) {
+    candidates.unshift(rawText.slice(firstBracket, lastBracket + 1));
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (!Array.isArray(parsed)) {
+        continue;
+      }
+
+      return parsed
+        .slice(0, 3)
+        .map((entry) => ({
+          id:
+            typeof entry?.id === "string" && entry.id.trim()
+              ? entry.id
+              : createRiskRegisterEntry().id,
+          risk: String(entry?.risk || "").trim(),
+          mitigation: String(entry?.mitigation || "").trim(),
+          impact: String(entry?.impact || "").trim(),
+          likelihood: String(entry?.likelihood || "").trim(),
+          status: String(entry?.status || "Open").trim(),
+          notes: String(entry?.notes || "").trim(),
+        }))
+        .filter((entry) => entry.risk && entry.mitigation);
+    } catch {}
   }
 
   return [];
@@ -884,6 +960,8 @@ function StormWorkspaceBar({
   notesByTab,
   onNotesChange,
   onGenerateMtsDefinition,
+  onGenerateMtsSolution,
+  onGenerateRisks,
   onClearActiveTab,
   onEditMtsPrompt,
   generationState,
@@ -897,25 +975,26 @@ function StormWorkspaceBar({
   const isLightMode = theme.palette.mode === "light";
   const [riskDialogOpen, setRiskDialogOpen] = useState(false);
   const [riskDraft, setRiskDraft] = useState(createRiskRegisterEntry());
+  const [riskDeleteId, setRiskDeleteId] = useState("");
   const panelBg = isLightMode ? LIGHT_CANVAS_SURFACE : GITHUB_BASE;
   const panelBorder = isLightMode ? "rgba(99, 111, 128, 0.18)" : GITHUB_BORDER;
   const activeTabSurface = isLightMode ? LIGHT_SHARED_SURFACE : "#2b3542";
-  const panelCard = isLightMode ? LIGHT_SHARED_SURFACE : activeTabSurface;
-  const panelCardHover = isLightMode ? LIGHT_SHARED_SURFACE_HOVER : activeTabSurface;
+  const panelCard = isLightMode ? "#f1f4f7" : activeTabSurface;
+  const panelCardHover = isLightMode ? "#e9eef3" : activeTabSurface;
   const panelText = isLightMode ? "#313841" : CHROME_TEXT;
   const panelMutedText = isLightMode ? "#636f80" : CHROME_TEXT_MUTED;
   const panelAction = isLightMode ? "#64d3e3" : AI_ACTION;
   const tabChromeBg = "transparent";
   const activeTabText = isLightMode ? "#ffffff" : panelText;
   const selectedTabBg = isLightMode ? "#58a6ff" : "#141a21";
-  const inactiveTabText = isLightMode ? "#ffffff" : panelMutedText;
-  const inactiveTabBg = isLightMode ? "#6a737d" : "rgba(255,255,255,0.03)";
+  const inactiveTabText = isLightMode ? "#4b5563" : panelMutedText;
+  const inactiveTabBg = isLightMode ? "#dbe3ea" : "rgba(255,255,255,0.03)";
   const riskEntries = useMemo(
     () => (activeTab === "Risks" ? parseRiskRegister(notesByTab.Risks) : []),
     [activeTab, notesByTab.Risks],
   );
-  const canGenerateMtsDefinition =
-    activeTab === "MTS Definition" &&
+  const canGenerateStormContent =
+    (activeTab === "MTS Definition" || activeTab === "MTS Solution") &&
     Boolean(activeSection?.id) &&
     activeSectionRequirementCount > 0 &&
     !generationState.loading;
@@ -927,6 +1006,14 @@ function StormWorkspaceBar({
 
   function closeRiskDialog() {
     setRiskDialogOpen(false);
+  }
+
+  function openRiskDeleteDialog(riskId) {
+    setRiskDeleteId(riskId);
+  }
+
+  function closeRiskDeleteDialog() {
+    setRiskDeleteId("");
   }
 
   function updateRiskDraft(field, value) {
@@ -943,6 +1030,18 @@ function StormWorkspaceBar({
       serializeRiskRegister([...riskEntries, riskDraft]),
     );
     setRiskDialogOpen(false);
+  }
+
+  function confirmRiskDelete() {
+    if (!riskDeleteId) {
+      return;
+    }
+
+    onNotesChange(
+      "Risks",
+      serializeRiskRegister(riskEntries.filter((candidate) => candidate.id !== riskDeleteId)),
+    );
+    setRiskDeleteId("");
   }
 
   return (
@@ -1103,7 +1202,7 @@ function StormWorkspaceBar({
           >
             <Box />
           </Stack>
-          {generationState.error && activeTab === "MTS Definition" ? (
+          {generationState.error ? (
             <Box sx={{ px: 1.45 }}>
               <Alert severity="error">{generationState.error}</Alert>
             </Box>
@@ -1128,77 +1227,108 @@ function StormWorkspaceBar({
                   const isGeneratingThisPanel = generationState.loading === panel.id;
                   const panelValue = definitionPanels?.[panel.id] || "";
                   const panelPrompt = definitionPrompts?.[panel.id] || "";
+                  const panelFlex = panel.id === "definition_1" ? 0.72 : 1.28;
                   return (
-                    <Stack key={panel.id} spacing={0.55} sx={{ flex: 1, minHeight: 0 }}>
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        alignItems="center"
-                        justifyContent="space-between"
-                        sx={{ px: 0.2 }}
-                      >
-                        <Typography variant="body2" sx={{ color: panelText, fontWeight: 600 }}>
-                          {panel.label}
-                        </Typography>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Button
-                            variant="text"
-                            onClick={() => onEditMtsPrompt(panel.id)}
-                            size="small"
-                            sx={{
-                              minHeight: 26,
-                              py: 0.2,
-                              minWidth: 0,
-                              color: panelText,
-                              borderColor: "transparent",
-                              bgcolor: "transparent",
-                              boxShadow: "none",
-                              "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
-                            }}
-                          >
-                            Edit Prompt
-                          </Button>
-                          <Button
-                            variant="text"
-                            size="small"
-                            onClick={() => onGenerateMtsDefinition(panel.id)}
-                            disabled={!canGenerateMtsDefinition}
-                            startIcon={
-                              isGeneratingThisPanel ? (
-                                <CircularProgress size={16} color="inherit" />
-                              ) : null
-                            }
-                            sx={{
-                              minHeight: 26,
-                              py: 0.2,
-                              minWidth: 0,
-                              bgcolor: "transparent",
-                              color: "#d58bf2",
-                              boxShadow: "none",
-                              "&:hover": {
-                                bgcolor: "transparent",
-                                color: "#e2aaf7",
-                              },
-                            }}
-                          >
-                            {isGeneratingThisPanel ? "Generating..." : "AI Define"}
-                          </Button>
-                        </Stack>
-                      </Stack>
+                    <Stack key={panel.id} spacing={0} sx={{ flex: panelFlex, minHeight: 0 }}>
                       <Box
                         sx={{
                           flex: 1,
                           minHeight: 0,
                           display: "flex",
                           flexDirection: "column",
+                          fontFamily: GITHUB_FONT_STACK,
+                          fontSize: "0.875rem",
+                          lineHeight: 1.45,
                           bgcolor: panelCard,
                           borderRadius: 0.5,
                           overflow: "hidden",
                           boxShadow: isLightMode
-                            ? "0 1px 0 rgba(17, 24, 39, 0.05), 0 3px 8px rgba(17, 24, 39, 0.08)"
+                            ? "0 1px 0 rgba(17,24,39,0.04), 0 3px 8px rgba(17,24,39,0.08)"
                             : "none",
                         }}
                       >
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
+                          justifyContent="space-between"
+                          sx={{
+                            px: 1,
+                            py: 0.45,
+                            bgcolor: "transparent",
+                            borderBottom: 0,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Typography variant="body2" sx={{ color: panelText, fontWeight: 600 }}>
+                            {panel.label}
+                          </Typography>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Button
+                              variant="text"
+                              onClick={() => onClearActiveTab(panel.id)}
+                              size="small"
+                              sx={{
+                                minHeight: 26,
+                                py: 0.2,
+                                minWidth: 0,
+                                color: panelText,
+                                borderColor: "transparent",
+                                bgcolor: "transparent",
+                                boxShadow: "none",
+                                "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
+                              }}
+                            >
+                              Clear
+                            </Button>
+                            <Button
+                              variant="text"
+                              onClick={() => onEditMtsPrompt(panel.id)}
+                              size="small"
+                              sx={{
+                                minHeight: 26,
+                                py: 0.2,
+                                minWidth: 0,
+                                color: panelText,
+                                borderColor: "transparent",
+                                bgcolor: "transparent",
+                                boxShadow: "none",
+                                "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
+                              }}
+                            >
+                              Edit Prompt
+                            </Button>
+                            <Button
+                              variant="text"
+                              onClick={() => onGenerateMtsDefinition(panel.id)}
+                              disabled={!canGenerateStormContent}
+                              startIcon={
+                                isGeneratingThisPanel ? (
+                                  <CircularProgress size={16} color="inherit" />
+                                ) : null
+                              }
+                              sx={{
+                                minHeight: 24,
+                                px: 0.8,
+                                py: 0.1,
+                                borderRadius: 0.75,
+                                bgcolor: "transparent",
+                                color: "#2ea36a",
+                                boxShadow: "none",
+                                "& .MuiButton-startIcon": {
+                                  mr: 0.45,
+                                  ml: 0,
+                                },
+                                "&:hover": {
+                                  bgcolor: "transparent",
+                                  color: "#278b5a",
+                                },
+                              }}
+                            >
+                              {isGeneratingThisPanel ? "Generating..." : "Generate"}
+                            </Button>
+                          </Stack>
+                        </Stack>
                         <TextField
                           multiline
                           minRows={6}
@@ -1211,8 +1341,9 @@ function StormWorkspaceBar({
                             sx: {
                               height: "100%",
                               alignItems: "flex-start",
-                              fontSize: "0.95rem",
-                              lineHeight: 1.5,
+                              fontFamily: GITHUB_FONT_STACK,
+                              fontSize: "0.875rem",
+                              lineHeight: 1.45,
                               fontWeight: 400,
                               color: panelText,
                               bgcolor: "transparent",
@@ -1276,6 +1407,9 @@ function StormWorkspaceBar({
                 minHeight: 0,
                 display: "flex",
                 flexDirection: "column",
+                fontFamily: GITHUB_FONT_STACK,
+                fontSize: "0.875rem",
+                lineHeight: 1.45,
                 bgcolor: activeTab === "Risks" ? "transparent" : panelCard,
                 borderRadius: 0.5,
                 overflow: "hidden",
@@ -1283,42 +1417,48 @@ function StormWorkspaceBar({
                   activeTab === "Risks"
                     ? "none"
                     : isLightMode
-                      ? "0 1px 0 rgba(17, 24, 39, 0.05), 0 3px 8px rgba(17, 24, 39, 0.08)"
+                      ? "0 1px 0 rgba(17,24,39,0.04), 0 3px 8px rgba(17,24,39,0.08)"
                       : "none",
               }}
             >
-              {activeTab === "Risks" ? null : (
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  alignItems="center"
-                  justifyContent="flex-start"
-                  sx={{
-                    px: 1,
-                    py: 0.45,
-                    bgcolor: isLightMode ? "#919ba6" : "#2a323d",
-                    borderBottom: "1px solid rgba(255,255,255,0.2)",
-                    flexShrink: 0,
-                  }}
-                >
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{
+                  px: activeTab === "Risks" ? 0.35 : 1,
+                  py: 0.45,
+                  bgcolor: "transparent",
+                  borderBottom: 0,
+                  flexShrink: 0,
+                }}
+              >
+                  {activeTab === "Risks" ? null : (
+                    <Typography variant="body2" sx={{ color: panelText, fontWeight: 600 }}>
+                      {activeTab}
+                    </Typography>
+                  )}
                   <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
-                    <Button
-                      variant="text"
-                      onClick={onClearActiveTab}
-                      size="small"
-                      sx={{
-                        minHeight: 26,
-                        py: 0.2,
-                        minWidth: 0,
-                        color: panelText,
-                        borderColor: "transparent",
-                        bgcolor: "transparent",
-                        boxShadow: "none",
-                        "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
-                      }}
-                    >
-                      Clear
-                    </Button>
+                    {activeTab === "Risks" ? null : (
+                      <Button
+                        variant="text"
+                        onClick={onClearActiveTab}
+                        size="small"
+                        sx={{
+                          minHeight: 26,
+                          py: 0.2,
+                          minWidth: 0,
+                          color: panelText,
+                          borderColor: "transparent",
+                          bgcolor: "transparent",
+                          boxShadow: "none",
+                          "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
+                        }}
+                      >
+                        Clear
+                      </Button>
+                    )}
                     {activeTab === "MTS Definition" ? (
                       <>
                         <Button
@@ -1342,7 +1482,7 @@ function StormWorkspaceBar({
                           variant="text"
                           size="small"
                           onClick={onGenerateMtsDefinition}
-                          disabled={!canGenerateMtsDefinition}
+                          disabled={!canGenerateStormContent}
                           startIcon={
                             generationState.loading ? (
                               <CircularProgress size={16} color="inherit" />
@@ -1353,53 +1493,128 @@ function StormWorkspaceBar({
                             py: 0.2,
                             minWidth: 0,
                             bgcolor: "transparent",
-                            color: "#d58bf2",
+                            color: "#2ea36a",
                             boxShadow: "none",
                             "&:hover": {
                               bgcolor: "transparent",
-                              color: "#e2aaf7",
+                              color: "#278b5a",
                             },
                           }}
                         >
-                          {generationState.loading ? "Generating..." : "AI Define"}
+                          {generationState.loading ? "Generating..." : "Generate"}
+                        </Button>
+                      </>
+                    ) : activeTab === "MTS Solution" ? (
+                      <>
+                        <Button
+                          variant="text"
+                          onClick={() => onEditMtsPrompt("MTS Solution")}
+                          size="small"
+                          sx={{
+                            minHeight: 26,
+                            py: 0.2,
+                            minWidth: 0,
+                            color: panelText,
+                            borderColor: "transparent",
+                            bgcolor: "transparent",
+                            boxShadow: "none",
+                            "&:hover": { bgcolor: "transparent", borderColor: "transparent" },
+                          }}
+                        >
+                          Edit Prompt
+                        </Button>
+                        <Button
+                          variant="text"
+                          onClick={onGenerateMtsSolution}
+                          disabled={!canGenerateStormContent}
+                          startIcon={
+                            generationState.loading === "MTS Solution" ? (
+                              <CircularProgress size={16} color="inherit" />
+                            ) : null
+                          }
+                          sx={{
+                            minHeight: 24,
+                            px: 0.8,
+                            py: 0.1,
+                            borderRadius: 0.75,
+                            bgcolor: "transparent",
+                            color: "#2ea36a",
+                            boxShadow: "none",
+                            "& .MuiButton-startIcon": {
+                              mr: 0.45,
+                              ml: 0,
+                            },
+                            "&:hover": {
+                              bgcolor: "transparent",
+                              color: "#278b5a",
+                            },
+                          }}
+                        >
+                          {generationState.loading === "MTS Solution" ? "Generating..." : "Generate"}
+                        </Button>
+                      </>
+                    ) : activeTab === "Risks" ? (
+                      <>
+                        <Button
+                          variant="text"
+                          onClick={onGenerateRisks}
+                          startIcon={
+                            generationState.loading === "Risks" ? (
+                              <CircularProgress size={16} color="inherit" />
+                            ) : null
+                          }
+                          sx={{
+                            minHeight: 26,
+                            py: 0.2,
+                            minWidth: 0,
+                            borderRadius: 0.75,
+                            bgcolor: "transparent",
+                            color: "#2ea36a",
+                            boxShadow: "none",
+                            "&:hover": {
+                              bgcolor: "transparent",
+                              color: "#278b5a",
+                            },
+                          }}
+                        >
+                          {generationState.loading === "Risks" ? "Generating..." : "Generate Risks"}
+                        </Button>
+                        <Button
+                          variant="text"
+                          startIcon={<PlaylistAddRounded />}
+                          onClick={openRiskDialog}
+                          sx={{
+                            minHeight: 26,
+                            py: 0.2,
+                            minWidth: 0,
+                            borderRadius: 0.75,
+                            bgcolor: "transparent",
+                            color: panelText,
+                            boxShadow: "none",
+                            "&:hover": {
+                              bgcolor: "transparent",
+                              color: panelText,
+                            },
+                          }}
+                        >
+                          Add Risk
                         </Button>
                       </>
                     ) : null}
                   </Stack>
-                </Stack>
-              )}
+              </Stack>
               {activeTab === "Risks" ? (
                 <Box
                   sx={{
                     flex: 1,
                     minHeight: 0,
                     overflowY: "auto",
-                    p: 1.2,
+                    px: 0.35,
+                    py: 0.8,
                     ...subtleScrollbarSx,
                   }}
                 >
                   <Stack spacing={1.2}>
-                    <Box sx={{ display: "flex", justifyContent: "flex-start" }}>
-                      <Button
-                        variant="contained"
-                        startIcon={<PlaylistAddRounded />}
-                        onClick={openRiskDialog}
-                        sx={{
-                          minHeight: 36,
-                          px: 1.4,
-                          borderRadius: 0.75,
-                          bgcolor: "#4a535d",
-                          color: "#f5f7fa",
-                          boxShadow: "0 0 0 1px rgba(255,255,255,0.12)",
-                          "&:hover": {
-                            bgcolor: "#414952",
-                            boxShadow: "0 0 0 1px rgba(255,255,255,0.18)",
-                          },
-                        }}
-                      >
-                        Add Risk
-                      </Button>
-                    </Box>
                     {riskEntries.length ? null : (
                       <Typography variant="body2" sx={{ color: panelMutedText, px: 0.4 }}>
                         No risks added yet. Use `Add Risk` to capture a risk, mitigation,
@@ -1412,43 +1627,35 @@ function StormWorkspaceBar({
                           key={entry.id}
                           variant="outlined"
                           sx={{
-                            p: 1,
+                            position: "relative",
+                            p: 0.9,
+                            fontFamily: GITHUB_FONT_STACK,
+                            fontSize: "0.875rem",
+                            lineHeight: 1.45,
                             borderRadius: 0.5,
-                            bgcolor: "rgba(0,0,0,0.08)",
-                            borderColor: "rgba(255,255,255,0.12)",
+                            bgcolor: isLightMode ? "#f1f4f7" : "rgba(0,0,0,0.08)",
+                            borderColor: isLightMode ? "rgba(17,24,39,0.08)" : "rgba(255,255,255,0.12)",
+                            boxShadow: isLightMode
+                              ? "0 1px 0 rgba(17,24,39,0.04), 0 3px 8px rgba(17,24,39,0.08)"
+                              : "none",
                           }}
                         >
-                          <Stack spacing={1}>
-                            <Stack
-                              direction="row"
-                              alignItems="center"
-                              justifyContent="space-between"
-                              spacing={1}
-                            >
-                              <Typography variant="body2" sx={{ color: panelText, fontWeight: 600 }}>
-                                Risk {index + 1}
-                              </Typography>
-                              <Button
-                                variant="text"
-                                size="small"
-                                onClick={() =>
-                                  onNotesChange(
-                                    "Risks",
-                                    serializeRiskRegister(
-                                      riskEntries.filter((candidate) => candidate.id !== entry.id),
-                                    ),
-                                  )
-                                }
-                                sx={{
-                                  minWidth: 0,
-                                  px: 0.6,
-                                  color: panelMutedText,
-                                  bgcolor: "transparent",
-                                }}
-                              >
-                                Remove
-                              </Button>
-                            </Stack>
+                          <IconButton
+                            size="small"
+                            onClick={() => openRiskDeleteDialog(entry.id)}
+                            sx={{
+                              position: "absolute",
+                              top: 6,
+                              right: 6,
+                              width: 22,
+                              height: 22,
+                              color: panelMutedText,
+                              bgcolor: "transparent",
+                            }}
+                          >
+                            <CloseRounded sx={{ fontSize: 15 }} />
+                          </IconButton>
+                          <Stack spacing={1} sx={{ pr: 3.2 }}>
                             <Typography variant="body2" sx={{ color: panelText }}>
                               <Box component="span" sx={{ fontWeight: 600 }}>Risk:</Box> {entry.risk}
                             </Typography>
@@ -1486,8 +1693,9 @@ function StormWorkspaceBar({
                     sx: {
                       height: "100%",
                       alignItems: "flex-start",
-                      fontSize: "0.95rem",
-                      lineHeight: 1.5,
+                      fontFamily: GITHUB_FONT_STACK,
+                      fontSize: "0.875rem",
+                      lineHeight: 1.45,
                       fontWeight: 400,
                       color: panelText,
                       bgcolor: "transparent",
@@ -1623,6 +1831,20 @@ function StormWorkspaceBar({
             disabled={!riskDraft.risk.trim() || !riskDraft.mitigation.trim()}
           >
             Add Risk
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={Boolean(riskDeleteId)} onClose={closeRiskDeleteDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete Risk</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Are you sure you want to delete this risk?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeRiskDeleteDialog}>Cancel</Button>
+          <Button onClick={confirmRiskDelete} color="error" variant="contained">
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
@@ -2835,6 +3057,25 @@ export function StudioApp() {
     setMtsPromptDialogOpen(false);
   }
 
+  function buildStormGenerationRequirements() {
+    return activeSectionRequirements.map(({ requirement }) => {
+      const sourceLabel = String(requirement.sourceRef || "").trim();
+      const titleLabel = String(requirement.title || "").trim();
+      const summaryText = String(
+        requirement.text || requirement.summary || requirement.title || "",
+      ).trim();
+      const combinedText = [sourceLabel, titleLabel, summaryText]
+        .filter(Boolean)
+        .join("\n");
+
+      return {
+        id: sourceLabel || titleLabel || requirement.id,
+        section: activeSection.label,
+        text: combinedText,
+      };
+    });
+  }
+
   async function handleGenerateMtsDefinition(panelId = MTS_DEFINITION_PANELS[0].id) {
     if (!activeSection || !activeSectionRequirements.length) {
       setMtsDefinitionGenerationState({
@@ -2868,22 +3109,7 @@ export function StudioApp() {
         body: JSON.stringify({
           sectionLabel: activeSection.label,
           prompt: activeSectionMtsPrompts[targetPanelId],
-          requirements: activeSectionRequirements.map(({ requirement }) => {
-            const sourceLabel = String(requirement.sourceRef || "").trim();
-            const titleLabel = String(requirement.title || "").trim();
-            const summaryText = String(
-              requirement.text || requirement.summary || requirement.title || "",
-            ).trim();
-            const combinedText = [sourceLabel, titleLabel, summaryText]
-              .filter(Boolean)
-              .join("\n");
-
-            return {
-              id: sourceLabel || titleLabel || requirement.id,
-              section: activeSection.label,
-              text: combinedText,
-            };
-          }),
+          requirements: buildStormGenerationRequirements(),
         }),
       });
 
@@ -2987,6 +3213,272 @@ export function StudioApp() {
       setMtsDefinitionGenerationState({
         loading: "",
         error: error instanceof Error ? error.message : "MTS definition generation failed",
+      });
+    }
+  }
+
+  async function handleGenerateMtsSolution() {
+    if (!activeSection || !activeSectionRequirements.length) {
+      setMtsDefinitionGenerationState({
+        loading: "",
+        error: "Select a section that has requirements before generating.",
+      });
+      return;
+    }
+
+    setMtsDefinitionGenerationState({ loading: "MTS Solution", error: "" });
+    setStormWorkspaceTab("MTS Solution");
+    setStormWorkspaceNotes((current) => ({
+      ...current,
+      [activeSection.id]: {
+        ...buildEmptyStormWorkspace(),
+        ...(current[activeSection.id] || {}),
+        ["MTS Solution"]: "",
+      },
+    }));
+
+    try {
+      const response = await fetch("/api/storm/mts-definition", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sectionLabel: activeSection.label,
+          prompt: activeSectionMtsPrompts["MTS Solution"],
+          requirements: buildStormGenerationRequirements(),
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.detail || "MTS solution generation failed");
+      }
+
+      if (!response.body) {
+        throw new Error("MTS solution stream was unavailable");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let eventType = "message";
+      let streamedContent = "";
+
+      const applySolution = (nextContent) => {
+        setStormWorkspaceNotes((current) => ({
+          ...current,
+          [activeSection.id]: {
+            ...buildEmptyStormWorkspace(),
+            ...(current[activeSection.id] || {}),
+            ["MTS Solution"]: nextContent,
+          },
+        }));
+      };
+
+      const processEventBlock = (block) => {
+        const lines = block.split("\n");
+        let nextEventType = "message";
+        const dataLines = [];
+
+        for (const line of lines) {
+          if (line.startsWith("event:")) {
+            nextEventType = line.slice(6).trim();
+          } else if (line.startsWith("data:")) {
+            dataLines.push(line.slice(5).trim());
+          }
+        }
+
+        const dataText = dataLines.join("\n");
+        if (!dataText) {
+          return;
+        }
+
+        let parsed;
+        try {
+          parsed = JSON.parse(dataText);
+        } catch {
+          return;
+        }
+
+        if (nextEventType === "token") {
+          streamedContent += String(parsed?.delta || "");
+          applySolution(streamedContent);
+          return;
+        }
+
+        if (nextEventType === "error") {
+          let detail = String(parsed?.detail || "").trim();
+          try {
+            const nested = JSON.parse(detail);
+            detail = String(nested?.detail || detail).trim();
+          } catch {}
+          throw new Error(detail || "MTS solution generation failed");
+        }
+
+        eventType = nextEventType;
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split("\n\n");
+        buffer = blocks.pop() ?? "";
+
+        for (const block of blocks) {
+          processEventBlock(block);
+        }
+      }
+
+      if (buffer.trim()) {
+        processEventBlock(buffer);
+      }
+
+      if (!streamedContent.trim() && eventType !== "done") {
+        throw new Error("MTS solution generation returned no content");
+      }
+
+      setMtsDefinitionGenerationState({ loading: "", error: "" });
+    } catch (error) {
+      setMtsDefinitionGenerationState({
+        loading: "",
+        error: error instanceof Error ? error.message : "MTS solution generation failed",
+      });
+    }
+  }
+
+  async function handleGenerateRisks() {
+    if (!activeSection || !activeSectionRequirements.length) {
+      setMtsDefinitionGenerationState({
+        loading: "",
+        error: "Select a section that has requirements before generating.",
+      });
+      return;
+    }
+
+    setMtsDefinitionGenerationState({ loading: "Risks", error: "" });
+    setStormWorkspaceTab("Risks");
+
+    try {
+      const response = await fetch("/api/storm/mts-definition", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sectionLabel: activeSection.label,
+          prompt: buildDefaultRiskGenerationPrompt(activeSection.label),
+          requirements: buildStormGenerationRequirements(),
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.detail || "Risk generation failed");
+      }
+
+      if (!response.body) {
+        throw new Error("Risk generation stream was unavailable");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let eventType = "message";
+      let streamedContent = "";
+
+      const processEventBlock = (block) => {
+        const lines = block.split("\n");
+        let nextEventType = "message";
+        const dataLines = [];
+
+        for (const line of lines) {
+          if (line.startsWith("event:")) {
+            nextEventType = line.slice(6).trim();
+          } else if (line.startsWith("data:")) {
+            dataLines.push(line.slice(5).trim());
+          }
+        }
+
+        const dataText = dataLines.join("\n");
+        if (!dataText) {
+          return;
+        }
+
+        let parsed;
+        try {
+          parsed = JSON.parse(dataText);
+        } catch {
+          return;
+        }
+
+        if (nextEventType === "token") {
+          streamedContent += String(parsed?.delta || "");
+          return;
+        }
+
+        if (nextEventType === "error") {
+          let detail = String(parsed?.detail || "").trim();
+          try {
+            const nested = JSON.parse(detail);
+            detail = String(nested?.detail || detail).trim();
+          } catch {}
+          throw new Error(detail || "Risk generation failed");
+        }
+
+        eventType = nextEventType;
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split("\n\n");
+        buffer = blocks.pop() ?? "";
+
+        for (const block of blocks) {
+          processEventBlock(block);
+        }
+      }
+
+      if (buffer.trim()) {
+        processEventBlock(buffer);
+      }
+
+      const generatedRisks = parseGeneratedRiskRegister(streamedContent);
+      if (!generatedRisks.length && eventType !== "done") {
+        throw new Error("Risk generation returned no content");
+      }
+      if (!generatedRisks.length) {
+        throw new Error("Risk generation did not return any structured risks");
+      }
+
+      setStormWorkspaceNotes((current) => {
+        const existingRisks = parseRiskRegister(current[activeSection.id]?.Risks);
+        const nextRisks = [...existingRisks, ...generatedRisks].slice(0, 3);
+
+        return {
+          ...current,
+          [activeSection.id]: {
+            ...buildEmptyStormWorkspace(),
+            ...(current[activeSection.id] || {}),
+            Risks: serializeRiskRegister(nextRisks),
+          },
+        };
+      });
+
+      setMtsDefinitionGenerationState({ loading: "", error: "" });
+    } catch (error) {
+      setMtsDefinitionGenerationState({
+        loading: "",
+        error: error instanceof Error ? error.message : "Risk generation failed",
       });
     }
   }
@@ -3635,6 +4127,8 @@ export function StudioApp() {
                   notesByTab={activeSectionStormWorkspaceNotes}
                   onNotesChange={handleStormWorkspaceNoteChange}
                   onGenerateMtsDefinition={(panelId) => handleOpenMtsConfirm("generate", panelId)}
+                  onGenerateMtsSolution={handleGenerateMtsSolution}
+                  onGenerateRisks={handleGenerateRisks}
                   onClearActiveTab={() => handleOpenMtsConfirm("clear")}
                   onEditMtsPrompt={handleEditMtsPrompt}
                   generationState={mtsDefinitionGenerationState}
@@ -3708,7 +4202,7 @@ export function StudioApp() {
       </Dialog>
       <Dialog open={mtsConfirmDialog.open} onClose={handleCloseMtsConfirm} maxWidth="xs" fullWidth>
         <DialogTitle>
-          {mtsConfirmDialog.action === "generate" ? "Re-run AI Define?" : "Clear This Box?"}
+          {mtsConfirmDialog.action === "generate" ? "Re-run Generate?" : "Clear This Box?"}
         </DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary">

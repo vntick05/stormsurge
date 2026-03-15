@@ -488,13 +488,13 @@ export function DetailInspector({
     <Stack spacing={0} sx={{ height: "100%", minHeight: 0 }}>
       <Box
         sx={{
-          px: 1.35,
+          px: 3,
           py: 0,
           pt: 0,
           border: "none",
           bgcolor: "transparent",
           borderRadius: 0,
-          borderBottom: "1px solid rgba(255,255,255,0.4)",
+          borderBottom: "1px solid rgba(17,24,39,0.3)",
         }}
       >
         <Tabs
@@ -542,13 +542,13 @@ export function DetailInspector({
             "& .MuiTab-root::after": {
               content: '""',
               position: "absolute",
-              left: 0,
-              right: 0,
+              left: -4,
+              right: -4,
               bottom: -1,
-              height: 3,
+              height: 4,
               borderRadius: 999,
               bgcolor: "transparent",
-              opacity: 0.95,
+              opacity: 1,
             },
             "& .MuiTab-root:hover": {
               color: inspectorText,
@@ -575,10 +575,11 @@ export function DetailInspector({
                 sx={{
                   "&.Mui-selected::after": {
                     bgcolor: accent,
+                    boxShadow: "0 0 0 1px rgba(17,24,39,0.14)",
                   },
                   "&:hover::after": {
                     bgcolor: activeTab === label ? accent : accent,
-                    opacity: activeTab === label ? 0.95 : 0.45,
+                    opacity: activeTab === label ? 1 : 0.58,
                   },
                 }}
               />
@@ -957,7 +958,7 @@ export function DetailInspector({
               ) : null}
               <Paper
                 sx={{
-                  px: 0.25,
+                  px: 1.05,
                   py: 0.35,
                   flex: 1,
                   minHeight: 0,

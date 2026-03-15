@@ -6,6 +6,13 @@ const GITHUB_BORDER = "var(--studio-border)";
 const GITHUB_PANEL = "var(--studio-panel)";
 const GITHUB_TEXT_MUTED = "var(--studio-text-muted)";
 
+function stripInlineMarkdown(text) {
+  return String(text || "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/`([^`]+)`/g, "$1");
+}
+
 function isMarkdownTableSeparator(line) {
   const trimmed = line.trim();
   return /^\|?[\s:-]+(?:\|[\s:-]+)+\|?$/.test(trimmed);
@@ -56,7 +63,7 @@ function parseBlocks(text) {
     if (/^\s*[-*]\s+/.test(line)) {
       const items = [];
       while (index < lines.length && /^\s*[-*]\s+/.test(lines[index])) {
-        items.push(lines[index].replace(/^\s*[-*]\s+/, "").trim());
+        items.push(stripInlineMarkdown(lines[index].replace(/^\s*[-*]\s+/, "").trim()));
         index += 1;
       }
       blocks.push({ type: "list", items });
@@ -77,7 +84,7 @@ function parseBlocks(text) {
       paragraphLines.push(lines[index].trim());
       index += 1;
     }
-    blocks.push({ type: "paragraph", text: paragraphLines.join("\n") });
+    blocks.push({ type: "paragraph", text: stripInlineMarkdown(paragraphLines.join("\n")) });
   }
 
   return blocks;
@@ -146,6 +153,18 @@ export function RichTextContent({ content, dense = false }) {
         }
 
         if (block.type === "list") {
+          if (dense) {
+            return (
+              <Box key={`list-${blockIndex}`} sx={{ display: "grid", gap: 0.55 }}>
+                {block.items.map((item, itemIndex) => (
+                  <Typography key={`item-${itemIndex}`} variant="body2" sx={{ lineHeight: 1.5 }}>
+                    {item}
+                  </Typography>
+                ))}
+              </Box>
+            );
+          }
+
           return (
             <Box key={`list-${blockIndex}`} component="ul" sx={{ m: 0, pl: 2.5 }}>
               {block.items.map((item, itemIndex) => (
