@@ -2868,11 +2868,22 @@ export function StudioApp() {
         body: JSON.stringify({
           sectionLabel: activeSection.label,
           prompt: activeSectionMtsPrompts[targetPanelId],
-          requirements: activeSectionRequirements.map(({ requirement }) => ({
-            id: requirement.sourceRef || requirement.title || requirement.id,
-            section: activeSection.label,
-            text: requirement.text || requirement.summary || requirement.title,
-          })),
+          requirements: activeSectionRequirements.map(({ requirement }) => {
+            const sourceLabel = String(requirement.sourceRef || "").trim();
+            const titleLabel = String(requirement.title || "").trim();
+            const summaryText = String(
+              requirement.text || requirement.summary || requirement.title || "",
+            ).trim();
+            const combinedText = [sourceLabel, titleLabel, summaryText]
+              .filter(Boolean)
+              .join("\n");
+
+            return {
+              id: sourceLabel || titleLabel || requirement.id,
+              section: activeSection.label,
+              text: combinedText,
+            };
+          }),
         }),
       });
 
