@@ -2,6 +2,7 @@ import io
 import json
 import os
 import hashlib
+import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -37,13 +38,16 @@ TIKA_BASE_URL = os.environ.get("TIKA_BASE_URL", "http://tika:9998").rstrip("/")
 DOCUMENT_EXTRACTOR = os.environ.get("DOCUMENT_EXTRACTOR", "docling").strip().lower()
 DOCLING_ENABLE_TIKA_FALLBACK = os.environ.get("DOCLING_ENABLE_TIKA_FALLBACK", "true").strip().lower() not in {"0", "false", "no"}
 DOCLING_FORCE_FULL_PAGE_OCR = os.environ.get("DOCLING_FORCE_FULL_PAGE_OCR", "false").strip().lower() in {"1", "true", "yes"}
+DOCLING_MIN_TEXT_LENGTH = int(os.environ.get("DOCLING_MIN_TEXT_LENGTH", "1500"))
+DOCLING_MIN_ALPHA_RATIO = float(os.environ.get("DOCLING_MIN_ALPHA_RATIO", "0.55"))
 EXTRACTION_STATUS_EXTRACTED = "extracted"
 EXTRACTION_STATUS_FAILED = "failed"
 
 db_pool: AsyncConnectionPool | None = None
 redis_client: Redis | None = None
 minio_client: Minio | None = None
-converter: DocumentConverter | None = None
+docling_fast_converter: DocumentConverter | None = None
+docling_ocr_converter: DocumentConverter | None = None
 
 
 def postgres_dsn() -> str:
@@ -71,20 +75,44 @@ def get_db_pool() -> AsyncConnectionPool:
     return db_pool
 
 
-def get_converter() -> DocumentConverter:
-    global converter
-    if converter is None:
-        pdf_pipeline_options = PdfPipelineOptions()
-        pdf_pipeline_options.do_ocr = True
+def build_pdf_converter(*, do_ocr: bool) -> DocumentConverter:
+    pdf_pipeline_options = PdfPipelineOptions()
+    pdf_pipeline_options.do_ocr = do_ocr
+    if do_ocr:
         pdf_pipeline_options.ocr_options = TesseractCliOcrOptions(
             force_full_page_ocr=DOCLING_FORCE_FULL_PAGE_OCR,
         )
-        converter = DocumentConverter(
-            format_options={
-                InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
-            }
-        )
-    return converter
+    return DocumentConverter(
+        format_options={
+            InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_pipeline_options),
+        }
+    )
+
+
+def get_fast_converter() -> DocumentConverter:
+    global docling_fast_converter
+    if docling_fast_converter is None:
+        docling_fast_converter = build_pdf_converter(do_ocr=False)
+    return docling_fast_converter
+
+
+def get_ocr_converter() -> DocumentConverter:
+    global docling_ocr_converter
+    if docling_ocr_converter is None:
+        docling_ocr_converter = build_pdf_converter(do_ocr=True)
+    return docling_ocr_converter
+
+
+def is_probably_weak_text(text: str) -> bool:
+    normalized = str(text or "").strip()
+    if len(normalized) < DOCLING_MIN_TEXT_LENGTH:
+        return True
+    visible_chars = [char for char in normalized if not char.isspace()]
+    if not visible_chars:
+        return True
+    alpha_chars = sum(1 for char in visible_chars if char.isalpha())
+    alpha_ratio = alpha_chars / len(visible_chars)
+    return alpha_ratio < DOCLING_MIN_ALPHA_RATIO
 
 
 async def ensure_schema() -> None:
@@ -176,7 +204,8 @@ async def healthz() -> JSONResponse:
         checks["minio"] = f"error: {exc}"
 
     try:
-        get_converter()
+        get_fast_converter()
+        get_ocr_converter()
         checks["docling"] = "ok"
     except Exception as exc:
         checks["docling"] = f"error: {exc}"
@@ -205,9 +234,10 @@ async def extract_text_with_tika(filename: str, content: bytes, content_type: st
     return response.text
 
 
-def extract_text_with_docling(filename: str, content: bytes) -> str:
+def extract_text_with_docling(filename: str, content: bytes, *, use_ocr: bool) -> str:
     source = DocumentStream(name=filename, stream=io.BytesIO(content))
-    result = get_converter().convert(source)
+    converter = get_ocr_converter() if use_ocr else get_fast_converter()
+    result = converter.convert(source)
     markdown = result.document.export_to_markdown()
     extracted_text = str(markdown or "").strip()
     if not extracted_text:
@@ -221,11 +251,80 @@ async def extract_text(filename: str, content: bytes, content_type: str | None) 
         return await extract_text_with_tika(filename, content, content_type), "tika"
 
     try:
-        return extract_text_with_docling(filename, content), "docling"
+        suffix = Path(filename).suffix.lower()
+        if suffix == ".pdf":
+            started = time.perf_counter()
+            fast_text = extract_text_with_docling(filename, content, use_ocr=False)
+            fast_elapsed = round(time.perf_counter() - started, 2)
+            if not is_probably_weak_text(fast_text):
+                print(
+                    json.dumps(
+                        {
+                            "event": "document.extract",
+                            "filename": filename,
+                            "extractor": "docling_fast",
+                            "elapsed_seconds": fast_elapsed,
+                            "chars": len(fast_text),
+                        }
+                    ),
+                    flush=True,
+                )
+                return fast_text, "docling_fast"
+
+            started = time.perf_counter()
+            ocr_text = extract_text_with_docling(filename, content, use_ocr=True)
+            ocr_elapsed = round(time.perf_counter() - started, 2)
+            print(
+                json.dumps(
+                    {
+                        "event": "document.extract",
+                        "filename": filename,
+                        "extractor": "docling_ocr",
+                        "elapsed_seconds": ocr_elapsed,
+                        "chars": len(ocr_text),
+                        "fallback_from": "docling_fast",
+                        "fast_chars": len(fast_text),
+                    }
+                ),
+                flush=True,
+            )
+            return ocr_text, "docling_ocr"
+
+        started = time.perf_counter()
+        text = extract_text_with_docling(filename, content, use_ocr=False)
+        elapsed = round(time.perf_counter() - started, 2)
+        print(
+            json.dumps(
+                {
+                    "event": "document.extract",
+                    "filename": filename,
+                    "extractor": "docling",
+                    "elapsed_seconds": elapsed,
+                    "chars": len(text),
+                }
+            ),
+            flush=True,
+        )
+        return text, "docling"
     except Exception:
         if not DOCLING_ENABLE_TIKA_FALLBACK:
             raise
-        return await extract_text_with_tika(filename, content, content_type), "tika_fallback"
+        started = time.perf_counter()
+        text = await extract_text_with_tika(filename, content, content_type)
+        elapsed = round(time.perf_counter() - started, 2)
+        print(
+            json.dumps(
+                {
+                    "event": "document.extract",
+                    "filename": filename,
+                    "extractor": "tika_fallback",
+                    "elapsed_seconds": elapsed,
+                    "chars": len(text),
+                }
+            ),
+            flush=True,
+        )
+        return text, "tika_fallback"
 
 
 async def insert_document(

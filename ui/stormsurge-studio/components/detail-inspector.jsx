@@ -7,7 +7,6 @@ import AddRounded from "@mui/icons-material/AddRounded";
 import CloseRounded from "@mui/icons-material/CloseRounded";
 import EditNoteRounded from "@mui/icons-material/EditNoteRounded";
 import DeleteOutlineRounded from "@mui/icons-material/DeleteOutlineRounded";
-import AccountTreeRounded from "@mui/icons-material/AccountTreeRounded";
 import SearchRounded from "@mui/icons-material/SearchRounded";
 import {
   Box,
@@ -25,12 +24,11 @@ import {
 } from "@mui/material";
 import { RichTextContent } from "@/components/rich-text-content";
 
-const INSPECTOR_TABS = ["STORM", "Edit", "Search", "AI Helper", "Structure"];
+const INSPECTOR_TABS = ["STORM", "Edit", "Search", "AI Helper"];
 const INSPECTOR_TAB_ACCENTS = {
   Edit: "#f78166",
   Search: "#58a6ff",
   "AI Helper": "#3fb950",
-  Structure: "#d29922",
   STORM: "#2ef2ff",
 };
 const INSPECTOR_TAB_ICONS = {
@@ -38,7 +36,6 @@ const INSPECTOR_TAB_ICONS = {
   Edit: EditNoteRounded,
   Search: SearchRounded,
   "AI Helper": AutoAwesomeRounded,
-  Structure: AccountTreeRounded,
 };
 const GITHUB_BASE = "var(--studio-base)";
 const GITHUB_SURFACE = "var(--studio-surface)";
@@ -92,7 +89,7 @@ export function DetailInspector({
   });
   const theme = useTheme();
   const isLightMode = theme.palette.mode === "light";
-  const railSurface = isLightMode ? "#6a7986" : GITHUB_BASE;
+  const railSurface = isLightMode ? "#62717e" : GITHUB_BASE;
   const panelSurface = isLightMode ? "#3b4955" : "transparent";
   const panelSurfaceSoft = isLightMode ? "#3b4955" : "transparent";
   const panelSurfaceHover = isLightMode ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.04)";
@@ -554,7 +551,7 @@ export function DetailInspector({
           scrollButtons={false}
           allowScrollButtonsMobile
           sx={{
-            minHeight: 40,
+            minHeight: 44,
             borderBottom: 0,
             bgcolor: inspectorHeaderBg,
             "& .MuiTabs-flexContainer": {
@@ -564,7 +561,7 @@ export function DetailInspector({
               overflowX: "auto !important",
             },
             "& .MuiTab-root": {
-              minHeight: 40,
+              minHeight: 44,
               minWidth: "fit-content",
               px: 0.2,
               py: 0,
@@ -1171,52 +1168,19 @@ export function DetailInspector({
                   >
                     Clear chat
                   </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    component="a"
+                    href={typeof window === "undefined" ? "http://127.0.0.1:3100" : `${window.location.protocol}//${window.location.hostname}:3100`}
+                    target="_blank"
+                    rel="noreferrer"
+                    sx={secondaryButtonSx}
+                  >
+                    OpenWebUI
+                  </Button>
                 </Stack>
               </Stack>
-            </Stack>
-          ) : null}
-
-          {activeTab === "Structure" ? (
-            <Stack spacing={1.5}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                Hierarchy Controls
-              </Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Button size="small" variant="outlined" onClick={onPromoteRequirement}>
-                  Promote
-                </Button>
-                <Button size="small" variant="outlined" onClick={onDemoteRequirement}>
-                  Demote
-                </Button>
-                <Button size="small" variant="outlined" onClick={() => onMoveRequirement("up")}>
-                  Move up
-                </Button>
-                <Button size="small" variant="outlined" onClick={() => onMoveRequirement("down")}>
-                  Move down
-                </Button>
-              </Stack>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={onExpandAllRequirements}
-                  disabled={!hasCollapsibleRequirements}
-                >
-                  Expand all
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={onCollapseAllRequirements}
-                  disabled={!hasCollapsibleRequirements}
-                >
-                  Collapse all
-                </Button>
-              </Stack>
-              <Typography variant="body2" sx={{ color: inspectorMutedText }}>
-                Use these controls to reorganize the selected requirement within the current
-                hierarchy.
-              </Typography>
             </Stack>
           ) : null}
 

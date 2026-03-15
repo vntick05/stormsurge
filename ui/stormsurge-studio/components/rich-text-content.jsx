@@ -32,6 +32,18 @@ function parseTableRow(line) {
     .map((cell) => cell.trim());
 }
 
+function parseMarkdownHeading(line) {
+  const match = String(line || "").match(/^\s*(#{1,6})\s+(.+?)\s*$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    level: match[1].length,
+    text: stripInlineMarkdown(match[2]),
+  };
+}
+
 function parseBlocks(text) {
   const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
   const blocks = [];
@@ -67,6 +79,13 @@ function parseBlocks(text) {
         index += 1;
       }
       blocks.push({ type: "list", items });
+      continue;
+    }
+
+    const heading = parseMarkdownHeading(line);
+    if (heading) {
+      blocks.push({ type: "heading", ...heading });
+      index += 1;
       continue;
     }
 
@@ -179,6 +198,23 @@ export function RichTextContent({ content, dense = false }) {
                 </Box>
               ))}
             </Box>
+          );
+        }
+
+        if (block.type === "heading") {
+          return (
+            <Typography
+              key={`heading-${blockIndex}`}
+              variant={block.level <= 2 ? "subtitle1" : "body1"}
+              sx={{
+                fontWeight: 700,
+                lineHeight: 1.3,
+                color: "inherit",
+                mt: dense ? 0.1 : 0.25,
+              }}
+            >
+              {block.text}
+            </Typography>
           );
         }
 

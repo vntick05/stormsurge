@@ -109,7 +109,7 @@ services:
       minio-init:
         condition: service_completed_successfully
     environment:
-      DOCUMENT_SERVICE_PORT: ${DOCUMENT_SERVICE_PORT:-8181}
+      DOCUMENT_SERVICE_PORT: 8081
       POSTGRES_HOST: ${DOCUMENT_SERVICE_POSTGRES_HOST:-postgres}
       POSTGRES_PORT: ${DOCUMENT_SERVICE_POSTGRES_PORT:-5432}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -125,7 +125,7 @@ services:
     ports:
       - "${DOCUMENT_SERVICE_PORT:-8181}:8081"
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8181/healthz', timeout=5)\""]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/healthz', timeout=5)\""]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -194,7 +194,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       QDRANT_URL: ${RETRIEVAL_QDRANT_URL:-http://qdrant:6333}
       QDRANT_COLLECTION: ${RETRIEVAL_QDRANT_COLLECTION:-stormsurge_chunks_structured}
-      DOCUMENT_SERVICE_BASE_URL: ${RETRIEVAL_DOCUMENT_SERVICE_BASE_URL:-http://document-service:8181}
+      DOCUMENT_SERVICE_BASE_URL: ${RETRIEVAL_DOCUMENT_SERVICE_BASE_URL:-http://document-service:8081}
       NORMALIZATION_SERVICE_BASE_URL: ${RETRIEVAL_NORMALIZATION_SERVICE_BASE_URL:-http://normalization-service:8091}
       DEFAULT_DATA_ROOT: ${RETRIEVAL_DEFAULT_DATA_ROOT:-/opt/perfect-rfp/data/rfps}
       EMBEDDING_PROVIDER: ${RETRIEVAL_EMBEDDING_PROVIDER:-fastembed}

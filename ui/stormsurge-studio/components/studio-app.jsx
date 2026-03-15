@@ -5,7 +5,6 @@ import ChevronLeftRounded from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRounded from "@mui/icons-material/ChevronRightRounded";
 import CloseRounded from "@mui/icons-material/CloseRounded";
 import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
-import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
 import CloudUploadRounded from "@mui/icons-material/CloudUploadRounded";
 import DarkModeRounded from "@mui/icons-material/DarkModeRounded";
 import HomeRounded from "@mui/icons-material/HomeRounded";
@@ -399,16 +398,17 @@ function RailShell({
   collapsed,
   onToggleCollapsed,
   onResizeStart,
+  hideHeader = false,
   sx,
   children,
 }) {
   const theme = useTheme();
   const isLeft = side === "left";
   const isLightMode = theme.palette.mode === "light";
-  const rightRailBg = isLightMode ? "#6a7986" : CHROME_BG;
+  const rightRailBg = isLightMode ? "#62717e" : CHROME_BG;
   const leftRailBg = isLightMode ? "#24303a" : CHROME_BG;
   const rightRailBorder = isLightMode ? "rgba(82, 90, 100, 0.2)" : GITHUB_BORDER;
-  const rightRailHeaderBg = isLightMode ? "#101821" : "transparent";
+  const railHeaderBg = isLightMode ? "#0c1219" : "transparent";
   const rightRailText = isLightMode ? "#f5f7fa" : CHROME_TEXT;
 
   return (
@@ -446,62 +446,65 @@ function RailShell({
         ...sx,
       }}
     >
-      <Box
-        sx={{
-          px: isLeft ? 1.4 : 1.75,
-          py: 0.9,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexDirection: "row",
-          gap: 0.55,
-          flexShrink: 0,
-          borderBottom: 0,
-          background: isLeft ? "transparent" : rightRailHeaderBg,
-          minHeight: collapsed ? 0 : 44,
-          position: "relative",
-          zIndex: 3,
-        }}
-      >
-        {collapsed ? null : title ? (
-          <Typography
-            variant="subtitle1"
-            sx={{
-              position: "static",
-              left: "auto",
-              transform: "none",
-              color: !isLeft ? rightRailText : CHROME_TEXT,
-              fontWeight: 400,
-              fontSize: "1rem",
-              letterSpacing: -0.01,
-              lineHeight: 1.1,
-              textAlign: "left",
-              pointerEvents: "auto",
-              whiteSpace: "nowrap",
-              order: 1,
-              ml: isLeft ? 0 : 1.45,
-              flexGrow: 1,
-            }}
-          >
-            {title}
-          </Typography>
-        ) : null}
-        <Tooltip title={collapsed ? `Expand ${title}` : `Collapse ${title}`}>
-          <IconButton
-            onClick={onToggleCollapsed}
-            size="small"
-            sx={{ order: 2, color: !isLeft ? rightRailText : "#ffffff" }}
-          >
-            {isLeft ? (
-              collapsed ? <ChevronRightRounded /> : <ChevronLeftRounded />
-            ) : collapsed ? (
-              <ChevronLeftRounded />
-            ) : (
-              <ChevronRightRounded />
-            )}
-          </IconButton>
-        </Tooltip>
-      </Box>
+      {hideHeader ? null : (
+        <Box
+          sx={{
+            px: isLeft ? 1.4 : 1.75,
+            py: isLeft ? 0.65 : 0.9,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexDirection: "row",
+            gap: 0.55,
+            flexShrink: 0,
+            borderBottom: 0,
+            background: "none",
+            backgroundColor: railHeaderBg,
+            minHeight: collapsed ? 0 : isLeft ? 38 : 44,
+            position: "relative",
+            zIndex: 3,
+          }}
+        >
+          {collapsed ? null : title ? (
+            <Typography
+              variant="subtitle1"
+              sx={{
+                position: "static",
+                left: "auto",
+                transform: "none",
+                color: !isLeft ? rightRailText : CHROME_TEXT,
+                fontWeight: 400,
+                fontSize: "1rem",
+                letterSpacing: -0.01,
+                lineHeight: 1.1,
+                textAlign: "left",
+                pointerEvents: "auto",
+                whiteSpace: "nowrap",
+                order: 1,
+                ml: isLeft ? 0 : 1.45,
+                flexGrow: 1,
+              }}
+            >
+              {title}
+            </Typography>
+          ) : null}
+          <Tooltip title={collapsed ? `Expand ${title}` : `Collapse ${title}`}>
+            <IconButton
+              onClick={onToggleCollapsed}
+              size="small"
+              sx={{ order: 2, color: !isLeft ? rightRailText : "#ffffff" }}
+            >
+              {isLeft ? (
+                collapsed ? <ChevronRightRounded /> : <ChevronLeftRounded />
+              ) : collapsed ? (
+                <ChevronLeftRounded />
+              ) : (
+                <ChevronRightRounded />
+              )}
+            </IconButton>
+          </Tooltip>
+        </Box>
+      )}
 
       {collapsed ? (
         <Box
@@ -509,14 +512,31 @@ function RailShell({
             px: 0.35,
             py: 0.6,
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
-            justifyContent: "center",
+            justifyContent: "flex-start",
+            gap: 0.5,
             overflowY: "auto",
             minHeight: 0,
             ...subtleScrollbarSx,
             overscrollBehavior: "contain",
           }}
         >
+          <Tooltip title={collapsed ? `Expand ${title || "tools"}` : `Collapse ${title || "tools"}`}>
+            <IconButton
+              onClick={onToggleCollapsed}
+              size="small"
+              sx={{
+                color: !isLeft ? rightRailText : "#ffffff",
+                bgcolor: !isLeft ? "rgba(255,255,255,0.08)" : "transparent",
+                "&:hover": {
+                  bgcolor: !isLeft ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.08)",
+                },
+              }}
+            >
+              {isLeft ? <ChevronRightRounded /> : <ChevronLeftRounded />}
+            </IconButton>
+          </Tooltip>
           <Typography
             variant="overline"
             color="text.secondary"
@@ -529,7 +549,7 @@ function RailShell({
               whiteSpace: "nowrap",
             }}
           >
-            {isLeft ? "Section Titles" : "REQ"}
+            {isLeft ? "Sections" : "REQ"}
           </Typography>
         </Box>
       ) : (
@@ -992,6 +1012,7 @@ function StormWorkspaceBar({
   activeSection,
   activeSectionRequirementCount,
   hideCollapseToggle = false,
+  onToggleCollapsed,
   definitionPanels,
   definitionPrompts,
 }) {
@@ -1015,8 +1036,8 @@ function StormWorkspaceBar({
   const tabChromeBg = "transparent";
   const activeTabText = isLightMode ? "#ffffff" : panelText;
   const selectedTabBg = isLightMode ? "#58a6ff" : "#141a21";
-  const inactiveTabText = isLightMode ? "#eef3f7" : panelMutedText;
-  const inactiveTabBg = isLightMode ? "#455461" : "rgba(255,255,255,0.03)";
+  const inactiveTabText = isLightMode ? "#f6f9fc" : panelMutedText;
+  const inactiveTabBg = isLightMode ? "#556572" : "rgba(255,255,255,0.03)";
   const riskEntries = useMemo(
     () => (activeTab === "Risks" ? parseRiskRegister(notesByTab.Risks) : []),
     [activeTab, notesByTab.Risks],
@@ -1165,8 +1186,8 @@ function StormWorkspaceBar({
             alignItems="center"
             sx={{
               position: "relative",
-              px: 3.75,
-              py: 0.9,
+              px: 2.9,
+              py: 1.1,
               width: "100%",
               justifyContent: "flex-start",
             }}
@@ -1194,19 +1215,19 @@ function StormWorkspaceBar({
                     sx={{
                       position: "relative",
                       flex: "1 1 0",
-                      minHeight: 52,
+                      minHeight: 58,
                       minWidth: 0,
                       px: 1.05,
-                      py: 0.72,
+                      py: 0.85,
                       mb: 0,
                       borderRadius: 0.5,
                       color: selected ? activeTabText : inactiveTabText,
                       bgcolor: selected ? selectedTabBg : inactiveTabBg,
                       border: "0 solid transparent",
                       boxShadow: "none",
-                      fontSize: "0.82rem",
+                      fontSize: "0.92rem",
                       lineHeight: 1.1,
-                      fontWeight: 500,
+                      fontWeight: 600,
                       justifyContent: "center",
                       textAlign: "center",
                       textTransform: "none",
@@ -1215,7 +1236,7 @@ function StormWorkspaceBar({
                         bgcolor: selected
                           ? activeTabSurface
                           : isLightMode
-                            ? "#c8e2fa"
+                            ? "#667784"
                             : "rgba(255,255,255,0.07)",
                         color: selected ? activeTabText : inactiveTabText,
                       },
@@ -1226,40 +1247,24 @@ function StormWorkspaceBar({
                       sx={{
                         display: "inline-flex",
                         alignItems: "center",
-                        gap: 0.55,
+                        gap: 0.68,
                         justifyContent: "center",
                         width: "100%",
                       }}
                     >
-                      <TabIcon sx={{ fontSize: 14, color: "inherit", flexShrink: 0 }} />
+                      <TabIcon sx={{ fontSize: 17, color: "inherit", flexShrink: 0 }} />
                       <Box component="span">{label}</Box>
                     </Box>
                   </Button>
                 );
               })}
             </Box>
-            {hideCollapseToggle ? null : (
-              <Tooltip title="Section Solution">
-                <IconButton
-                  size="small"
-                  disabled
-                  sx={{
-                    position: "absolute",
-                    right: 3.75,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                  }}
-                >
-                  <ExpandMoreRounded />
-                </IconButton>
-              </Tooltip>
-            )}
           </Stack>
         </Stack>
       </Box>
       <Box
         sx={{
-          pt: 1.35,
+          pt: 0.1,
           pb: 2.2,
           pl: 0,
           pr: 0,
@@ -1274,23 +1279,14 @@ function StormWorkspaceBar({
           ...subtleScrollbarSx,
         }}
       >
-        <Stack spacing={1.5} sx={{ flex: 1, minHeight: 0 }}>
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={1.5}
-            alignItems={{ xs: "flex-start", md: "center" }}
-            justifyContent="space-between"
-            sx={{ px: 1.45 }}
-          >
-            <Box />
-          </Stack>
+        <Stack spacing={0.7} sx={{ flex: 1, minHeight: 0 }}>
           {generationState.error ? (
-            <Box sx={{ px: 1.45 }}>
+            <Box sx={{ px: 1.8 }}>
               <Alert severity="error">{generationState.error}</Alert>
             </Box>
           ) : null}
           {showStandaloneToolbar ? (
-            <Box sx={{ px: 3.75, mb: activeTab === "Risks" ? 0 : -1.5 }}>
+            <Box sx={{ px: 2.9, mb: activeTab === "Risks" ? 0 : -1.65 }}>
               <Box
                 sx={{
                   display: "flex",
@@ -1468,6 +1464,26 @@ function StormWorkspaceBar({
                         Add Exceeds Element
                       </Button>
                     ) : null}
+                    {hideCollapseToggle || !onToggleCollapsed ? null : (
+                      <Tooltip title="Collapse Tools">
+                        <IconButton
+                          size="small"
+                          onClick={onToggleCollapsed}
+                          sx={{
+                            ml: 0.25,
+                            width: 28,
+                            height: 28,
+                            color: panelText,
+                            bgcolor: "rgba(255,255,255,0.08)",
+                            "&:hover": {
+                              bgcolor: "rgba(255,255,255,0.14)",
+                            },
+                          }}
+                        >
+                          <ChevronRightRounded sx={{ fontSize: 18 }} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                   </Stack>
                 </Stack>
               </Box>
@@ -1475,7 +1491,7 @@ function StormWorkspaceBar({
           ) : null}
           <Box
             sx={{
-              px: 3.75,
+              px: 2.9,
               flex: 1,
               minHeight: 0,
               display: "flex",
@@ -1494,7 +1510,7 @@ function StormWorkspaceBar({
                   const panelValue = definitionPanels?.[panel.id] || "";
                   const panelFlex = panel.id === "definition_1" ? 0.72 : 1.28;
                   return (
-                    <Stack key={panel.id} spacing={0.9} sx={{ flex: panelFlex, minHeight: 0 }}>
+                    <Stack key={panel.id} spacing={1.05} sx={{ flex: panelFlex, minHeight: 0 }}>
                       <Box
                         sx={{
                           display: "flex",
@@ -2489,7 +2505,7 @@ export function StudioApp() {
   }, [mounted, savedProjects]);
 
   const leftRailDisplayWidth = leftRailCollapsed ? RAIL_COLLAPSED_WIDTH : leftRailWidth;
-  const rightRailDisplayWidth = rightRailCollapsed ? RAIL_COLLAPSED_WIDTH : rightRailWidth;
+  const rightRailDisplayWidth = rightRailWidth;
   const sectionTabSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
@@ -3983,7 +3999,7 @@ export function StudioApp() {
         {!isHomeScreen ? (
           <RailShell
             side="left"
-            title="Section Titles"
+            title="Sections"
             subtitle=""
             width={leftRailDisplayWidth}
             collapsed={leftRailCollapsed}
@@ -4255,12 +4271,13 @@ export function StudioApp() {
         {!isHomeScreen ? (
           <RailShell
             side="right"
-            title="Requirement Tools"
+            title=""
             subtitle=""
             width={rightRailDisplayWidth}
-            collapsed={rightRailCollapsed}
-            onToggleCollapsed={() => setRightRailCollapsed((current) => !current)}
+            collapsed={false}
+            onToggleCollapsed={() => {}}
             onResizeStart={startRailResize("right")}
+            hideHeader
             sx={{
               order: 3,
               "@media (max-width: 1600px)": {

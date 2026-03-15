@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 const documentServiceUrl =
-  process.env.DOCUMENT_SERVICE_URL || "http://document-service:8181";
+  process.env.DOCUMENT_SERVICE_URL || "http://document-service:8081";
 const normalizationServiceUrl =
   process.env.NORMALIZATION_SERVICE_URL || "http://normalization-service:8091";
 const retrievalServiceUrl =

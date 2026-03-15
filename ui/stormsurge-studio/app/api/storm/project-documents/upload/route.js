@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 const documentServiceUrl =
-  process.env.DOCUMENT_SERVICE_URL || "http://document-service:8181";
+  process.env.DOCUMENT_SERVICE_URL || "http://document-service:8081";
 
 export async function POST(request) {
   const formData = await request.formData();
