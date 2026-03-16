@@ -50,13 +50,14 @@ function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSe
     >
       <MainCard
         contentSX={{
-          px: 1.75,
-          py: 0.8,
+          pl: 1.1,
+          pr: 1.75,
+          py: 'calc(0.8rem + 0.25px)',
           minHeight: 46,
           display: 'flex',
           alignItems: 'center',
           '&:last-child': {
-            pb: 0.8
+            pb: 'calc(0.8rem + 0.25px)'
           }
         }}
         onClick={onSelect}
@@ -75,7 +76,7 @@ function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSe
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 1,
+            gap: 0.65,
             width: '100%',
             minHeight: 28,
             alignSelf: 'center'
@@ -87,7 +88,7 @@ function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSe
               alignItems: 'center',
               justifyContent: 'center',
               color: isSelected ? 'primary.main' : 'text.disabled',
-              width: 18,
+              width: 16,
               flexShrink: 0,
               alignSelf: 'center'
             }}
@@ -96,16 +97,21 @@ function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSe
           </Box>
           <Typography
             variant="body1"
+            component="div"
             sx={{
               fontFamily: "'Visuelt Pro Light', sans-serif",
-              display: 'inline-flex',
+              display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               textTransform: 'uppercase',
               letterSpacing: '0.04em',
               color: 'text.secondary',
               flexShrink: 0,
-              lineHeight: 1,
-              alignSelf: 'center'
+              height: 20,
+              lineHeight: '20px',
+              alignSelf: 'center',
+              mr: 0.8,
+              transform: 'translateY(1.5px)'
             }}
           >
             {formatRequirementLabel(requirement)}
@@ -119,7 +125,8 @@ function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSe
               color: 'text.primary',
               lineHeight: 1,
               minWidth: 0,
-              alignSelf: 'center'
+              alignSelf: 'center',
+              transform: 'translateY(1px)'
             }}
           >
             {formatRequirementBody(requirement)}
