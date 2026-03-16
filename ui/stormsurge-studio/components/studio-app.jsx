@@ -1331,98 +1331,6 @@ function renderRequirementHtml(title, value) {
   ].join("");
 }
 
-function splitStructuredLine(line) {
-  const trimmed = String(line || "").trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const separators = [" - ", ": ", " -- ", " | "];
-  for (const separator of separators) {
-    const index = trimmed.indexOf(separator);
-    if (index > 0) {
-      return {
-        title: trimmed.slice(0, index).trim(),
-        description: trimmed.slice(index + separator.length).trim(),
-      };
-    }
-  }
-
-  return {
-    title: trimmed,
-    description: "",
-  };
-}
-
-function buildDependenciesTableRows(value) {
-  const normalizedValue = richTextToPlainText(value);
-  return String(normalizedValue || "")
-    .split("\n")
-    .map((line) => splitStructuredLine(line))
-    .filter(Boolean);
-}
-
-function buildSolutionTableRows(value) {
-  const trimmed = richTextToPlainText(value).trim();
-  if (!trimmed) {
-    return [];
-  }
-
-  const paragraphs = trimmed.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean);
-  if (paragraphs.length > 1) {
-    return paragraphs.map((paragraph, index) => {
-      const structured = splitStructuredLine(paragraph);
-      if (structured?.description) {
-        return structured;
-      }
-      return {
-        title: `Solution Element ${index + 1}`,
-        description: paragraph,
-      };
-    });
-  }
-
-  const sentences = trimmed
-    .split(/(?<=[.!?])\s+/)
-    .map((sentence) => sentence.trim())
-    .filter(Boolean);
-
-  return sentences.map((sentence, index) => {
-    const structured = splitStructuredLine(sentence);
-    if (structured?.description) {
-      return structured;
-    }
-    return {
-      title: `Solution Element ${index + 1}`,
-      description: sentence,
-    };
-  });
-}
-
-function renderSimpleTableHtml(headers, rows) {
-  if (!rows.length) {
-    return "<p><em>No content.</em></p>";
-  }
-
-  return `
-    <table>
-      <thead>
-        <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
-      </thead>
-      <tbody>
-        ${rows
-          .map(
-            (row) =>
-              `<tr>${row
-                .map((cell) => `<td>${escapeHtml(cell || "").replaceAll("\n", "<br />") || "&nbsp;"}</td>`)
-                .join("")}</tr>`,
-          )
-          .join("")}
-      </tbody>
-    </table>
-  `;
-}
-
 function slugifyExportName(value) {
   const slug = String(value || "")
     .trim()
@@ -1464,15 +1372,6 @@ function buildSectionExportHtml({
         })
         .join("")
     : "<p><em>No requirements in this section.</em></p>";
-
-  const dependenciesHtml = renderSimpleTableHtml(
-    ["Reference Document", "Description"],
-    buildDependenciesTableRows(dependenciesText).map((entry) => [entry.title, entry.description]),
-  );
-  const solutionHtml = renderSimpleTableHtml(
-    ["Solution Title", "Solution Description"],
-    buildSolutionTableRows(solutionText).map((entry) => [entry.title, entry.description]),
-  );
 
   const exceedsHtml = exceedsEntries.length
     ? `<ul>${exceedsEntries
@@ -1528,11 +1427,11 @@ function buildSectionExportHtml({
       ${requirementsHtml}
       <h2>MTS Definition</h2>
       <h3>Dependencies</h3>
-      ${dependenciesHtml}
+      ${renderStoredRichTextHtml(dependenciesText)}
       <h3>MTS Definition</h3>
       ${renderStoredRichTextHtml(mtsDefinitionText)}
       <h2>MTS Solution</h2>
-      ${solutionHtml}
+      ${renderStoredRichTextHtml(solutionText)}
       <h2>Exceeds MTS</h2>
       ${exceedsHtml}
       <h2>Risks</h2>
