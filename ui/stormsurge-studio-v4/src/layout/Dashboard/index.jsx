@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -10,16 +10,19 @@ import Drawer from './Drawer';
 import BlankRightPanel from './BlankRightPanel';
 import Header from './Header';
 import Footer from './Footer';
+import MiddleToolbar from './MiddleToolbar';
 import Loader from 'components/Loader';
 import Breadcrumbs from 'components/@extended/Breadcrumbs';
 
 import { handlerDrawerOpen, useGetMenuMaster } from 'api/menu';
+import { RIGHT_PANEL_DEFAULT_WIDTH } from 'config';
 
 // ==============================|| MAIN LAYOUT ||============================== //
 
 export default function DashboardLayout() {
   const { menuMasterLoading } = useGetMenuMaster();
   const downXL = useMediaQuery((theme) => theme.breakpoints.down('xl'));
+  const [rightPanelWidth, setRightPanelWidth] = useState(RIGHT_PANEL_DEFAULT_WIDTH);
 
   // set media wise responsive drawer
   useEffect(() => {
@@ -37,9 +40,9 @@ export default function DashboardLayout() {
         <Toolbar
           sx={{
             mt: 'inherit',
-            minHeight: { xs: 46, sm: 46 },
+            minHeight: { xs: 42, sm: 42 },
             '&.MuiToolbar-root': {
-              minHeight: { xs: 46, sm: 46 }
+              minHeight: { xs: 42, sm: 42 }
             }
           }}
         />
@@ -53,9 +56,12 @@ export default function DashboardLayout() {
               minWidth: 0
             }}
           >
+            <MiddleToolbar rightOffset={rightPanelWidth} />
             <Box
               sx={{
-                p: { xs: 2, sm: 3 },
+                px: { xs: 2, sm: 3 },
+                pt: { xs: 'calc(0.5rem + 42px)', sm: 'calc(0.75rem + 42px)' },
+                pb: { xs: 2, sm: 3 },
                 position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
@@ -68,7 +74,7 @@ export default function DashboardLayout() {
               <Footer />
             </Box>
           </Box>
-          <BlankRightPanel />
+          <BlankRightPanel onWidthChange={setRightPanelWidth} />
         </Box>
       </Box>
     </Box>

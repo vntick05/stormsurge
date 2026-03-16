@@ -78,10 +78,14 @@ function convertContentNode(node, sectionId, parentId, position, bucket) {
       text,
       marker: node.marker || '-'
     });
+
+    (node.children || []).forEach((child, index) => {
+      convertContentNode(child, sectionId, bulletId, index + 1, bucket);
+    });
   }
 }
 
-function collectSection(sectionNode, parentId, depth, sectionsBucket, requirementsBucket) {
+function collectSection(sectionNode, parentId, depth, position, sectionsBucket, requirementsBucket) {
   const sectionId = makeSectionId(sectionNode);
 
   sectionsBucket.push({
@@ -90,14 +94,17 @@ function collectSection(sectionNode, parentId, depth, sectionsBucket, requiremen
     shortLabel: sectionNode.section_number || `S${sectionsBucket.length + 1}`,
     sectionNumber: sectionNode.section_number || null,
     parentId,
-    depth
+    depth,
+    position
   });
 
   let contentPosition = 1;
+  let childSectionPosition = 1;
 
   (sectionNode.children || []).forEach((child) => {
     if (child.section_number) {
-      collectSection(child, sectionId, depth + 1, sectionsBucket, requirementsBucket);
+      collectSection(child, sectionId, depth + 1, childSectionPosition, sectionsBucket, requirementsBucket);
+      childSectionPosition += 1;
       return;
     }
 
@@ -112,7 +119,7 @@ export function transformOutlineToWorkspace(payload) {
   const requirements = [];
 
   rootSections.forEach((sectionNode) => {
-    collectSection(sectionNode, null, 0, sections, requirements);
+    collectSection(sectionNode, null, 0, sections.length + 1, sections, requirements);
   });
 
   return {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import PropTypes from 'prop-types';
 
 import Box from '@mui/material/Box';
 import IconButton from 'components/@extended/IconButton';
@@ -8,11 +9,15 @@ import MenuUnfoldOutlined from '@ant-design/icons/MenuUnfoldOutlined';
 
 import { RIGHT_PANEL_DEFAULT_WIDTH, RIGHT_PANEL_MAX_WIDTH, RIGHT_PANEL_MIN_WIDTH } from 'config';
 
-export default function BlankRightPanel() {
+export default function BlankRightPanel({ onWidthChange }) {
   const [width, setWidth] = useState(RIGHT_PANEL_DEFAULT_WIDTH);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const previousExpandedWidth = useRef(RIGHT_PANEL_DEFAULT_WIDTH);
+
+  useEffect(() => {
+    onWidthChange?.(width);
+  }, [onWidthChange, width]);
 
   useEffect(() => {
     if (!isResizing) return undefined;
@@ -61,14 +66,17 @@ export default function BlankRightPanel() {
   return (
     <Box
       sx={(theme) => ({
-        position: 'relative',
+        position: 'sticky',
+        top: 42,
+        alignSelf: 'flex-start',
         flexShrink: 0,
         width,
         minWidth: width,
         bgcolor: 'background.paper',
         borderLeft: '1px solid',
         borderColor: 'divider',
-        minHeight: 'calc(100vh - 92px)',
+        height: 'calc(100vh - 42px)',
+        minHeight: 'calc(100vh - 42px)',
         transition: isResizing ? 'none' : theme.transitions.create('width', {
           easing: theme.transitions.easing.sharp,
           duration: theme.transitions.duration.shorter
@@ -94,7 +102,7 @@ export default function BlankRightPanel() {
           display: 'flex',
           justifyContent: isCollapsed ? 'center' : 'flex-end',
           alignItems: 'center',
-          minHeight: 46,
+          minHeight: 42,
           px: 0.5
         }}
       >
@@ -112,3 +120,7 @@ export default function BlankRightPanel() {
     </Box>
   );
 }
+
+BlankRightPanel.propTypes = {
+  onWidthChange: PropTypes.func
+};

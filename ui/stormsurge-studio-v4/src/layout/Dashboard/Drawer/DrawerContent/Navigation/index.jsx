@@ -17,7 +17,7 @@ function WorkspaceNavigation() {
   return (
     <List sx={{ pt: 2, pb: 0 }}>
       <Box sx={{ pl: 3, mb: 1.5 }}>
-        <Typography variant="subtitle2" sx={{ color: 'rgba(245, 247, 250, 0.72)' }}>
+        <Typography variant="subtitle2" sx={{ color: 'rgba(55, 65, 81, 0.72)' }}>
           Sections
         </Typography>
       </Box>
@@ -32,12 +32,12 @@ function WorkspaceNavigation() {
             sx={{
               px: 3,
               py: 1.1,
-              '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.04)' },
+              '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.04)' },
               '&.Mui-selected': {
                 bgcolor: 'transparent',
                 borderRight: '3px solid',
                 borderColor: 'primary.main',
-                '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.04)' }
+                '&:hover': { bgcolor: 'rgba(15, 23, 42, 0.04)' }
               }
             }}
           >
@@ -54,7 +54,7 @@ function WorkspaceNavigation() {
               primary={
                 <Typography
                   sx={{
-                    color: isSelected ? '#ffffff' : 'rgba(237, 242, 247, 0.72)',
+                    color: isSelected ? '#111827' : 'rgba(55, 65, 81, 0.78)',
                     fontSize: '0.875rem',
                     fontWeight: isSelected ? 700 : 500,
                     letterSpacing: '-0.01em'

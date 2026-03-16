@@ -158,6 +158,13 @@ function sanitizeStoredRequirements(requirements) {
   }));
 }
 
+function sanitizeStoredSections(sections) {
+  return (Array.isArray(sections) ? sections : []).map((section, index) => ({
+    ...section,
+    position: section.position || index + 1
+  }));
+}
+
 function loadStoredWorkspace() {
   if (typeof window === 'undefined') {
     return null;
@@ -170,7 +177,7 @@ function loadStoredWorkspace() {
     const parsed = JSON.parse(raw);
     return {
       requirements: sanitizeStoredRequirements(parsed.requirements),
-      sections: Array.isArray(parsed.sections) ? parsed.sections : [],
+      sections: sanitizeStoredSections(parsed.sections),
       selectedRequirementId: parsed.selectedRequirementId || null,
       selectedSectionId: parsed.selectedSectionId || null,
       sourceFilename: parsed.sourceFilename || null
@@ -249,6 +256,50 @@ export function WorkspaceProvider({ children }) {
           ? { ...requirement, position: nextPositions.get(requirement.id) }
           : requirement
       );
+    });
+  };
+
+  const reorderRequirementSiblings = (sectionId, parentId, activeId, targetId) => {
+    if (!sectionId || !activeId || !targetId || activeId === targetId) return;
+
+    setRequirements((currentRequirements) => {
+      const siblingRequirements = currentRequirements
+        .filter((requirement) => requirement.sectionId === sectionId && requirement.parentId === parentId)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+
+      const activeIndex = siblingRequirements.findIndex((requirement) => requirement.id === activeId);
+      const targetIndex = siblingRequirements.findIndex((requirement) => requirement.id === targetId);
+      if (activeIndex === -1 || targetIndex === -1) return currentRequirements;
+
+      const nextSiblings = [...siblingRequirements];
+      const [movedRequirement] = nextSiblings.splice(activeIndex, 1);
+      nextSiblings.splice(targetIndex, 0, movedRequirement);
+
+      const nextPositions = new Map(nextSiblings.map((requirement, index) => [requirement.id, index + 1]));
+      return currentRequirements.map((requirement) =>
+        nextPositions.has(requirement.id) ? { ...requirement, position: nextPositions.get(requirement.id) } : requirement
+      );
+    });
+  };
+
+  const reorderSections = (parentId, activeId, targetId) => {
+    if (!activeId || !targetId || activeId === targetId) return;
+
+    setSections((currentSections) => {
+      const siblingSections = currentSections
+        .filter((section) => section.parentId === parentId)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+
+      const activeIndex = siblingSections.findIndex((section) => section.id === activeId);
+      const targetIndex = siblingSections.findIndex((section) => section.id === targetId);
+      if (activeIndex === -1 || targetIndex === -1) return currentSections;
+
+      const nextSiblings = [...siblingSections];
+      const [movedSection] = nextSiblings.splice(activeIndex, 1);
+      nextSiblings.splice(targetIndex, 0, movedSection);
+
+      const nextPositions = new Map(nextSiblings.map((section, index) => [section.id, index + 1]));
+      return currentSections.map((section) => (nextPositions.has(section.id) ? { ...section, position: nextPositions.get(section.id) } : section));
     });
   };
 
@@ -369,6 +420,12 @@ export function WorkspaceProvider({ children }) {
     setSelectedRequirementId(null);
   };
 
+  const copyRequirement = () => {
+    if (!selectedRequirement) return;
+
+    setRequirementClipboard(buildRequirementClipboard(requirements, selectedRequirement.id));
+  };
+
   const pasteBelowRequirement = () => {
     if (!selectedRequirement || !requirementClipboard) return;
 
@@ -423,6 +480,7 @@ export function WorkspaceProvider({ children }) {
       addChildRequirement,
       addNewRequirement,
       createSection,
+      copyRequirement,
       cutRequirement,
       deleteRequirementItem,
       demoteRequirementItem,
@@ -433,6 +491,8 @@ export function WorkspaceProvider({ children }) {
       pasteAsChildRequirement,
       pasteBelowRequirement,
       promoteRequirementItem,
+      reorderRequirementSiblings,
+      reorderSections,
       reorderSectionRequirements,
       requirements,
       selectedRequirement,
