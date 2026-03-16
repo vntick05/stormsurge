@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
 import ExpandMoreRounded from "@mui/icons-material/ExpandMoreRounded";
-import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
 import {
   Alert,
   Box,
@@ -31,7 +30,7 @@ import { RichTextContent } from "@/components/rich-text-content";
 import { hasTableBlock, parseRichTextBlocks } from "@/lib/rich-text-blocks";
 import { getChildren, getRequirementById, getSectionRoots, resequenceGroup } from "@/lib/studio-graph";
 
-const REQUIREMENT_INDENT_STEP = "18px";
+const REQUIREMENT_INDENT_STEP = "28.125px";
 const REQUIREMENT_MAX_INDENT_LEVELS = 4;
 const REQUIREMENT_ROW_GAP = 1.3;
 const REQUIREMENT_CHILD_BLOCK_GAP = 1.25;
@@ -41,7 +40,7 @@ const GITHUB_PANEL_HOVER = "var(--studio-panel-hover)";
 const GITHUB_PANEL_SELECTED = "var(--studio-panel-selected)";
 const GITHUB_TEXT_MUTED = "var(--studio-text-muted)";
 const GITHUB_FONT_STACK =
-  '-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';
+  "Tahoma, Verdana, Geneva, sans-serif";
 const LIGHT_SHARED_SURFACE = "#edf1f5";
 const LIGHT_SHARED_SURFACE_HOVER = "#e4eaf0";
 const LIGHT_SHARED_SURFACE_SELECTED = "#d5e2ef";
@@ -51,11 +50,17 @@ function formatRequirementMarker(requirement) {
   return (source || requirement.title || "").toUpperCase();
 }
 
+function formatRequirementMarkerDisplay(requirement) {
+  return formatRequirementMarker(requirement).replaceAll(".", ".\u200b");
+}
+
 function getRequirementAccent(requirement) {
   if (requirement.accentColor === "#3fb950") {
     return {
       text: "#3fb950",
       dots: "rgba(63, 185, 80, 0.95)",
+      softBg: "#e7f6ec",
+      selectedBg: "#d6efdf",
     };
   }
 
@@ -63,12 +68,25 @@ function getRequirementAccent(requirement) {
     return {
       text: "#c678dd",
       dots: "rgba(198, 120, 221, 0.95)",
+      softBg: "#f3e7f9",
+      selectedBg: "#ead8f4",
+    };
+  }
+
+  if (requirement.accentColor === "#d97706" || requirement.accentColor === "#f59e0b") {
+    return {
+      text: "#d97706",
+      dots: "rgba(217, 119, 6, 0.95)",
+      softBg: "#fff1df",
+      selectedBg: "#fde3c2",
     };
   }
 
   return {
     text: "#5f8dff",
     dots: "rgba(95, 141, 255, 0.95)",
+    softBg: "#e8f0ff",
+    selectedBg: "#dbe7ff",
   };
 }
 
@@ -82,6 +100,7 @@ function RequirementCard({
   dragHandleProps,
   setNodeRef,
   style,
+  depth = 0,
   children,
 }) {
   const accent = getRequirementAccent(requirement);
@@ -115,6 +134,7 @@ function RequirementCard({
   const requirementSurfaceSelected = isLightMode
     ? LIGHT_SHARED_SURFACE_SELECTED
     : GITHUB_PANEL_SELECTED;
+  const markerFontSize = depth <= 0 ? "0.86rem" : depth === 1 ? "0.8rem" : depth === 2 ? "0.74rem" : "0.68rem";
 
   return (
     <Box ref={setNodeRef} style={style} sx={{ mb: REQUIREMENT_ROW_GAP }}>
@@ -126,33 +146,53 @@ function RequirementCard({
         }
         sx={{
           position: "relative",
-          pl: 0.55,
-          pr: 0.8,
-          py: 0.72,
-          minHeight: 44,
+          pl: 0.05,
+          pr: 0.95,
+          py: 0.95,
+          minHeight: 58,
           cursor: "pointer",
           borderRadius: 0.65,
-          bgcolor: selected ? requirementSurfaceSelected : requirementSurface,
+          bgcolor: selected ? accent.selectedBg : "rgba(255,255,255,0.96)",
           boxShadow: selected
-            ? "0 0 0 1px rgba(88, 166, 255, 0.18), 0 8px 16px rgba(21, 31, 41, 0.12)"
-            : "0 1px 0 rgba(17, 24, 39, 0.05), 0 3px 8px rgba(17, 24, 39, 0.08)",
+            ? "0 0 0 2px rgba(59, 130, 246, 0.38), 0 2px 6px rgba(21, 31, 41, 0.1)"
+            : "0 1px 0 rgba(17, 24, 39, 0.04), 0 1px 4px rgba(17, 24, 39, 0.06)",
           transition: "background-color 120ms ease, box-shadow 120ms ease",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 92,
+            borderTopLeftRadius: "inherit",
+            borderBottomLeftRadius: "inherit",
+            bgcolor: accent.softBg,
+          },
+          "&::after": {
+            content: '""',
+            position: "absolute",
+            left: 92,
+            top: 0,
+            bottom: 0,
+            width: 5,
+            bgcolor: accent.text,
+          },
           "&:hover": {
-            bgcolor: selected ? requirementSurfaceSelected : requirementSurfaceHover,
+            bgcolor: selected ? accent.selectedBg : "rgba(255,255,255,0.98)",
             boxShadow: selected
-              ? "0 0 0 1px rgba(88, 166, 255, 0.22), 0 10px 18px rgba(21, 31, 41, 0.14)"
-              : "0 1px 0 rgba(17, 24, 39, 0.06), 0 5px 12px rgba(17, 24, 39, 0.1)",
+              ? "0 0 0 2px rgba(59, 130, 246, 0.48), 0 3px 7px rgba(21, 31, 41, 0.12)"
+              : "0 1px 0 rgba(17, 24, 39, 0.05), 0 2px 5px rgba(17, 24, 39, 0.08)",
           },
         }}
       >
         <Stack spacing={0.9}>
-          <Stack direction="row" spacing={1.2} alignItems="center">
+          <Stack direction="row" spacing={1.2} alignItems="stretch">
             <Box
               {...dragHandleProps}
               onClick={(event) => event.stopPropagation()}
               sx={{
                 width: 24,
-                height: 24,
+                minHeight: 38,
                 flexShrink: 0,
                 cursor: "grab",
                 opacity: 0.9,
@@ -162,59 +202,106 @@ function RequirementCard({
                 color: GITHUB_TEXT_MUTED,
                 borderRadius: 0.9,
                 bgcolor: "transparent",
+                alignSelf: "center",
+                zIndex: 1,
               }}
             >
-              <MoreVertRounded sx={{ fontSize: 15 }} />
+              <Box sx={{ fontSize: 15, lineHeight: 1 }}>⋮</Box>
             </Box>
             <Box
               sx={{
                 flexGrow: 1,
                 minWidth: 0,
-                pr: 0.15,
-                py: 0.1,
+                pr: 0.35,
+                py: 0.2,
+                pl: 0.35,
                 display: "flex",
-                alignItems: containsTable ? "flex-start" : "center",
-                minHeight: containsTable ? 0 : 28,
+                alignItems: "stretch",
+                minHeight: containsTable ? 0 : 38,
+                zIndex: 1,
               }}
             >
               <Box
                 sx={{
                   width: "100%",
+                  minWidth: 0,
+                  display: "grid",
+                  gridTemplateColumns: "92px 1fr",
+                  alignItems: "stretch",
                 }}
               >
-                <Typography
-                  variant="body2"
-                  color="text.primary"
+                <Box
                   sx={{
                     fontFamily: GITHUB_FONT_STACK,
-                    fontSize: "0.875rem",
-                    lineHeight: 1.45,
-                    fontWeight: 400,
-                    width: "100%",
-                    display: "-webkit-box",
-                    WebkitLineClamp: containsTable ? 3 : 4,
-                    WebkitBoxOrient: "vertical",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-start",
+                    pl: 0,
+                    pr: 1.1,
+                    py: 0,
+                    minHeight: 38,
+                    minWidth: 0,
                     overflow: "hidden",
+                    boxSizing: "border-box",
+                    ml: -1.2,
                   }}
                 >
                   <Box
                     component="span"
                     sx={{
                       fontFamily: GITHUB_FONT_STACK,
-                      color: accent.text,
-                      fontWeight: 600,
+                      color: "#4b5563",
+                      fontSize: markerFontSize,
+                      fontWeight: 400,
                       letterSpacing: 0,
-                      mr: 0.45,
+                      lineHeight: 1.15,
+                      textTransform: "none",
+                      display: "block",
+                      width: "56px",
+                      maxWidth: "56px",
+                      whiteSpace: "normal",
+                      overflowWrap: "anywhere",
+                      wordBreak: "break-word",
+                      overflow: "hidden",
+                      boxSizing: "border-box",
                     }}
                   >
-                    {formatRequirementMarker(requirement)}
+                    {formatRequirementMarkerDisplay(requirement)}
                   </Box>
-                  <Box component="span" sx={{ color: "#111827", fontWeight: 400, letterSpacing: 0 }}>
+                </Box>
+                <Box
+                  sx={{
+                    fontFamily: GITHUB_FONT_STACK,
+                    minWidth: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    pl: 0.2,
+                    pr: 0.35,
+                  }}
+                >
+                  <Box
+                    component="div"
+                    sx={{
+                      fontFamily: GITHUB_FONT_STACK,
+                      color: "inherit",
+                      fontSize: "0.88rem",
+                      lineHeight: 1.35,
+                      fontWeight: 400,
+                      letterSpacing: 0,
+                      textTransform: "none",
+                      WebkitFontSmoothing: "antialiased",
+                      MozOsxFontSmoothing: "grayscale",
+                      color: "#111827",
+                      minWidth: 0,
+                      maxHeight: containsTable ? "5.4em" : "4.1em",
+                      overflow: "hidden",
+                    }}
+                  >
                     {containsTable
                       ? leadingNarrativeText || requirement.text || requirement.summary
                       : requirement.text || requirement.summary}
                   </Box>
-                </Typography>
+                </Box>
                 {containsTable && trailingTableContent ? (
                   <Box sx={{ mt: 0.55 }}>
                     <RichTextContent
@@ -289,6 +376,7 @@ function SortableRequirementNode({
       onToggleCollapsed={onToggleCollapsed}
       dragHandleProps={{ ...attributes, ...listeners }}
       setNodeRef={setNodeRef}
+      depth={depth}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
