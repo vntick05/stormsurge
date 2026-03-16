@@ -7,7 +7,7 @@ SERVICE_DIR = pathlib.Path(__file__).resolve().parents[1]
 if str(SERVICE_DIR) not in sys.path:
     sys.path.insert(0, str(SERVICE_DIR))
 
-from outline_view import build_outline, count_outline_stats
+from outline_view import build_generic_outline, build_outline, count_outline_stats
 
 
 class OutlineViewTests(unittest.TestCase):
@@ -88,6 +88,29 @@ Child paragraph.
         paragraph = outline[0]["children"][0]
         self.assertIn("| **Volume** | **Volume Title** |", paragraph["text_exact"])
         self.assertEqual(paragraph["children"], [])
+
+    def test_build_generic_outline_preserves_paragraphs_and_bullets_without_headings(self) -> None:
+        outline = build_generic_outline(
+            "Appendix A Map Stack\n\n"
+            "The contractor shall provide the map stack platform.\n\n"
+            "The submission shall include:\n\n"
+            "- Architecture overview\n"
+            "- Deployment approach\n\n"
+            "Digital PDF copies are acceptable.\n",
+            "Appendix A Map Stack",
+        )
+        self.assertEqual(len(outline), 1)
+        self.assertEqual(outline[0]["section_number"], "DOC")
+        self.assertEqual(outline[0]["section_title"], "Appendix A Map Stack")
+        self.assertEqual(outline[0]["children"][0]["text_exact"], "Appendix A Map Stack")
+        self.assertEqual(
+            outline[0]["children"][2]["children"][0]["text_exact"],
+            "Architecture overview",
+        )
+        self.assertEqual(
+            outline[0]["children"][3]["text_exact"],
+            "Digital PDF copies are acceptable.",
+        )
 
 
 if __name__ == "__main__":

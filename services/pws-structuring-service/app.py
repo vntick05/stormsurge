@@ -14,7 +14,13 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
-from outline_view import build_outline, count_outline_stats, render_result_page, render_upload_page
+from outline_view import (
+    build_generic_outline,
+    build_outline,
+    count_outline_stats,
+    render_result_page,
+    render_upload_page,
+)
 from related_linker import build_related_links
 from stage1_parser import build_stage1_section_tree, load_stage1_input
 from xlsx_export import build_hierarchy_workbook
@@ -112,6 +118,8 @@ def build_outline_payload(filename: str, markdown: str | None) -> dict[str, Any]
     if not markdown:
         raise ValueError("Docling did not return normalized markdown")
     outline = build_outline(markdown)
+    if not outline and markdown.strip():
+        outline = build_generic_outline(markdown, Path(filename).stem or "Imported Document")
     return {
         "filename": filename,
         "format": "simple_pws_outline_v1",

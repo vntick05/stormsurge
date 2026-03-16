@@ -17,6 +17,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { RichTextContent } from "@/components/rich-text-content";
 import { getChildren, getSectionRoots } from "@/lib/studio-graph";
 
 const GITHUB_SURFACE = "var(--studio-surface)";
@@ -60,52 +61,79 @@ function ImportRequirementNode({
           },
         }}
       >
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Checkbox
-            checked={checked}
-            onChange={() => onToggleChecked(requirement.id)}
-            size="small"
-            sx={{ p: 0.35 }}
-          />
-          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+        <Stack spacing={0.7}>
+          <Stack direction="row" spacing={1} alignItems="flex-start">
+            <Checkbox
+              checked={checked}
+              onChange={() => onToggleChecked(requirement.id)}
+              size="small"
+              sx={{ p: 0.35, mt: 0.1 }}
+            />
             <Typography
               variant="body2"
+              sx={{
+                flexGrow: 1,
+                minWidth: 0,
+                color: "#8FB7FF",
+                fontWeight: 600,
+                lineHeight: 1.2,
+                pt: 0.25,
+              }}
+            >
+              {formatRequirementMarker(requirement)}
+            </Typography>
+            {children.length ? (
+              <Button
+                size="small"
+                onClick={() => onToggleCollapsed(requirement.id)}
+                sx={{
+                  minWidth: 28,
+                  px: 0.3,
+                  mt: 0.15,
+                  alignSelf: "flex-start",
+                  color: "var(--studio-text)",
+                  borderRadius: 1,
+                }}
+              >
+                {collapsed ? (
+                  <ExpandMoreRounded fontSize="small" />
+                ) : (
+                  <ExpandLessRounded fontSize="small" />
+                )}
+              </Button>
+            ) : null}
+          </Stack>
+          <Box sx={{ flexGrow: 1, minWidth: 0, pl: 4.45, pr: children.length ? 3.6 : 0 }}>
+            <Box
               sx={{
                 fontFamily: GITHUB_FONT_STACK,
                 fontSize: "0.875rem",
                 lineHeight: 1.42,
                 fontWeight: 400,
-                display: "-webkit-box",
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
                 color: "var(--studio-text)",
               }}
             >
-              <Box component="span" sx={{ color: "#8FB7FF", fontWeight: 600, mr: 0.45 }}>
-                {formatRequirementMarker(requirement)}
+              <Box
+                sx={{
+                  overflowX: "auto",
+                  "& table": {
+                    mt: 0.5,
+                    mb: 0.1,
+                    width: "max-content",
+                    minWidth: "100%",
+                  },
+                  "& th, & td": {
+                    fontSize: "0.76rem",
+                    lineHeight: 1.3,
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                  },
+                }}
+              >
+                <RichTextContent content={requirement.text || requirement.summary} dense />
               </Box>
-              <Box component="span">{requirement.text || requirement.summary}</Box>
-            </Typography>
+            </Box>
           </Box>
-          {children.length ? (
-            <Button
-              size="small"
-              onClick={() => onToggleCollapsed(requirement.id)}
-              sx={{
-                minWidth: 28,
-                px: 0.3,
-                color: "var(--studio-text)",
-                borderRadius: 1,
-              }}
-            >
-              {collapsed ? (
-                <ExpandMoreRounded fontSize="small" />
-              ) : (
-                <ExpandLessRounded fontSize="small" />
-              )}
-            </Button>
-          ) : null}
         </Stack>
       </Box>
       {children.length && !collapsed ? (

@@ -57,6 +57,13 @@ function getRequirementAccent(requirement) {
     };
   }
 
+  if (requirement.accentColor === "#c678dd") {
+    return {
+      text: "#c678dd",
+      dots: "rgba(198, 120, 221, 0.95)",
+    };
+  }
+
   return {
     text: "#5f8dff",
     dots: "rgba(95, 141, 255, 0.95)",

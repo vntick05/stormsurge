@@ -185,6 +185,108 @@ def build_outline(markdown: str) -> list[dict[str, Any]]:
     return normalize_document_numbering(sections)
 
 
+def build_generic_outline(markdown: str, section_title: str = "Imported Document") -> list[dict[str, Any]]:
+    section = {
+        "section_number": "DOC",
+        "section_title": clean_display_text(section_title) or "Imported Document",
+        "depth": 1,
+        "markdown_level": None,
+        "children": [],
+        "parent_section_number": None,
+    }
+    current_paragraph: dict[str, Any] | None = None
+    paragraph_index = 0
+    bullet_index = 0
+    paragraph_lines: list[str] = []
+
+    def attach_inline_ordered_items(paragraph: dict[str, Any]) -> None:
+        text = paragraph.get("text_exact", "")
+        if is_likely_table_text(text):
+            return
+        matches = list(INLINE_ORDERED_ITEM_PATTERN.finditer(text))
+        if len(matches) < 2:
+            return
+        prefix = text[: matches[0].start()].strip()
+        if prefix:
+            paragraph["text_exact"] = normalize_text(prefix)
+        else:
+            paragraph["text_exact"] = ""
+        for match in matches:
+            if is_classification_marker(match.group("marker")):
+                paragraph["text_exact"] = normalize_text(text)
+                paragraph["children"] = []
+                return
+            paragraph["children"].append(
+                {
+                    "type": "bullet",
+                    "id": f"{paragraph['id']}.i{len(paragraph['children']) + 1}",
+                    "marker": match.group("marker"),
+                    "text_exact": normalize_text(match.group("body")),
+                }
+            )
+
+    def flush_paragraph() -> None:
+        nonlocal current_paragraph, paragraph_index, paragraph_lines, bullet_index
+        if not paragraph_lines:
+            paragraph_lines = []
+            return
+        paragraph_index += 1
+        bullet_index = 0
+        current_paragraph = {
+            "type": "paragraph",
+            "id": f"DOC.p{paragraph_index}",
+            "text_exact": normalize_text(" ".join(paragraph_lines)),
+            "children": [],
+        }
+        attach_inline_ordered_items(current_paragraph)
+        section["children"].append(current_paragraph)
+        paragraph_lines = []
+
+    for raw_line in markdown.splitlines():
+        line = raw_line.rstrip()
+        if not line.strip():
+            flush_paragraph()
+            continue
+        if IMAGE_ONLY_PATTERN.match(line.strip()):
+            continue
+        bullet = BULLET_PATTERN.match(line.strip())
+        ordered_bullet = ORDERED_BULLET_PATTERN.match(line.strip())
+        if ordered_bullet is not None and is_classification_marker(ordered_bullet.group("marker")):
+            ordered_bullet = None
+        if bullet is not None or ordered_bullet is not None:
+            flush_paragraph()
+            bullet_index += 1
+            marker = "-"
+            body = ""
+            if bullet is not None:
+                body = bullet.group("body")
+                marker = "-"
+            else:
+                body = ordered_bullet.group("body")
+                marker = ordered_bullet.group("marker")
+            bullet_record = {
+                "type": "bullet",
+                "id": f"DOC.p{max(paragraph_index, 1)}.b{bullet_index}",
+                "marker": marker,
+                "text_exact": normalize_text(body),
+            }
+            if current_paragraph is None:
+                current_paragraph = {
+                    "type": "paragraph",
+                    "id": f"DOC.p{max(paragraph_index, 1)}",
+                    "text_exact": "",
+                    "children": [],
+                }
+                if not section["children"] or section["children"][-1] is not current_paragraph:
+                    section["children"].append(current_paragraph)
+            current_paragraph["children"].append(bullet_record)
+            continue
+        paragraph_lines.append(line.strip())
+
+    flush_paragraph()
+    return [section] if section["children"] else []
+
+
 def normalize_section_number(section_number: str, offset: int) -> str:
     parts = section_number.split(".")
     if not parts or not parts[0].isdigit():

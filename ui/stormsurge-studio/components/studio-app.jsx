@@ -81,6 +81,7 @@ import {
   demoteRequirement,
   deleteRequirement,
   getChildren,
+  getDescendantIds,
   getRequirementById,
   getSiblingGroup,
   getSectionRoots,
@@ -917,52 +918,115 @@ function isSubfactorHeadingText(text) {
 
 function parseSubfactorHeading(text) {
   const normalized = String(text || "").replace(/\*\*/g, "").trim();
-  const match = normalized.match(/L\.16\.1\.(\d+)\s*[–-]?\s*Sub-?Factor\s+1\.(\d+)\s+(.+)$/i);
+  const match = normalized.match(
+    /(?:[A-Za-z]\.\d+(?:\.\d+)*)?\s*[–-]?\s*Sub-?Factor\s+((\d+)\.(\d+))\s+(.+)$/i,
+  );
   if (!match) {
     return null;
   }
   return {
     index: Number(match[1] || match[2]),
-    number: `1.${match[2]}`,
-    title: match[3].trim(),
-    label: `Sub-Factor 1.${match[2]} ${match[3].trim()}`,
+    number: match[1].trim(),
+    title: match[4].trim(),
+    label: `Sub-Factor ${match[1].trim()} ${match[4].trim()}`,
   };
 }
 
 function parseFactorHeading(text) {
   const normalized = String(text || "").replace(/\*\*/g, "").trim();
-  const match = normalized.match(/L\.16\.(\d+)\s*[–-]?\s*Factor\s+(\d+)[,:]?\s+(.+)$/i);
+  const match = normalized.match(/(?:[A-Za-z]\.\d+(?:\.\d+)*)?\s*[–-]?\s*Factor\s+(\d+)[,:]?\s+(.+)$/i);
   if (!match) {
     return null;
   }
   return {
-    index: Number(match[1] || match[2]),
-    number: String(match[2] || "").trim(),
-    title: match[3].trim(),
-    label: `Factor ${match[2]} ${match[3].trim()}`,
+    index: Number(match[1]),
+    number: String(match[1] || "").trim(),
+    title: match[2].trim(),
+    label: `Factor ${match[1]} ${match[2].trim()}`,
   };
 }
 
 function buildTechManagementWorkspaceFromLSection(sourceWorkspace) {
-  const l16Section = (sourceWorkspace?.sections || []).find(
-    (section) =>
-      normalizeMatchText(section?.sectionNumber) === "l.16" ||
-      normalizeMatchText(section?.label).startsWith("l.16 volume 2"),
-  );
-
-  if (!l16Section) {
-    return buildEmptyWorkspace();
-  }
-
-  const l16Requirements = getSectionRoots(sourceWorkspace?.requirements || [], l16Section.id)
-    .slice()
-    .sort((left, right) => (left.position || 0) - (right.position || 0));
-
+  const allRequirements = sourceWorkspace?.requirements || [];
   const sections = [];
   const requirements = [];
-  let currentSectionId = "";
-  let currentPosition = 0;
-  let mergedParagraphBuffer = [];
+  const clonedNodeIds = new Set();
+
+  function getSortedChildren(parentId) {
+    return getChildren(allRequirements, parentId)
+      .slice()
+      .sort((left, right) => (left.position || 0) - (right.position || 0));
+  }
+
+  function getSortedSectionRoots(sectionId) {
+    return getSectionRoots(allRequirements, sectionId)
+      .slice()
+      .sort((left, right) => (left.position || 0) - (right.position || 0));
+  }
+
+  function getFollowingSiblingRun(sourceRequirement, shouldStop) {
+    if (!sourceRequirement) {
+      return [];
+    }
+
+    const siblingGroup = getSiblingGroup(allRequirements, sourceRequirement)
+      .slice()
+      .sort((left, right) => (left.position || 0) - (right.position || 0));
+    const sourceIndex = siblingGroup.findIndex((candidate) => candidate.id === sourceRequirement.id);
+    if (sourceIndex < 0) {
+      return [];
+    }
+
+    const collected = [];
+    for (let index = sourceIndex + 1; index < siblingGroup.length; index += 1) {
+      const candidate = siblingGroup[index];
+      if (shouldStop(candidate)) {
+        break;
+      }
+      collected.push(candidate);
+    }
+    return collected;
+  }
+
+  function cloneRequirementIntoSection(sourceRequirement, sectionId, parentId, nextPositionRef) {
+    if (!sourceRequirement || clonedNodeIds.has(`${sectionId}:${sourceRequirement.id}`)) {
+      return null;
+    }
+
+    nextPositionRef.value += 1;
+    const clonedId = `${sectionId}-req-${nextPositionRef.value}`;
+    requirements.push({
+      ...sourceRequirement,
+      id: clonedId,
+      sectionId,
+      parentId,
+      position: nextPositionRef.value,
+      sourceType: "extracted",
+      sourceOrigin: "l-helper",
+      accentColor: "#3fb950",
+    });
+    clonedNodeIds.add(`${sectionId}:${sourceRequirement.id}`);
+
+    getSortedChildren(sourceRequirement.id).forEach((child) => {
+      cloneRequirementIntoSection(child, sectionId, clonedId, nextPositionRef);
+    });
+
+    return clonedId;
+  }
+
+  function createSectionFromHeading(heading, label, shortLabel, prompt) {
+    const sectionId = `tm-${slugifyValue(label)}`;
+    sections.push({
+      id: sectionId,
+      label,
+      shortLabel,
+      prompt,
+      description: "Derived from Section L technical/management factors.",
+      sourceKind: "l-helper",
+      sectionNumber: heading?.number || shortLabel || null,
+    });
+    return sectionId;
+  }
 
   function shouldMergeParagraphIntoBuffer(buffer, nextRequirement) {
     if (!buffer.length) {
@@ -986,13 +1050,11 @@ function buildTechManagementWorkspaceFromLSection(sourceWorkspace) {
     return !previousEndsSentence && nextStartsContinuation;
   }
 
-  function flushMergedParagraphBuffer() {
-    if (!currentSectionId || !mergedParagraphBuffer.length) {
-      mergedParagraphBuffer = [];
+  function appendMergedParagraphBuffer(sectionId, mergedParagraphBuffer, nextPositionRef) {
+    if (!sectionId || !mergedParagraphBuffer.length) {
       return;
     }
 
-    currentPosition += 1;
     const firstRequirement = mergedParagraphBuffer[0];
     const mergedText = mergedParagraphBuffer
       .map((requirement) => String(requirement.text || requirement.summary || "").trim())
@@ -1000,106 +1062,162 @@ function buildTechManagementWorkspaceFromLSection(sourceWorkspace) {
       .join(" ");
 
     if (!mergedText) {
-      mergedParagraphBuffer = [];
       return;
     }
 
+    nextPositionRef.value += 1;
     requirements.push({
       ...firstRequirement,
-      id: `${currentSectionId}-req-${currentPosition}`,
-      sectionId: currentSectionId,
+      id: `${sectionId}-req-${nextPositionRef.value}`,
+      sectionId,
       parentId: null,
-      position: currentPosition,
+      position: nextPositionRef.value,
       sourceType: "extracted",
       sourceOrigin: "l-helper",
       accentColor: "#3fb950",
       summary: mergedText.slice(0, 160),
       text: mergedText,
     });
-    mergedParagraphBuffer = [];
   }
 
-  function appendRequirementSubtree(sourceRequirement, parentId = null) {
-    currentPosition += 1;
-    const clonedId = `${currentSectionId}-req-${currentPosition}`;
-    requirements.push({
-      ...sourceRequirement,
-      id: clonedId,
-      sectionId: currentSectionId,
-      parentId,
-      position: currentPosition,
-      sourceType: "extracted",
-      sourceOrigin: "l-helper",
-      accentColor: "#3fb950",
+  function appendFactorContent(sectionId, factorRequirement) {
+    const nextPositionRef = { value: 0 };
+    let mergedParagraphBuffer = [];
+
+    const flushMergedParagraphBuffer = () => {
+      appendMergedParagraphBuffer(sectionId, mergedParagraphBuffer, nextPositionRef);
+      mergedParagraphBuffer = [];
+    };
+
+    const contentNodes = getSortedChildren(factorRequirement.id).length
+      ? getSortedChildren(factorRequirement.id)
+      : getFollowingSiblingRun(factorRequirement, (candidate) => {
+          const candidateText = getRequirementDisplayText(candidate);
+          return Boolean(parseFactorHeading(candidateText) || parseSubfactorHeading(candidateText));
+        });
+
+    contentNodes.forEach((child) => {
+      const childText = getRequirementDisplayText(child);
+      if (parseSubfactorHeading(childText)) {
+        flushMergedParagraphBuffer();
+        return;
+      }
+
+      const childRequirements = getSortedChildren(child.id);
+      const isPlainParagraph = child.kind === "paragraph" && childRequirements.length === 0;
+
+      if (isPlainParagraph) {
+        if (shouldMergeParagraphIntoBuffer(mergedParagraphBuffer, child)) {
+          mergedParagraphBuffer.push(child);
+        } else {
+          flushMergedParagraphBuffer();
+          mergedParagraphBuffer.push(child);
+        }
+        return;
+      }
+
+      flushMergedParagraphBuffer();
+      cloneRequirementIntoSection(child, sectionId, null, nextPositionRef);
     });
 
-    const childRequirements = getChildren(sourceWorkspace?.requirements || [], sourceRequirement.id)
-      .slice()
-      .sort((left, right) => (left.position || 0) - (right.position || 0));
-
-    childRequirements.forEach((child) => appendRequirementSubtree(child, clonedId));
+    flushMergedParagraphBuffer();
   }
 
-  l16Requirements.forEach((requirement) => {
-    const requirementText = getRequirementDisplayText(requirement);
-    const factorHeading = parseFactorHeading(requirementText);
-    if (factorHeading) {
-      flushMergedParagraphBuffer();
-      currentSectionId = `tm-factor-${factorHeading.number.replace(/[^0-9]+/g, "-")}`;
-      currentPosition = 0;
-      sections.push({
-        id: currentSectionId,
-        label: factorHeading.label,
-        shortLabel: `F${factorHeading.number}`,
-        prompt: "Review the Section L technical/management factor requirements.",
-        description: `Derived from ${l16Section.label}.`,
-        sourceKind: "l-helper",
-        sectionNumber: factorHeading.number,
-      });
-      return;
+  function collectTechManagementNodes() {
+    const l16SectionIds = new Set(
+      (sourceWorkspace?.sections || [])
+        .filter(
+          (section) =>
+            normalizeMatchText(section?.sectionNumber) === "l.16" ||
+            normalizeMatchText(section?.label).includes("volume 2 technical/management"),
+        )
+        .map((section) => section.id),
+    );
+
+    function collectFromPool(searchPool) {
+      const factorNodes = searchPool
+        .filter((requirement) => {
+          const factorHeading = parseFactorHeading(getRequirementDisplayText(requirement));
+          if (!factorHeading) {
+            return false;
+          }
+          const normalizedText = normalizeMatchText(getRequirementDisplayText(requirement));
+          return (
+            factorHeading.number === "1" ||
+            normalizedText.includes("technical/management") ||
+            getSortedChildren(requirement.id).some((child) =>
+              isSubfactorHeadingText(getRequirementDisplayText(child)),
+            )
+          );
+        })
+        .sort((left, right) => (left.position || 0) - (right.position || 0));
+
+      const subfactorNodes = searchPool
+        .filter((requirement) => {
+          const parsed = parseSubfactorHeading(getRequirementDisplayText(requirement));
+          return parsed && /^1\.[123]\b/.test(parsed.number);
+        })
+        .sort((left, right) => {
+          const leftParsed = parseSubfactorHeading(getRequirementDisplayText(left));
+          const rightParsed = parseSubfactorHeading(getRequirementDisplayText(right));
+          return String(leftParsed?.number || "").localeCompare(String(rightParsed?.number || ""));
+        });
+
+      return { factorNodes, subfactorNodes };
     }
 
-    const subfactorHeading = parseSubfactorHeading(requirementText);
-    if (subfactorHeading) {
-      flushMergedParagraphBuffer();
-      currentSectionId = `tm-subfactor-${subfactorHeading.number.replace(/[^0-9]+/g, "-")}`;
-      currentPosition = 0;
-      sections.push({
-        id: currentSectionId,
-        label: subfactorHeading.label,
-        shortLabel: subfactorHeading.number,
-        prompt: "Review the Section L technical/management sub-factor requirements.",
-        description: `Derived from ${l16Section.label}.`,
-        sourceKind: "l-helper",
-        sectionNumber: subfactorHeading.number,
-      });
-      return;
+    const l16SearchPool = l16SectionIds.size
+      ? allRequirements.filter((requirement) => l16SectionIds.has(requirement.sectionId))
+      : [];
+    const l16Matches = collectFromPool(l16SearchPool);
+
+    if (l16Matches.factorNodes.length || l16Matches.subfactorNodes.length) {
+      return l16Matches;
     }
 
-    if (!currentSectionId) {
+    return collectFromPool(allRequirements);
+  }
+
+  const { factorNodes, subfactorNodes } = collectTechManagementNodes();
+
+  factorNodes.forEach((factorRequirement) => {
+    const factorHeading = parseFactorHeading(getRequirementDisplayText(factorRequirement));
+    if (!factorHeading) {
       return;
     }
-
-    const childRequirements = getChildren(sourceWorkspace?.requirements || [], requirement.id)
-      .slice()
-      .sort((left, right) => (left.position || 0) - (right.position || 0));
-    const isPlainParagraph = requirement.kind === "paragraph" && childRequirements.length === 0;
-
-    if (isPlainParagraph) {
-      if (shouldMergeParagraphIntoBuffer(mergedParagraphBuffer, requirement)) {
-        mergedParagraphBuffer.push(requirement);
-      } else {
-        flushMergedParagraphBuffer();
-        mergedParagraphBuffer.push(requirement);
-      }
-      return;
-    }
-
-    flushMergedParagraphBuffer();
-    appendRequirementSubtree(requirement);
+    const sectionId = createSectionFromHeading(
+      factorHeading,
+      factorHeading.label,
+      `F${factorHeading.number}`,
+      "Review the Section L technical/management factor requirements.",
+    );
+    appendFactorContent(sectionId, factorRequirement);
   });
 
-  flushMergedParagraphBuffer();
+  subfactorNodes.forEach((subfactorRequirement) => {
+    const subfactorHeading = parseSubfactorHeading(getRequirementDisplayText(subfactorRequirement));
+    if (!subfactorHeading) {
+      return;
+    }
+
+    const sectionId = createSectionFromHeading(
+      subfactorHeading,
+      subfactorHeading.label,
+      subfactorHeading.number,
+      "Review the Section L technical/management sub-factor requirements.",
+    );
+    const nextPositionRef = { value: 0 };
+    const contentNodes = getSortedChildren(subfactorRequirement.id).length
+      ? getSortedChildren(subfactorRequirement.id)
+      : getFollowingSiblingRun(subfactorRequirement, (candidate) => {
+          const candidateText = getRequirementDisplayText(candidate);
+          return Boolean(parseFactorHeading(candidateText) || parseSubfactorHeading(candidateText));
+        });
+
+    contentNodes.forEach((child) => {
+      cloneRequirementIntoSection(child, sectionId, null, nextPositionRef);
+    });
+  });
 
   return sections.length
     ? {
@@ -2285,17 +2403,17 @@ function StormWorkspaceBar({
                     sx={{
                       position: "relative",
                       flex: "1 1 0",
-                      minHeight: 58,
+                      minHeight: 46,
                       minWidth: 0,
-                      px: 1.05,
-                      py: 0.85,
+                      px: 0.7,
+                      py: 0.5,
                       mb: 0,
                       borderRadius: 0.5,
                       color: selected ? activeTabText : inactiveTabText,
                       bgcolor: selected ? selectedTabBg : inactiveTabBg,
                       border: "0 solid transparent",
                       boxShadow: "none",
-                      fontSize: "0.92rem",
+                      fontSize: "0.82rem",
                       lineHeight: 1.1,
                       fontWeight: 600,
                       justifyContent: "center",
@@ -2317,12 +2435,12 @@ function StormWorkspaceBar({
                       sx={{
                         display: "inline-flex",
                         alignItems: "center",
-                        gap: 0.68,
+                        gap: 0.5,
                         justifyContent: "center",
                         width: "100%",
                       }}
                     >
-                      <TabIcon sx={{ fontSize: 17, color: "inherit", flexShrink: 0 }} />
+                      <TabIcon sx={{ fontSize: 15, color: "inherit", flexShrink: 0 }} />
                       <Box component="span">{label}</Box>
                     </Box>
                   </Button>
@@ -2401,9 +2519,11 @@ function StormWorkspaceBar({
                         onClick={onClearActiveTab}
                         size="small"
                         sx={{
-                          minHeight: 26,
-                          py: 0.2,
+                          minHeight: 22,
+                          py: 0.1,
                           minWidth: 0,
+                          px: 0.45,
+                          fontSize: "0.72rem",
                           color: panelText,
                           borderColor: "transparent",
                           bgcolor: "transparent",
@@ -2423,9 +2543,11 @@ function StormWorkspaceBar({
                           onClick={() => onEditMtsPrompt("MTS Solution")}
                           size="small"
                           sx={{
-                            minHeight: 26,
-                            py: 0.2,
+                            minHeight: 22,
+                            py: 0.1,
                             minWidth: 0,
+                            px: 0.45,
+                            fontSize: "0.72rem",
                             color: panelText,
                             borderColor: "transparent",
                             bgcolor: "transparent",
@@ -2445,10 +2567,11 @@ function StormWorkspaceBar({
                             ) : null
                           }
                           sx={{
-                            minHeight: 24,
-                            px: 0.8,
-                            py: 0.1,
+                            minHeight: 22,
+                            px: 0.55,
+                            py: 0.05,
                             borderRadius: 0.75,
+                            fontSize: "0.72rem",
                             bgcolor: "transparent",
                             color: "#2ea36a",
                             boxShadow: "none",
@@ -2476,9 +2599,11 @@ function StormWorkspaceBar({
                             ) : null
                           }
                           sx={{
-                            minHeight: 26,
-                            py: 0.2,
+                            minHeight: 22,
+                            py: 0.1,
                             minWidth: 0,
+                            px: 0.45,
+                            fontSize: "0.72rem",
                             borderRadius: 0.75,
                             bgcolor: "transparent",
                             color: "#2ea36a",
@@ -2496,9 +2621,11 @@ function StormWorkspaceBar({
                           startIcon={<PlaylistAddRounded />}
                           onClick={openRiskDialog}
                           sx={{
-                            minHeight: 26,
-                            py: 0.2,
+                            minHeight: 22,
+                            py: 0.1,
                             minWidth: 0,
+                            px: 0.45,
+                            fontSize: "0.72rem",
                             borderRadius: 0.75,
                             bgcolor: "transparent",
                             color: panelText,
@@ -2518,9 +2645,11 @@ function StormWorkspaceBar({
                         startIcon={<PlaylistAddRounded />}
                         onClick={openExceedsDialog}
                         sx={{
-                          minHeight: 26,
-                          py: 0.2,
+                          minHeight: 22,
+                          py: 0.1,
                           minWidth: 0,
+                          px: 0.45,
+                          fontSize: "0.72rem",
                           borderRadius: 0.75,
                           bgcolor: "transparent",
                           color: panelText,
@@ -2618,9 +2747,11 @@ function StormWorkspaceBar({
                               onClick={() => onClearActiveTab(panel.id)}
                               size="small"
                               sx={{
-                                minHeight: 26,
-                                py: 0.2,
+                                minHeight: 22,
+                                py: 0.1,
                                 minWidth: 0,
+                                px: 0.45,
+                                fontSize: "0.72rem",
                                 color: panelText,
                                 borderColor: "transparent",
                                 bgcolor: "transparent",
@@ -2635,9 +2766,11 @@ function StormWorkspaceBar({
                               onClick={() => onEditMtsPrompt(panel.id)}
                               size="small"
                               sx={{
-                                minHeight: 26,
-                                py: 0.2,
+                                minHeight: 22,
+                                py: 0.1,
                                 minWidth: 0,
+                                px: 0.45,
+                                fontSize: "0.72rem",
                                 color: panelText,
                                 borderColor: "transparent",
                                 bgcolor: "transparent",
@@ -2657,10 +2790,11 @@ function StormWorkspaceBar({
                                 ) : null
                               }
                               sx={{
-                                minHeight: 24,
-                                px: 0.8,
-                                py: 0.1,
+                                minHeight: 22,
+                                px: 0.55,
+                                py: 0.05,
                                 borderRadius: 0.75,
+                                fontSize: "0.72rem",
                                 bgcolor: "transparent",
                                 color: "#2ea36a",
                                 boxShadow: "none",
@@ -3053,6 +3187,7 @@ export function StudioApp() {
     error: "",
   });
   const [lHelperWorkspace, setLHelperWorkspace] = useState(buildEmptyWorkspace);
+  const [lHelperEditableWorkspace, setLHelperEditableWorkspace] = useState(buildEmptyWorkspace);
   const [lHelperSectionId, setLHelperSectionId] = useState("");
   const [lHelperSelectedRequirementId, setLHelperSelectedRequirementId] = useState("");
   const [lHelperSelectedRequirementIds, setLHelperSelectedRequirementIds] = useState(() => new Set());
@@ -3102,9 +3237,13 @@ export function StudioApp() {
     () => buildTechManagementWorkspaceFromArtifacts(lHelperDeliverableTables),
     [lHelperDeliverableTables],
   );
-  const displayedLHelperBaseWorkspace = techManagementSubfactorWorkspace.sections.length
+  const derivedLHelperWorkspace = techManagementSubfactorWorkspace.sections.length
     ? techManagementSubfactorWorkspace
     : techManagementLHelperWorkspace;
+  const displayedLHelperBaseWorkspace =
+    lHelperEditableWorkspace.sections.length || lHelperEditableWorkspace.requirements.length
+      ? lHelperEditableWorkspace
+      : derivedLHelperWorkspace;
   const displayedLHelperSections = useMemo(
     () =>
       displayedLHelperBaseWorkspace.sections
@@ -3279,6 +3418,7 @@ export function StudioApp() {
       selectedRequirementIds: Array.from(selectedRequirementIds),
       leftRailTab,
       lHelperWorkspace,
+      lHelperEditableWorkspace,
       lHelperSectionMeta,
       lHelperSectionId,
       lHelperSelectedRequirementId,
@@ -3301,6 +3441,7 @@ export function StudioApp() {
     setRedoHistory([]);
     setLeftRailTab("sections");
     setLHelperWorkspace(buildEmptyWorkspace());
+    setLHelperEditableWorkspace(buildEmptyWorkspace());
     setLHelperSectionMeta({});
     setLHelperSectionId("");
     setLHelperSelectedRequirementId("");
@@ -3328,6 +3469,9 @@ export function StudioApp() {
     setLeftRailTab(snapshot?.leftRailTab === "l-helper" ? "l-helper" : "sections");
     setLHelperWorkspace(
       snapshot?.lHelperWorkspace ? snapshot.lHelperWorkspace : buildEmptyWorkspace(),
+    );
+    setLHelperEditableWorkspace(
+      snapshot?.lHelperEditableWorkspace ? snapshot.lHelperEditableWorkspace : buildEmptyWorkspace(),
     );
     setLHelperSectionMeta(
       snapshot?.lHelperSectionMeta &&
@@ -3880,6 +4024,34 @@ export function StudioApp() {
 
     if (Object.prototype.hasOwnProperty.call(options, "nextSelectedRequirementId")) {
       setSelectedRequirementId(options.nextSelectedRequirementId || "");
+    }
+  }
+
+  function applyLHelperWorkspaceChange(updateWorkspace, options = {}) {
+    const nextWorkspace =
+      typeof updateWorkspace === "function" ? updateWorkspace(displayedLHelperBaseWorkspace) : updateWorkspace;
+
+    const workspaceChanged =
+      nextWorkspace !== displayedLHelperBaseWorkspace &&
+      (nextWorkspace.sections !== displayedLHelperBaseWorkspace.sections ||
+        nextWorkspace.requirements !== displayedLHelperBaseWorkspace.requirements ||
+        nextWorkspace.sourceFilename !== displayedLHelperBaseWorkspace.sourceFilename ||
+        nextWorkspace.sourceFormat !== displayedLHelperBaseWorkspace.sourceFormat);
+
+    if (!workspaceChanged) {
+      return;
+    }
+
+    setLHelperEditableWorkspace(nextWorkspace);
+
+    if (Object.prototype.hasOwnProperty.call(options, "nextSectionId")) {
+      setLHelperSectionId(options.nextSectionId || "");
+    }
+
+    if (Object.prototype.hasOwnProperty.call(options, "nextSelectedRequirementId")) {
+      const nextRequirementId = options.nextSelectedRequirementId || "";
+      setLHelperSelectedRequirementId(nextRequirementId);
+      setLHelperSelectedRequirementIds(new Set(nextRequirementId ? [nextRequirementId] : []));
     }
   }
 
@@ -4495,10 +4667,15 @@ export function StudioApp() {
   function handleToggleReqImportChecked(requirementId) {
     setReqImportCheckedIds((current) => {
       const next = new Set(current);
+      const subtreeIds = [
+        requirementId,
+        ...getDescendantIds(reqImportWorkspace.requirements, requirementId),
+      ];
+
       if (next.has(requirementId)) {
-        next.delete(requirementId);
+        subtreeIds.forEach((id) => next.delete(id));
       } else {
-        next.add(requirementId);
+        subtreeIds.forEach((id) => next.add(id));
       }
       return next;
     });
@@ -4551,6 +4728,7 @@ export function StudioApp() {
           parentId,
           position,
           sourceType: "imported",
+          accentColor: "#c678dd",
           kind: parentId ? "child" : "top-level",
           summary:
             sourceRequirement.summary ||
@@ -4680,6 +4858,48 @@ export function StudioApp() {
         nextSelectedRequirementId,
       },
     );
+  }
+
+  function handleAddSectionToWorkspaceFromMenu() {
+    if (!sectionMenuSectionId) {
+      return;
+    }
+
+    const sectionId = sectionMenuSectionId;
+    const source = sectionMenuSource;
+    handleCloseSectionMenu();
+
+    if (source !== "l-helper") {
+      return;
+    }
+
+    const sectionWorkspace = buildWorkspaceSlice(
+      {
+        ...displayedLHelperBaseWorkspace,
+        sections: displayedLHelperSections,
+        requirements: displayedLHelperRequirements,
+      },
+      [sectionId],
+    );
+    if (!sectionWorkspace.sections.length) {
+      return;
+    }
+
+    const importedWorkspace = remapWorkspaceForImport(sectionWorkspace, "l-helper");
+    const firstSectionId = importedWorkspace.sections[0]?.id || "";
+    const firstRequirementId = importedWorkspace.requirements.find(
+      (requirement) => requirement.sectionId === firstSectionId && !requirement.parentId,
+    )?.id || "";
+
+    applyWorkspaceChange((current) => ({
+      ...current,
+      sections: [...current.sections, ...importedWorkspace.sections],
+      requirements: [...current.requirements, ...importedWorkspace.requirements],
+    }), {
+      nextActiveSectionId: firstSectionId || activeSectionId,
+      nextSelectedRequirementId: firstRequirementId || selectedRequirementId,
+    });
+    setLeftRailTab("sections");
   }
 
   function handleStormWorkspaceNoteChange(tab, value, panelId = "") {
@@ -5320,10 +5540,11 @@ export function StudioApp() {
           : nextWorkspace.sections.map((section) => section.id),
       );
       const nextTables = extractDeliverableTables(nextWorkspace);
-      const nextTechManagementWorkspace = buildTechManagementWorkspaceFromArtifacts(nextTables);
+      const nextTechManagementWorkspace = buildTechManagementWorkspaceFromLSection(nextWorkspace);
       const nextDisplayedWorkspace =
         nextTechManagementWorkspace.sections.length ? nextTechManagementWorkspace : nextVisibleWorkspace;
       setLHelperWorkspace(nextWorkspace);
+      setLHelperEditableWorkspace(nextDisplayedWorkspace);
       setLHelperSectionMeta({});
       setLHelperSectionId(nextDisplayedWorkspace.sections[0]?.id || "");
       setLHelperSelectedRequirementId(
@@ -5389,6 +5610,114 @@ export function StudioApp() {
       getSectionRoots(displayedLHelperRequirements, sectionId)[0]?.id || "";
     setLHelperSelectedRequirementId(nextRequirementId);
     setLHelperSelectedRequirementIds(new Set(nextRequirementId ? [nextRequirementId] : []));
+  }
+
+  function patchSelectedLHelperRequirement(updater) {
+    if (!selectedLHelperRequirement) {
+      return;
+    }
+
+    applyLHelperWorkspaceChange((current) => ({
+      ...current,
+      requirements: current.requirements.map((requirement) =>
+        requirement.id === selectedLHelperRequirement.id
+          ? updater(requirement)
+          : requirement,
+      ),
+    }));
+  }
+
+  function handleLHelperRequirementChange(field, value) {
+    patchSelectedLHelperRequirement((requirement) => {
+      const nextRequirement = { ...requirement, [field]: value };
+      if (field === "text") {
+        nextRequirement.summary = value.slice(0, 160) || requirement.summary;
+      }
+      return nextRequirement;
+    });
+  }
+
+  function handleLHelperCreateTopLevelRequirement() {
+    if (!activeLHelperSection) {
+      return;
+    }
+
+    let insertedRequirement = createTopLevelRequirement(activeLHelperSection.id);
+    applyLHelperWorkspaceChange((current) => ({
+      ...current,
+      requirements: [...current.requirements, insertedRequirement],
+    }), {
+      nextSectionId: activeLHelperSection.id,
+      nextSelectedRequirementId: insertedRequirement.id,
+    });
+  }
+
+  function handleLHelperCreateChildRequirement() {
+    if (!selectedLHelperRequirement) {
+      return;
+    }
+
+    const nextRequirement = createChildRequirement(selectedLHelperRequirement, displayedLHelperRequirements);
+    applyLHelperWorkspaceChange((current) => ({
+      ...current,
+      requirements: [...current.requirements, nextRequirement],
+    }), {
+      nextSectionId: selectedLHelperRequirement.sectionId,
+      nextSelectedRequirementId: nextRequirement.id,
+    });
+  }
+
+  function handleLHelperMoveRequirement(direction) {
+    if (!selectedLHelperRequirement) {
+      return;
+    }
+
+    applyLHelperWorkspaceChange((current) => ({
+      ...current,
+      requirements: moveRequirement(current.requirements, selectedLHelperRequirement.id, direction),
+    }));
+  }
+
+  function handleLHelperPromoteRequirement() {
+    if (!selectedLHelperRequirement) {
+      return;
+    }
+
+    applyLHelperWorkspaceChange((current) => ({
+      ...current,
+      requirements: promoteRequirement(current.requirements, selectedLHelperRequirement.id),
+    }));
+  }
+
+  function handleLHelperDemoteRequirement() {
+    if (!selectedLHelperRequirement) {
+      return;
+    }
+
+    applyLHelperWorkspaceChange((current) => ({
+      ...current,
+      requirements: demoteRequirement(current.requirements, selectedLHelperRequirement.id),
+    }));
+  }
+
+  function handleLHelperDeleteRequirement() {
+    if (!selectedLHelperRequirement) {
+      return;
+    }
+
+    const requirementId = selectedLHelperRequirement.id;
+    const fallbackSectionId = activeLHelperSection?.id || selectedLHelperRequirement.sectionId;
+    const remainingRequirements = deleteRequirement(displayedLHelperRequirements, requirementId);
+    const nextSelectedRequirementId =
+      getSectionRoots(remainingRequirements, fallbackSectionId)[0]?.id || "";
+
+    applyLHelperWorkspaceChange((current) => ({
+      ...current,
+      requirements: deleteRequirement(current.requirements, requirementId),
+    }), {
+      nextSectionId: fallbackSectionId,
+      nextSelectedRequirementId,
+    });
   }
 
   async function handleCreatePackageProject({ projectName, files }) {
@@ -5836,26 +6165,6 @@ export function StudioApp() {
                     event.target.value = "";
                   }}
                 />
-                <Stack direction="row" spacing={0.8}>
-                  <Button
-                    variant="text"
-                    startIcon={<CloudUploadRounded />}
-                    onClick={() => lHelperInputRef.current?.click()}
-                    disabled={lHelperState.loading}
-                    sx={RIBBON_TOOL_BUTTON_SX}
-                  >
-                    {lHelperSections.length ? "Open Another L" : "Upload L"}
-                  </Button>
-                  <Button
-                    variant="text"
-                    startIcon={<PlaylistAddRounded />}
-                    onClick={handleAddLHelperToWorkspace}
-                    disabled={!displayedLHelperSections.length}
-                    sx={RIBBON_TOOL_BUTTON_SX}
-                  >
-                    Add to Workspace
-                  </Button>
-                </Stack>
                 {lHelperState.error ? <Alert severity="error">{lHelperState.error}</Alert> : null}
                 {lHelperState.loading ? (
                   <Alert severity="info">Extracting Section L structure...</Alert>
@@ -6082,7 +6391,6 @@ export function StudioApp() {
                   onSelectRequirement={selectRequirement}
                   collapsedIds={collapsedRequirementIds}
                   onToggleCollapsed={toggleCollapsedRequirement}
-                  titleColorOverride={getSectionAccentColor(activeSection)}
                 />
               </Box>
             ) : null}
@@ -6105,28 +6413,54 @@ export function StudioApp() {
                     onSelectRequirement={selectLHelperRequirement}
                     collapsedIds={collapsedRequirementIds}
                     onToggleCollapsed={toggleCollapsedRequirement}
-                    titleColorOverride={getSectionAccentColor(activeLHelperSection)}
                   />
                 ) : (
-                  <Paper
-                    variant="outlined"
+                  <Box
                     sx={{
-                      p: 4,
-                      borderRadius: 1,
-                      borderColor: GITHUB_BORDER,
-                      bgcolor: "transparent",
-                      boxShadow: "none",
+                      minHeight: "100%",
+                      display: "grid",
+                      placeItems: "center",
+                      px: 3,
                     }}
                   >
-                    <Stack spacing={1.2}>
-                      <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                        L Helper
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Select an extracted Section L lane from the left rail.
-                      </Typography>
-                    </Stack>
-                  </Paper>
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        width: "100%",
+                        maxWidth: 520,
+                        p: 3,
+                        borderRadius: 1,
+                        bgcolor: "rgba(255,255,255,0.04)",
+                        borderColor: GITHUB_BORDER,
+                        boxShadow: "none",
+                      }}
+                    >
+                      <Stack spacing={1.5} alignItems="center" textAlign="center">
+                        <CloudUploadRounded sx={{ fontSize: 28, color: CHROME_TEXT }} />
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: "var(--studio-text)" }}>
+                          Upload Section L
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: GITHUB_TEXT_MUTED, maxWidth: 360 }}>
+                          Upload the solicitation Section L file to extract factors, subfactors,
+                          requirements, and proposal volumes.
+                        </Typography>
+                        <Button
+                          variant="outlined"
+                          startIcon={<CloudUploadRounded />}
+                          onClick={() => lHelperInputRef.current?.click()}
+                          disabled={lHelperState.loading}
+                          sx={{
+                            textTransform: "none",
+                            borderColor: CHROME_BORDER,
+                            color: CHROME_TEXT,
+                            bgcolor: "transparent",
+                          }}
+                        >
+                          {lHelperState.loading ? "Extracting..." : "Choose Section L"}
+                        </Button>
+                      </Stack>
+                    </Paper>
+                  </Box>
                 )}
               </Box>
             ) : null}
@@ -6206,19 +6540,19 @@ export function StudioApp() {
                 allRequirements={displayedLHelperRequirements}
                 sections={displayedLHelperSections}
                 hasCollapsibleRequirements={Boolean(activeLHelperSectionRequirements.length)}
-                onSelectRequirement={setLHelperSelectedRequirementId}
-                onCreateTopLevelRequirement={() => {}}
-                onCreateChildRequirement={() => {}}
+                onSelectRequirement={selectLHelperRequirement}
+                onCreateTopLevelRequirement={handleLHelperCreateTopLevelRequirement}
+                onCreateChildRequirement={handleLHelperCreateChildRequirement}
                 onExpandAllRequirements={() => {}}
                 onCollapseAllRequirements={() => {}}
-                onRequirementChange={() => {}}
+                onRequirementChange={handleLHelperRequirementChange}
                 onAssignToSection={() => {}}
-                onMoveRequirement={() => {}}
+                onMoveRequirement={handleLHelperMoveRequirement}
                 onMoveToUnassigned={() => {}}
-                onPromoteRequirement={() => {}}
-                onDemoteRequirement={() => {}}
+                onPromoteRequirement={handleLHelperPromoteRequirement}
+                onDemoteRequirement={handleLHelperDemoteRequirement}
                 onCreateSectionFromRequirement={() => {}}
-                onDeleteRequirement={() => {}}
+                onDeleteRequirement={handleLHelperDeleteRequirement}
                 onCutRequirement={() => {}}
                 onPasteBelowRequirement={() => {}}
                 onPasteAsChildRequirement={() => {}}
@@ -6429,6 +6763,9 @@ export function StudioApp() {
           },
         }}
       >
+        {sectionMenuSource === "l-helper" ? (
+          <MenuItem onClick={handleAddSectionToWorkspaceFromMenu}>Add to Workspace</MenuItem>
+        ) : null}
         <MenuItem onClick={handleRenameSectionFromMenu}>Rename</MenuItem>
         <MenuItem onClick={handleDeleteSectionFromMenu} sx={{ color: "#f85149" }}>
           Delete

@@ -527,27 +527,6 @@ export function DetailInspector({
     }
   }
 
-  if (!requirement) {
-    return (
-      <Paper
-        variant="outlined"
-        sx={{
-          p: 2.5,
-          borderRadius: 1,
-          bgcolor: panelSurface,
-          borderColor: panelBorder,
-        }}
-      >
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Inspector
-            </Typography>
-        <Typography variant="body2" sx={{ mt: 1, color: "var(--studio-chrome-text)" }}>
-          Select a node in the hierarchy to inspect and edit it.
-        </Typography>
-      </Paper>
-    );
-  }
-
   return (
     <Stack spacing={0} sx={{ height: "100%", minHeight: 0 }}>
       <Box
@@ -686,6 +665,7 @@ export function DetailInspector({
                   variant="text"
                   startIcon={<PlaylistAddRounded />}
                   onClick={onCreateChildRequirement}
+                  disabled={!requirement}
                   sx={{
                     justifyContent: "flex-start",
                     color: inspectorText,
@@ -706,6 +686,7 @@ export function DetailInspector({
                   variant="text"
                   startIcon={<PlaylistAddRounded />}
                   onClick={onCreateSectionFromRequirement}
+                  disabled={!requirement}
                   sx={{
                     justifyContent: "flex-start",
                     color: inspectorText,
@@ -726,6 +707,7 @@ export function DetailInspector({
                   variant="text"
                   startIcon={<PlaylistAddRounded />}
                   onClick={onPromoteRequirement}
+                  disabled={!requirement}
                   sx={{
                     justifyContent: "flex-start",
                     color: inspectorText,
@@ -746,6 +728,7 @@ export function DetailInspector({
                   variant="text"
                   startIcon={<PlaylistAddRounded />}
                   onClick={onDemoteRequirement}
+                  disabled={!requirement}
                   sx={{
                     justifyContent: "flex-start",
                     color: inspectorText,
@@ -766,6 +749,7 @@ export function DetailInspector({
                   variant="text"
                   startIcon={<DeleteOutlineRounded />}
                   onClick={onCutRequirement}
+                  disabled={!requirement}
                   sx={{
                     justifyContent: "flex-start",
                     color: "#f2cc60",
@@ -828,6 +812,7 @@ export function DetailInspector({
                   variant="text"
                   startIcon={<DeleteOutlineRounded />}
                   onClick={onDeleteRequirement}
+                  disabled={!requirement}
                   sx={{
                     justifyContent: "flex-start",
                     color: "#f85149",
@@ -844,12 +829,13 @@ export function DetailInspector({
                   Delete
                 </Button>
               </Stack>
-              <TextField
-                fullWidth
-                value={String(requirement.sourceRef || "").toUpperCase()}
-                onChange={(event) =>
-                  onRequirementChange("sourceRef", event.target.value.toUpperCase())
-                }
+                <TextField
+                  fullWidth
+                  value={String(requirement?.sourceRef || "").toUpperCase()}
+                  onChange={(event) =>
+                    onRequirementChange("sourceRef", event.target.value.toUpperCase())
+                  }
+                  disabled={!requirement}
                 placeholder="Requirement title"
                 variant="outlined"
                 InputProps={{
@@ -884,12 +870,13 @@ export function DetailInspector({
                   },
                 }}
               />
-              <TextField
-                fullWidth
-                multiline
-                minRows={8}
-                value={requirement.text}
-                onChange={(event) => onRequirementChange("text", event.target.value)}
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={8}
+                  value={requirement?.text || ""}
+                  onChange={(event) => onRequirementChange("text", event.target.value)}
+                  disabled={!requirement}
                 placeholder="Requirement text"
                 variant="outlined"
                 InputLabelProps={{
@@ -1005,16 +992,16 @@ export function DetailInspector({
                       borderRadius: 1,
                       cursor: "pointer",
                       bgcolor:
-                        candidate.id === requirement.id
+                        candidate.id === requirement?.id
                           ? "#31404d"
                           : panelSurface,
                       borderColor:
-                        candidate.id === requirement.id
+                        candidate.id === requirement?.id
                           ? "#2f81f7"
                           : panelBorder,
                       "&:hover": {
                         bgcolor:
-                          candidate.id === requirement.id
+                          candidate.id === requirement?.id
                             ? "#385062"
                             : panelSurfaceHover,
                       },

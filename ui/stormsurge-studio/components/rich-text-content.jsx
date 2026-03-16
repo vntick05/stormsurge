@@ -192,7 +192,7 @@ export function RichTextContent({ content, dense = false }) {
                 overflowX: "auto",
               }}
             >
-              <Table size="small" sx={{ minWidth: 360 }}>
+              <Table size="small" sx={{ minWidth: 320, tableLayout: "fixed" }}>
                 <TableHead>
                   <TableRow>
                     {block.header.map((cell, cellIndex) => (
@@ -202,7 +202,9 @@ export function RichTextContent({ content, dense = false }) {
                           color: "inherit",
                           fontWeight: 700,
                           borderColor: GITHUB_BORDER,
-                          whiteSpace: "nowrap",
+                          whiteSpace: "normal",
+                          wordBreak: "break-word",
+                          verticalAlign: "top",
                         }}
                       >
                         {cell}
@@ -220,6 +222,8 @@ export function RichTextContent({ content, dense = false }) {
                             color: "inherit",
                             borderColor: GITHUB_BORDER,
                             verticalAlign: "top",
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
                           }}
                         >
                           {cell}
