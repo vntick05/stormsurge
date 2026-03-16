@@ -13,11 +13,11 @@ import 'assets/third-party/react-table.css';
 import '@fontsource/public-sans/400.css';
 import '@fontsource/public-sans/500.css';
 import '@fontsource/public-sans/600.css';
-import '@fontsource/public-sans/700.css';
 
 // project imports
 import App from './App';
 import { ConfigProvider } from 'contexts/ConfigContext';
+import { WorkspaceProvider } from 'contexts/WorkspaceContext';
 import reportWebVitals from './reportWebVitals';
 
 const container = document.getElementById('root');
@@ -27,7 +27,9 @@ const root = createRoot(container);
 
 root.render(
   <ConfigProvider>
-    <App />
+    <WorkspaceProvider>
+      <App />
+    </WorkspaceProvider>
   </ConfigProvider>
 );
 

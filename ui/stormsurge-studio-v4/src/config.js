@@ -8,7 +8,7 @@ export const RIGHT_PANEL_MIN_WIDTH = 40;
 export const RIGHT_PANEL_MAX_WIDTH = 1400;
 
 const config = {
-  fontFamily: `'Public Sans', sans-serif`
+  fontFamily: `'Mona Sans', sans-serif`
 };
 
 export default config;

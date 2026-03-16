@@ -1,25 +1,43 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
 
 import HolderOutlined from '@ant-design/icons/HolderOutlined';
 
 import MainCard from 'components/MainCard';
 
-const initialRequirementCards = [
-  { id: '3.1.p6', title: 'Technical Support Requirement' },
-  { id: '3.1.p11', title: 'ArcGIS Earth Client Support' },
-  { id: '3.2.p2', title: 'Operational Availability Monitoring' },
-  { id: '3.2.p7', title: 'Integrated Data Source Validation' },
-  { id: '4.1.p3', title: 'Software Enhancement Delivery' },
-  { id: '5.4.p2', title: 'Monthly Status And Risk Reporting' },
-  { id: '6.2.p4', title: 'Vulnerability Response Workflow' },
-  { id: '7.1.p1', title: 'Transition Knowledge Transfer Plan' }
-];
+import { useWorkspace } from 'contexts/WorkspaceContext';
+import { getChildSections, getSectionRootRequirements } from 'utils/workspace';
 
-function RequirementCard({ requirement, isSelected, isDragging, isDragTarget, onSelect, dragProps }) {
+function formatRequirementLabel(requirement) {
+  return String(requirement.sourceRef || requirement.id || '')
+    .toUpperCase()
+    .replace(/\.P(\d+)/g, '.P$1')
+    .replace(/\.B(\d+)/g, '.B$1');
+}
+
+function formatRequirementBody(requirement) {
+  const body = String(requirement.text || requirement.summary || requirement.title || '').replace(/\s+/g, ' ').trim();
+  return body || 'No requirement text extracted.';
+}
+
+function formatSectionTag(section) {
+  return String(section.sectionNumber || section.shortLabel || '').toUpperCase();
+}
+
+function formatSectionBody(section) {
+  const label = String(section.label || '').trim();
+  const sectionNumber = String(section.sectionNumber || '').trim();
+  if (sectionNumber && label.startsWith(sectionNumber)) {
+    return label.slice(sectionNumber.length).trim() || label;
+  }
+  return label || 'Untitled Section';
+}
+
+function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSelect, requirement }) {
   return (
     <Box
       {...dragProps}
@@ -31,7 +49,14 @@ function RequirementCard({ requirement, isSelected, isDragging, isDragTarget, on
       }}
     >
       <MainCard
-        contentSX={{ p: 1.75 }}
+        contentSX={{
+          px: 1.75,
+          py: 0.8,
+          minHeight: 46,
+          '&:last-child': {
+            pb: 0.8
+          }
+        }}
         onClick={onSelect}
         sx={{
           borderRadius: 2,
@@ -46,11 +71,11 @@ function RequirementCard({ requirement, isSelected, isDragging, isDragTarget, on
       >
         <Box
           sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: '18px max-content minmax(0, 1fr)' },
-            columnGap: 1,
-            rowGap: 0.5,
-            alignItems: 'center'
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            width: '100%',
+            minHeight: 28
           }}
         >
           <Box
@@ -58,19 +83,27 @@ function RequirementCard({ requirement, isSelected, isDragging, isDragTarget, on
               display: { xs: 'none', sm: 'inline-flex' },
               alignItems: 'center',
               justifyContent: 'center',
-              color: isSelected ? 'primary.main' : 'text.disabled'
+              color: isSelected ? 'primary.main' : 'text.disabled',
+              width: 18,
+              flexShrink: 0
             }}
           >
             <HolderOutlined style={{ fontSize: '0.8rem' }} />
           </Box>
           <Typography
             variant="body1"
-            sx={{ textTransform: 'uppercase', letterSpacing: '0.04em', color: 'text.secondary' }}
+            sx={{
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              color: 'text.secondary',
+              flexShrink: 0,
+              lineHeight: 1.2
+            }}
           >
-            {requirement.id}
+            {formatRequirementLabel(requirement)}
           </Typography>
-          <Typography variant="body1" sx={{ color: 'text.primary' }}>
-            {requirement.title}
+          <Typography variant="body1" sx={{ color: 'text.primary', lineHeight: 1.2, minWidth: 0 }}>
+            {formatRequirementBody(requirement)}
           </Typography>
         </Box>
       </MainCard>
@@ -78,55 +111,110 @@ function RequirementCard({ requirement, isSelected, isDragging, isDragTarget, on
   );
 }
 
-export default function DashboardDefault() {
-  const [requirementCards, setRequirementCards] = useState(initialRequirementCards);
-  const [selectedId, setSelectedId] = useState(initialRequirementCards[0].id);
-  const [draggedId, setDraggedId] = useState(null);
-  const [dragTargetId, setDragTargetId] = useState(null);
+function SectionCard({ isSelected, onSelect, section }) {
+  return (
+    <Box
+      onClick={onSelect}
+      sx={{
+        cursor: 'pointer',
+        borderRadius: 1.5,
+        px: 1.75,
+        py: 0.65,
+        minHeight: 42,
+        bgcolor: isSelected ? 'rgba(70, 95, 255, 0.06)' : 'transparent',
+        '&:hover': {
+          bgcolor: isSelected ? 'rgba(70, 95, 255, 0.06)' : 'rgba(15, 23, 42, 0.04)'
+        }
+      }}
+    >
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          width: '100%',
+          minHeight: 28
+        }}
+      >
+        <Typography
+          variant="body1"
+          sx={{
+            fontFamily: "'Public Sans', sans-serif",
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+            color: 'text.secondary',
+            flexShrink: 0,
+            lineHeight: 1.2
+          }}
+        >
+          {formatSectionTag(section)}
+        </Typography>
+        <Typography
+          variant="body1"
+          sx={{
+            fontFamily: "'Public Sans', sans-serif",
+            color: 'text.primary',
+            fontWeight: 600,
+            lineHeight: 1.2,
+            minWidth: 0,
+            whiteSpace: 'normal',
+            overflowWrap: 'anywhere',
+            pr: 1
+          }}
+        >
+          {formatSectionBody(section)}
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
 
-  const moveCard = (activeId, targetId) => {
-    if (!activeId || !targetId || activeId === targetId) return;
-
-    setRequirementCards((currentCards) => {
-      const activeIndex = currentCards.findIndex((card) => card.id === activeId);
-      const targetIndex = currentCards.findIndex((card) => card.id === targetId);
-
-      if (activeIndex === -1 || targetIndex === -1) return currentCards;
-
-      const nextCards = [...currentCards];
-      const [movedCard] = nextCards.splice(activeIndex, 1);
-      nextCards.splice(targetIndex, 0, movedCard);
-      return nextCards;
-    });
-  };
+function SectionGroup({
+  draggedId,
+  dragTargetId,
+  onRequirementSelect,
+  reorderRequirements,
+  requirements,
+  sections,
+  selectedRequirementId,
+  setDraggedId,
+  setDragTargetId,
+  subsection
+}) {
+  const childSections = getChildSections(sections, subsection.id);
 
   return (
-    <Stack sx={{ gap: 2 }}>
-      <Stack sx={{ gap: 1.25 }}>
-        {requirementCards.map((requirement) => (
+    <Stack sx={{ gap: 0.75 }}>
+      <SectionCard
+        section={subsection}
+        isSelected={selectedRequirementId === subsection.id}
+        onSelect={() => onRequirementSelect(subsection.id)}
+      />
+      <Stack sx={{ gap: 0.75, pl: { xs: 1.25, sm: 2.5 } }}>
+        {getSectionRootRequirements(requirements, subsection.id).map((requirement) => (
           <RequirementCard
             key={requirement.id}
             requirement={requirement}
-            isSelected={selectedId === requirement.id}
+            isSelected={selectedRequirementId === requirement.id}
             isDragging={draggedId === requirement.id}
             isDragTarget={dragTargetId === requirement.id && draggedId !== requirement.id}
-            onSelect={() => setSelectedId(requirement.id)}
+            onSelect={() => onRequirementSelect(requirement.id)}
             dragProps={{
               draggable: true,
               onDragStart: () => {
                 setDraggedId(requirement.id);
-                setSelectedId(requirement.id);
+                onRequirementSelect(requirement.id);
               },
               onDragEnter: (event) => {
                 event.preventDefault();
                 setDragTargetId(requirement.id);
-                moveCard(draggedId || requirement.id, requirement.id);
+                reorderRequirements(draggedId || requirement.id, requirement.id, subsection.id);
               },
               onDragOver: (event) => {
                 event.preventDefault();
               },
               onDrop: () => {
-                moveCard(draggedId, requirement.id);
+                reorderRequirements(draggedId, requirement.id, subsection.id);
                 setDragTargetId(null);
                 setDraggedId(null);
               },
@@ -137,6 +225,138 @@ export default function DashboardDefault() {
             }}
           />
         ))}
+        {childSections.map((childSection) => (
+          <SectionGroup
+            key={childSection.id}
+            draggedId={draggedId}
+            dragTargetId={dragTargetId}
+            onRequirementSelect={onRequirementSelect}
+            reorderRequirements={reorderRequirements}
+            requirements={requirements}
+            sections={sections}
+            selectedRequirementId={selectedRequirementId}
+            setDraggedId={setDraggedId}
+            setDragTargetId={setDragTargetId}
+            subsection={childSection}
+          />
+        ))}
+      </Stack>
+    </Stack>
+  );
+}
+
+export default function DashboardDefault() {
+  const {
+    importError,
+    isImporting,
+    reorderSectionRequirements,
+    requirements,
+    sections,
+    selectedRequirementId,
+    selectedSectionId,
+    setSelectedRequirementId,
+    sourceFilename
+  } = useWorkspace();
+  const [draggedId, setDraggedId] = useState(null);
+  const [dragTargetId, setDragTargetId] = useState(null);
+
+  const selectedSection = sections.find((section) => section.id === selectedSectionId) || null;
+  const visibleSubsections = useMemo(() => (selectedSectionId ? getChildSections(sections, selectedSectionId) : []), [sections, selectedSectionId]);
+  const visibleRequirements = useMemo(
+    () => (selectedSectionId ? getSectionRootRequirements(requirements, selectedSectionId) : []),
+    [requirements, selectedSectionId]
+  );
+
+  const moveCard = (activeId, targetId, sectionId = selectedSectionId) => {
+    if (!sectionId) return;
+    reorderSectionRequirements(sectionId, activeId, targetId);
+  };
+
+  if (!sections.length && !isImporting) {
+    return (
+      <Stack sx={{ gap: 2, alignItems: 'flex-start' }}>
+        {importError ? <Alert severity="error">{importError}</Alert> : null}
+        <Typography variant="body2" color="text.secondary">
+          Use the top-right toolbar button to import a PWS outline.
+        </Typography>
+      </Stack>
+    );
+  }
+
+  return (
+    <Stack sx={{ gap: 1.25 }}>
+      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+        <Stack sx={{ gap: 0.25, minWidth: 0 }}>
+          <Typography variant="subtitle1">{selectedSection?.label || 'Importing Outline'}</Typography>
+          {sourceFilename ? (
+            <Typography variant="caption" color="text.secondary">
+              {sourceFilename}
+            </Typography>
+          ) : null}
+        </Stack>
+        <Box />
+      </Stack>
+
+      {importError ? <Alert severity="error">{importError}</Alert> : null}
+
+      <Stack sx={{ gap: 1 }}>
+        {visibleSubsections.length
+          ? visibleSubsections.map((section) => (
+              <SectionGroup
+                key={section.id}
+                draggedId={draggedId}
+                dragTargetId={dragTargetId}
+                onRequirementSelect={setSelectedRequirementId}
+                reorderRequirements={moveCard}
+                requirements={requirements}
+                sections={sections}
+                selectedRequirementId={selectedRequirementId}
+                setDraggedId={setDraggedId}
+                setDragTargetId={setDragTargetId}
+                subsection={section}
+              />
+            ))
+          : visibleRequirements.map((requirement) => (
+              <RequirementCard
+                key={requirement.id}
+                requirement={requirement}
+                isSelected={selectedRequirementId === requirement.id}
+                isDragging={draggedId === requirement.id}
+                isDragTarget={dragTargetId === requirement.id && draggedId !== requirement.id}
+                onSelect={() => setSelectedRequirementId(requirement.id)}
+                dragProps={{
+                  draggable: true,
+                  onDragStart: () => {
+                    setDraggedId(requirement.id);
+                    setSelectedRequirementId(requirement.id);
+                  },
+                  onDragEnter: (event) => {
+                    event.preventDefault();
+                    setDragTargetId(requirement.id);
+                    moveCard(draggedId || requirement.id, requirement.id);
+                  },
+                  onDragOver: (event) => {
+                    event.preventDefault();
+                  },
+                  onDrop: () => {
+                    moveCard(draggedId, requirement.id);
+                    setDragTargetId(null);
+                    setDraggedId(null);
+                  },
+                  onDragEnd: () => {
+                    setDragTargetId(null);
+                    setDraggedId(null);
+                  }
+                }}
+              />
+            ))}
+        {!isImporting && sections.length && !visibleSubsections.length && !visibleRequirements.length ? (
+          <MainCard contentSX={{ p: 1.75 }}>
+            <Typography variant="body2" color="text.secondary">
+              No subsection or root requirement content was extracted for this section.
+            </Typography>
+          </MainCard>
+        ) : null}
       </Stack>
     </Stack>
   );

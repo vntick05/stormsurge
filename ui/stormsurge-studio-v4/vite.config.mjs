@@ -7,13 +7,59 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const API_URL = env.VITE_APP_BASE_NAME || '/';
   const PORT = 3004;
+  const PWS_SERVICE_URL = env.VITE_PWS_SERVICE_URL || 'http://127.0.0.1:3200';
+  const API_GATEWAY_URL = env.VITE_API_GATEWAY_URL || 'http://127.0.0.1:8460';
+  const DOCUMENT_SERVICE_URL = env.VITE_DOCUMENT_SERVICE_URL || 'http://127.0.0.1:8181';
+  const NORMALIZATION_SERVICE_URL = env.VITE_NORMALIZATION_SERVICE_URL || 'http://127.0.0.1:8191';
+  const RETRIEVAL_SERVICE_URL = env.VITE_RETRIEVAL_SERVICE_URL || 'http://127.0.0.1:8481';
+  const ANALYSIS_SERVICE_URL = env.VITE_ANALYSIS_SERVICE_URL || 'http://127.0.0.1:8192';
 
   return {
     base: API_URL,
     server: {
       open: false,
       port: PORT,
-      host: true
+      host: true,
+      proxy: {
+        '/api/outline': {
+          target: PWS_SERVICE_URL,
+          changeOrigin: true,
+          rewrite: () => '/api/pws/outline-upload'
+        },
+        '/api/storm': {
+          target: PWS_SERVICE_URL,
+          changeOrigin: true
+        },
+        '/api/pws': {
+          target: PWS_SERVICE_URL,
+          changeOrigin: true
+        },
+        '/svc/api': {
+          target: API_GATEWAY_URL,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/svc\/api/, '')
+        },
+        '/svc/document': {
+          target: DOCUMENT_SERVICE_URL,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/svc\/document/, '')
+        },
+        '/svc/normalization': {
+          target: NORMALIZATION_SERVICE_URL,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/svc\/normalization/, '')
+        },
+        '/svc/retrieval': {
+          target: RETRIEVAL_SERVICE_URL,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/svc\/retrieval/, '')
+        },
+        '/svc/analysis': {
+          target: ANALYSIS_SERVICE_URL,
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/svc\/analysis/, '')
+        }
+      }
     },
     preview: {
       open: false,
