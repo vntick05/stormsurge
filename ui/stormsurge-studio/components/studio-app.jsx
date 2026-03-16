@@ -3409,6 +3409,12 @@ export function StudioApp() {
     [activeStormWorkspaceNotes],
   );
   const showMainCanvas = !isHomeScreen && leftRailTab === "sections";
+  const currentViewRequirementCount = showLHelperCanvas
+    ? activeLHelperSectionRequirements.length
+    : activeSectionRequirements.length;
+  const totalProjectRequirementCount = showLHelperCanvas
+    ? displayedLHelperRequirements.length
+    : requirements.length;
 
   function buildStudioSnapshot() {
     return {
@@ -6672,6 +6678,46 @@ export function StudioApp() {
           </RailShell>
         ) : null}
       </Box>
+      {!isHomeScreen ? (
+        <Box
+          sx={{
+            flex: "0 0 auto",
+            width: "100%",
+            minHeight: 30,
+            px: { xs: 1.25, xl: 1.5 },
+            borderTop: `1px solid ${GITHUB_BORDER}`,
+            bgcolor: "rgba(15, 20, 27, 0.92)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 2,
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              color: GITHUB_TEXT_MUTED,
+              fontSize: "0.7rem",
+              letterSpacing: 0.2,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Current view: <strong style={{ color: "#f3f4f6" }}>{currentViewRequirementCount}</strong>
+          </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: GITHUB_TEXT_MUTED,
+              fontSize: "0.7rem",
+              letterSpacing: 0.2,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Total project reqs:{" "}
+            <strong style={{ color: "#f3f4f6" }}>{totalProjectRequirementCount}</strong>
+          </Typography>
+        </Box>
+      ) : null}
       <Dialog
         open={mtsPromptDialogOpen}
         onClose={handleCloseMtsPromptDialog}

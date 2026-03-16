@@ -146,64 +146,43 @@ function RequirementCard({
         }
         sx={{
           position: "relative",
-          pl: 0.05,
-          pr: 0.95,
-          py: 0.95,
-          minHeight: 58,
+          pl: 0,
+          pr: 0,
+          py: 0,
+          minHeight: 54,
           cursor: "pointer",
           borderRadius: 0.65,
           bgcolor: selected ? accent.selectedBg : "rgba(255,255,255,0.96)",
+          overflow: "hidden",
           boxShadow: selected
-            ? "0 0 0 2px rgba(59, 130, 246, 0.38), 0 2px 6px rgba(21, 31, 41, 0.1)"
-            : "0 1px 0 rgba(17, 24, 39, 0.04), 0 1px 4px rgba(17, 24, 39, 0.06)",
+            ? "0 0 0 1px rgba(59, 130, 246, 0.24), 0 1px 5px rgba(15, 23, 42, 0.12), 0 1px 2px rgba(15, 23, 42, 0.08)"
+            : "0 1px 5px rgba(15, 23, 42, 0.11), 0 1px 2px rgba(15, 23, 42, 0.07)",
           transition: "background-color 120ms ease, box-shadow 120ms ease",
-          "&::before": {
-            content: '""',
-            position: "absolute",
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 92,
-            borderTopLeftRadius: "inherit",
-            borderBottomLeftRadius: "inherit",
-            bgcolor: accent.softBg,
-          },
-          "&::after": {
-            content: '""',
-            position: "absolute",
-            left: 92,
-            top: 0,
-            bottom: 0,
-            width: 5,
-            bgcolor: accent.text,
-          },
           "&:hover": {
             bgcolor: selected ? accent.selectedBg : "rgba(255,255,255,0.98)",
             boxShadow: selected
-              ? "0 0 0 2px rgba(59, 130, 246, 0.48), 0 3px 7px rgba(21, 31, 41, 0.12)"
-              : "0 1px 0 rgba(17, 24, 39, 0.05), 0 2px 5px rgba(17, 24, 39, 0.08)",
+              ? "0 0 0 1px rgba(59, 130, 246, 0.32), 0 2px 6px rgba(15, 23, 42, 0.14), 0 1px 3px rgba(15, 23, 42, 0.09)"
+              : "0 2px 6px rgba(15, 23, 42, 0.12), 0 1px 3px rgba(15, 23, 42, 0.08)",
           },
         }}
       >
-        <Stack spacing={0.9}>
-          <Stack direction="row" spacing={1.2} alignItems="stretch">
+        <Stack spacing={0}>
+          <Stack direction="row" spacing={0} alignItems="stretch">
             <Box
               {...dragHandleProps}
               onClick={(event) => event.stopPropagation()}
               sx={{
-                width: 24,
-                minHeight: 38,
+                width: 8,
+                minHeight: 54,
                 flexShrink: 0,
                 cursor: "grab",
                 opacity: 0.9,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: GITHUB_TEXT_MUTED,
-                borderRadius: 0.9,
-                bgcolor: "transparent",
-                alignSelf: "center",
-                zIndex: 1,
+                color: "#f3f4f6",
+                bgcolor: "#6f7d8d",
+                alignSelf: "stretch",
               }}
             >
               <Box sx={{ fontSize: 15, lineHeight: 1 }}>⋮</Box>
@@ -212,13 +191,12 @@ function RequirementCard({
               sx={{
                 flexGrow: 1,
                 minWidth: 0,
-                pr: 0.35,
-                py: 0.2,
-                pl: 0.35,
+                pr: 0,
+                py: 0,
+                pl: 0,
                 display: "flex",
                 alignItems: "stretch",
-                minHeight: containsTable ? 0 : 38,
-                zIndex: 1,
+                minHeight: containsTable ? 0 : 54,
               }}
             >
               <Box
@@ -226,7 +204,7 @@ function RequirementCard({
                   width: "100%",
                   minWidth: 0,
                   display: "grid",
-                  gridTemplateColumns: "92px 1fr",
+                  gridTemplateColumns: "84px 2px minmax(0, 1fr)",
                   alignItems: "stretch",
                 }}
               >
@@ -235,15 +213,14 @@ function RequirementCard({
                     fontFamily: GITHUB_FONT_STACK,
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "flex-start",
-                    pl: 0,
-                    pr: 1.1,
+                    justifyContent: "center",
+                    pl: 0.2,
+                    pr: 0.2,
                     py: 0,
-                    minHeight: 38,
+                    minHeight: containsTable ? 54 : "100%",
                     minWidth: 0,
-                    overflow: "hidden",
                     boxSizing: "border-box",
-                    ml: -1.2,
+                    bgcolor: accent.softBg,
                   }}
                 >
                   <Box
@@ -257,8 +234,9 @@ function RequirementCard({
                       lineHeight: 1.15,
                       textTransform: "none",
                       display: "block",
-                      width: "56px",
-                      maxWidth: "56px",
+                      width: "50px",
+                      maxWidth: "50px",
+                      textAlign: "center",
                       whiteSpace: "normal",
                       overflowWrap: "anywhere",
                       wordBreak: "break-word",
@@ -271,47 +249,53 @@ function RequirementCard({
                 </Box>
                 <Box
                   sx={{
+                    width: "100%",
+                    bgcolor: "#b8c0ca",
+                  }}
+                />
+                <Box
+                  sx={{
                     fontFamily: GITHUB_FONT_STACK,
                     minWidth: 0,
                     display: "flex",
-                    alignItems: "center",
-                    pl: 0.2,
-                    pr: 0.35,
+                    alignItems: containsTable ? "stretch" : "center",
+                    pl: 0.95,
+                    pr: 0.55,
+                    bgcolor: "transparent",
                   }}
                 >
-                  <Box
-                    component="div"
-                    sx={{
-                      fontFamily: GITHUB_FONT_STACK,
-                      color: "inherit",
-                      fontSize: "0.88rem",
-                      lineHeight: 1.35,
-                      fontWeight: 400,
-                      letterSpacing: 0,
-                      textTransform: "none",
-                      WebkitFontSmoothing: "antialiased",
-                      MozOsxFontSmoothing: "grayscale",
-                      color: "#111827",
-                      minWidth: 0,
-                      maxHeight: containsTable ? "5.4em" : "4.1em",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {containsTable
-                      ? leadingNarrativeText || requirement.text || requirement.summary
-                      : requirement.text || requirement.summary}
-                  </Box>
+                  {containsTable ? (
+                    <Box sx={{ minWidth: 0, width: "100%", py: 0.45 }}>
+                      <RichTextContent
+                        content={trailingTableContent}
+                        dense
+                        tablePreviewRows={3}
+                        showTableOverflowNote
+                      />
+                    </Box>
+                  ) : (
+                    <Box
+                      component="div"
+                      sx={{
+                        fontFamily: GITHUB_FONT_STACK,
+                        color: "inherit",
+                        fontSize: "0.84rem",
+                        lineHeight: 1.28,
+                        fontWeight: 400,
+                        letterSpacing: 0,
+                        textTransform: "none",
+                        WebkitFontSmoothing: "antialiased",
+                        MozOsxFontSmoothing: "grayscale",
+                        color: "#111827",
+                        minWidth: 0,
+                        maxHeight: "3.84em",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {requirement.text || requirement.summary}
+                    </Box>
+                  )}
                 </Box>
-                {containsTable && trailingTableContent ? (
-                  <Box sx={{ mt: 0.55 }}>
-                    <RichTextContent
-                      content={trailingTableContent}
-                      dense
-                      tablePreviewRows={3}
-                      showTableOverflowNote
-                    />
-                  </Box>
-                ) : null}
               </Box>
             </Box>
             <Button
@@ -327,8 +311,9 @@ function RequirementCard({
                 ml: 0,
                 color: hasChildren ? "var(--studio-text)" : "transparent",
                 visibility: hasChildren ? "visible" : "hidden",
-                alignSelf: "center",
-                borderRadius: 0.9,
+                alignSelf: "stretch",
+                display: "flex",
+                alignItems: "center",
                 bgcolor: "transparent",
               }}
             >

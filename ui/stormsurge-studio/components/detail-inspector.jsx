@@ -638,29 +638,6 @@ export function DetailInspector({
         >
           {activeTab === "Edit" ? (
             <Stack spacing={1.5}>
-              {requirementHasTable ? (
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    p: 1,
-                    borderRadius: 1,
-                    bgcolor: panelSurface,
-                    borderColor: panelBorder,
-                    boxShadow: "none",
-                  }}
-                >
-                  <Stack spacing={0.75}>
-                    <Typography variant="caption" sx={{ color: inspectorMutedText, fontWeight: 700 }}>
-                      Full Table
-                    </Typography>
-                    <RichTextContent
-                      blocks={requirementBlocks}
-                      content={requirement?.text || requirement?.summary || ""}
-                      dense
-                    />
-                  </Stack>
-                </Paper>
-              ) : null}
               <Stack
                 direction="row"
                 spacing={1}
@@ -898,6 +875,24 @@ export function DetailInspector({
                   },
                 }}
               />
+              {requirementHasTable ? (
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 1.1,
+                    borderRadius: 1,
+                    bgcolor: panelSurface,
+                    borderColor: panelBorder,
+                    boxShadow: "none",
+                  }}
+                >
+                  <RichTextContent
+                    blocks={requirementBlocks}
+                    content={requirement?.text || requirement?.summary || ""}
+                    dense
+                  />
+                </Paper>
+              ) : (
                 <TextField
                   fullWidth
                   multiline
@@ -905,46 +900,47 @@ export function DetailInspector({
                   value={requirement?.text || ""}
                   onChange={(event) => onRequirementChange("text", event.target.value)}
                   disabled={!requirement}
-                placeholder="Requirement text"
-                variant="outlined"
-                InputLabelProps={{
-                  sx: {
-                    fontSize: "0.875rem",
-                  },
-                }}
-                InputProps={{
-                  sx: {
-                    fontSize: "0.875rem",
-                    lineHeight: 1.4,
-                    alignItems: "flex-start",
-                    color: inspectorText,
-                    bgcolor: panelSurface,
-                    borderRadius: 1,
-                    "& textarea": {
+                  placeholder="Requirement text"
+                  variant="outlined"
+                  InputLabelProps={{
+                    sx: {
+                      fontSize: "0.875rem",
+                    },
+                  }}
+                  InputProps={{
+                    sx: {
+                      fontSize: "0.875rem",
+                      lineHeight: 1.4,
+                      alignItems: "flex-start",
                       color: inspectorText,
+                      bgcolor: panelSurface,
+                      borderRadius: 1,
+                      "& textarea": {
+                        color: inspectorText,
+                      },
+                      "& textarea::placeholder": {
+                        color: inspectorMutedText,
+                        opacity: 1,
+                      },
+                      "& fieldset": {
+                        borderColor: "transparent",
+                        borderWidth: 0,
+                      },
+                      "&:hover": {
+                        bgcolor: panelSurfaceSoft,
+                      },
+                      "&:hover fieldset": {
+                        borderColor: "transparent",
+                        borderWidth: 0,
+                      },
+                      "&.Mui-focused fieldset": {
+                        borderColor: "transparent",
+                        borderWidth: 0,
+                      },
                     },
-                    "& textarea::placeholder": {
-                      color: inspectorMutedText,
-                      opacity: 1,
-                    },
-                    "& fieldset": {
-                      borderColor: "transparent",
-                      borderWidth: 0,
-                    },
-                    "&:hover": {
-                      bgcolor: panelSurfaceSoft,
-                    },
-                    "&:hover fieldset": {
-                      borderColor: "transparent",
-                      borderWidth: 0,
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "transparent",
-                      borderWidth: 0,
-                    },
-                  },
-                }}
-              />
+                  }}
+                />
+              )}
             </Stack>
           ) : null}
 
