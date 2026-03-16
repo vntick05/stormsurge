@@ -1,3 +1,5 @@
+import { parseRichTextBlocks } from "@/lib/rich-text-blocks";
+
 function slugifySegment(value) {
   return String(value || "")
     .toLowerCase()
@@ -44,6 +46,10 @@ function formatSectionLabel(sectionNumber, sectionTitle) {
 function convertNode(node, sectionId, parentId, position, bucket) {
   if (node.type === "paragraph") {
     const paragraphId = node.id || `para-${sectionId}-${position}`;
+    const text = node.text_exact || "";
+    const structuredContent = Array.isArray(node.structured_content)
+      ? node.structured_content
+      : parseRichTextBlocks(text);
     bucket.push({
       id: paragraphId,
       sectionId,
@@ -54,8 +60,9 @@ function convertNode(node, sectionId, parentId, position, bucket) {
       sourceRef: paragraphId,
       kind: "paragraph",
       title: formatDisplayLabel(paragraphId, "Paragraph"),
-      summary: summarize(node.text_exact),
-      text: node.text_exact || "",
+      summary: summarize(text),
+      text,
+      structuredContent,
       intent: "Extracted paragraph",
       marker: null,
     });
@@ -68,6 +75,10 @@ function convertNode(node, sectionId, parentId, position, bucket) {
 
   if (node.type === "bullet") {
     const bulletId = node.id || `bullet-${sectionId}-${position}`;
+    const text = node.text_exact || "";
+    const structuredContent = Array.isArray(node.structured_content)
+      ? node.structured_content
+      : parseRichTextBlocks(text);
     bucket.push({
       id: bulletId,
       sectionId,
@@ -78,8 +89,9 @@ function convertNode(node, sectionId, parentId, position, bucket) {
       sourceRef: bulletId,
       kind: "bullet",
       title: formatDisplayLabel(bulletId, "Bullet"),
-      summary: summarize(node.text_exact),
-      text: node.text_exact || "",
+      summary: summarize(text),
+      text,
+      structuredContent,
       intent: "Extracted bullet",
       marker: node.marker || "-",
     });
@@ -87,6 +99,7 @@ function convertNode(node, sectionId, parentId, position, bucket) {
   }
 
   const sectionNodeId = `node-${slugifySegment(node.section_number || node.section_title)}-${position}`;
+  const text = node.section_title || "";
   bucket.push({
     id: sectionNodeId,
     sectionId,
@@ -97,8 +110,9 @@ function convertNode(node, sectionId, parentId, position, bucket) {
     sourceRef: node.section_number || node.section_title || sectionNodeId,
     kind: "section",
     title: formatDisplayLabel(node.section_number, "Section"),
-    summary: node.section_title || "Extracted section",
-    text: node.section_title || "",
+    summary: text || "Extracted section",
+    text,
+    structuredContent: parseRichTextBlocks(text),
     intent: "Extracted section",
     marker: null,
   });

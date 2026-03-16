@@ -26,6 +26,14 @@ def normalize_text(text: str) -> str:
     return " ".join(html.unescape(text).replace("\r", "\n").split())
 
 
+def strip_inline_markdown(text: str) -> str:
+    value = str(text or "")
+    value = re.sub(r"\*\*(.*?)\*\*", r"\1", value)
+    value = re.sub(r"__(.*?)__", r"\1", value)
+    value = re.sub(r"`([^`]+)`", r"\1", value)
+    return value
+
+
 def clean_display_text(text: str) -> str:
     cleaned = normalize_text(text)
     cleaned = CLASSIFICATION_PREFIX_PATTERN.sub("", cleaned).strip()
@@ -40,6 +48,125 @@ def is_classification_marker(marker: str) -> bool:
 def is_likely_table_text(text: str) -> bool:
     normalized = str(text or "").strip()
     return normalized.count("|") >= 6
+
+
+def is_markdown_table_separator(line: str) -> bool:
+    return re.match(r"^\|?[\s:-]+(?:\|[\s:-]+)+\|?$", line.strip()) is not None
+
+
+def is_markdown_table_row(line: str) -> bool:
+    trimmed = line.strip()
+    return "|" in trimmed and re.match(r"^\|?.+\|.+\|?$", trimmed) is not None
+
+
+def parse_table_row(line: str) -> list[str]:
+    return [strip_inline_markdown(cell.strip()) for cell in line.strip().removeprefix("|").removesuffix("|").split("|")]
+
+
+def parse_compressed_inline_table(line: str) -> dict[str, Any] | None:
+    text = str(line or "").strip()
+    match = re.search(
+        r"(?P<header>\|(?:[^|\n]*\|){2,}?)(?=\s*\|(?:[-:\s]*\|){2,})"
+        r"\s*(?P<separator>\|(?:[-:\s]*\|){2,})\s*(?P<body>.*)$",
+        text,
+    )
+    if match is None:
+        return None
+
+    header = parse_table_row(match.group("header"))
+    if len(header) < 2:
+        return None
+
+    body = match.group("body").strip()
+    tokens = [strip_inline_markdown(token.strip()) for token in body.split("|") if token.strip()]
+    if len(tokens) < len(header):
+        return None
+
+    rows = [tokens[index : index + len(header)] for index in range(0, len(tokens), len(header))]
+    rows = [row for row in rows if len(row) == len(header)]
+    if not rows:
+        return None
+
+    prefix = text[: match.start()].strip()
+    suffix = ""
+    return {
+        "prefix": prefix,
+        "suffix": suffix,
+        "header": header,
+        "rows": rows,
+    }
+
+
+def parse_rich_text_blocks(text: str) -> list[dict[str, Any]]:
+    lines = str(text or "").replace("\r\n", "\n").split("\n")
+    blocks: list[dict[str, Any]] = []
+    index = 0
+
+    while index < len(lines):
+        line = lines[index]
+        if not line.strip():
+            index += 1
+            continue
+
+        if index + 1 < len(lines) and is_markdown_table_row(line) and is_markdown_table_separator(lines[index + 1]):
+            header = parse_table_row(line)
+            rows: list[list[str]] = []
+            index += 2
+            while index < len(lines) and is_markdown_table_row(lines[index]):
+                rows.append(parse_table_row(lines[index]))
+                index += 1
+            blocks.append({"type": "table", "header": header, "rows": rows})
+            continue
+
+        compressed_inline_table = parse_compressed_inline_table(line)
+        if compressed_inline_table is not None:
+            if compressed_inline_table["prefix"]:
+                blocks.append(
+                    {
+                        "type": "paragraph",
+                        "text": strip_inline_markdown(normalize_text(compressed_inline_table["prefix"])),
+                    }
+                )
+            blocks.append(
+                {
+                    "type": "table",
+                    "header": [strip_inline_markdown(cell) for cell in compressed_inline_table["header"]],
+                    "rows": [
+                        [strip_inline_markdown(cell) for cell in row]
+                        for row in compressed_inline_table["rows"]
+                    ],
+                }
+            )
+            if compressed_inline_table["suffix"]:
+                blocks.append(
+                    {
+                        "type": "paragraph",
+                        "text": strip_inline_markdown(normalize_text(compressed_inline_table["suffix"])),
+                    }
+                )
+            index += 1
+            continue
+
+        paragraph_lines: list[str] = []
+        while (
+            index < len(lines)
+            and lines[index].strip()
+            and not (
+                index + 1 < len(lines)
+                and is_markdown_table_row(lines[index])
+                and is_markdown_table_separator(lines[index + 1])
+            )
+        ):
+            paragraph_lines.append(lines[index].strip())
+            index += 1
+        blocks.append(
+            {
+                "type": "paragraph",
+                "text": strip_inline_markdown("\n".join(paragraph_lines)),
+            }
+        )
+
+    return blocks
 
 
 def parse_heading(line: str) -> dict[str, Any] | None:
@@ -116,6 +243,7 @@ def build_outline(markdown: str) -> list[dict[str, Any]]:
             "type": "paragraph",
             "id": f"{current_section['section_number']}.p{paragraph_index}",
             "text_exact": normalize_text(" ".join(paragraph_lines)),
+            "structured_content": parse_rich_text_blocks("\n".join(paragraph_lines)),
             "children": [],
         }
         attach_inline_ordered_items(current_paragraph)
@@ -167,12 +295,14 @@ def build_outline(markdown: str) -> list[dict[str, Any]]:
                 "id": f"{current_section['section_number']}.p{paragraph_index}.b{bullet_index}",
                 "marker": marker,
                 "text_exact": normalize_text(body),
+                "structured_content": parse_rich_text_blocks(body),
             }
             if current_paragraph is None:
                 current_paragraph = {
                     "type": "paragraph",
                     "id": f"{current_section['section_number']}.p{max(paragraph_index, 1)}",
                     "text_exact": "",
+                    "structured_content": [],
                     "children": [],
                 }
                 if not current_section["children"] or current_section["children"][-1] is not current_paragraph:
@@ -236,6 +366,7 @@ def build_generic_outline(markdown: str, section_title: str = "Imported Document
             "type": "paragraph",
             "id": f"DOC.p{paragraph_index}",
             "text_exact": normalize_text(" ".join(paragraph_lines)),
+            "structured_content": parse_rich_text_blocks("\n".join(paragraph_lines)),
             "children": [],
         }
         attach_inline_ordered_items(current_paragraph)
@@ -269,12 +400,14 @@ def build_generic_outline(markdown: str, section_title: str = "Imported Document
                 "id": f"DOC.p{max(paragraph_index, 1)}.b{bullet_index}",
                 "marker": marker,
                 "text_exact": normalize_text(body),
+                "structured_content": parse_rich_text_blocks(body),
             }
             if current_paragraph is None:
                 current_paragraph = {
                     "type": "paragraph",
                     "id": f"DOC.p{max(paragraph_index, 1)}",
                     "text_exact": "",
+                    "structured_content": [],
                     "children": [],
                 }
                 if not section["children"] or section["children"][-1] is not current_paragraph:

@@ -7,7 +7,7 @@ SERVICE_DIR = pathlib.Path(__file__).resolve().parents[1]
 if str(SERVICE_DIR) not in sys.path:
     sys.path.insert(0, str(SERVICE_DIR))
 
-from outline_view import build_generic_outline, build_outline, count_outline_stats
+from outline_view import build_generic_outline, build_outline, count_outline_stats, parse_rich_text_blocks
 
 
 class OutlineViewTests(unittest.TestCase):
@@ -88,6 +88,18 @@ Child paragraph.
         paragraph = outline[0]["children"][0]
         self.assertIn("| **Volume** | **Volume Title** |", paragraph["text_exact"])
         self.assertEqual(paragraph["children"], [])
+        self.assertEqual(paragraph["structured_content"][0]["type"], "table")
+        self.assertEqual(paragraph["structured_content"][0]["header"][0], "Volume")
+        self.assertEqual(paragraph["structured_content"][0]["rows"][0][0], "1")
+
+    def test_parses_compressed_inline_table_blocks(self) -> None:
+        blocks = parse_rich_text_blocks(
+            "| **Volume** | **Title** | |---|---| | **1** | Technical / Management | | **2** | Cost |"
+        )
+        self.assertEqual(len(blocks), 1)
+        self.assertEqual(blocks[0]["type"], "table")
+        self.assertEqual(blocks[0]["header"], ["Volume", "Title"])
+        self.assertEqual(blocks[0]["rows"][1], ["2", "Cost"])
 
     def test_build_generic_outline_preserves_paragraphs_and_bullets_without_headings(self) -> None:
         outline = build_generic_outline(

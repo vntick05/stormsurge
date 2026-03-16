@@ -27,7 +27,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { RichTextContent, hasTableBlock, parseRichTextBlocks } from "@/components/rich-text-content";
+import { RichTextContent } from "@/components/rich-text-content";
+import { hasTableBlock, parseRichTextBlocks } from "@/lib/rich-text-blocks";
 import { getChildren, getRequirementById, getSectionRoots, resequenceGroup } from "@/lib/studio-graph";
 
 const REQUIREMENT_INDENT_STEP = "18px";
@@ -86,8 +87,9 @@ function RequirementCard({
   const accent = getRequirementAccent(requirement);
   const theme = useTheme();
   const isLightMode = theme.palette.mode === "light";
-  const richBlocks = parseRichTextBlocks(requirement.text || requirement.summary || "");
-  const containsTable = hasTableBlock(requirement.text || requirement.summary || "");
+  const richBlocks =
+    requirement.structuredContent || parseRichTextBlocks(requirement.text || requirement.summary || "");
+  const containsTable = hasTableBlock(richBlocks);
   const firstNarrativeBlock = richBlocks.find(
     (block) => block.type === "paragraph" || block.type === "heading",
   );

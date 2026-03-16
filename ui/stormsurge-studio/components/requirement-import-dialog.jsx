@@ -130,7 +130,11 @@ function ImportRequirementNode({
                   },
                 }}
               >
-                <RichTextContent content={requirement.text || requirement.summary} dense />
+                <RichTextContent
+                  blocks={requirement.structuredContent || null}
+                  content={requirement.text || requirement.summary}
+                  dense
+                />
               </Box>
             </Box>
           </Box>

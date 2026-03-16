@@ -22,7 +22,8 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import { RichTextContent, hasTableBlock } from "@/components/rich-text-content";
+import { RichTextContent } from "@/components/rich-text-content";
+import { hasTableBlock, parseRichTextBlocks } from "@/lib/rich-text-blocks";
 
 const INSPECTOR_TABS = ["STORM", "Edit", "Search", "AI Helper"];
 const INSPECTOR_TAB_ACCENTS = {
@@ -137,7 +138,10 @@ export function DetailInspector({
   const aiMessagesEndRef = useRef(null);
   const docUploadInputRef = useRef(null);
   const aiAbortControllerRef = useRef(null);
-  const requirementHasTable = hasTableBlock(requirement?.text || requirement?.summary || "");
+  const requirementBlocks =
+    requirement?.structuredContent ||
+    parseRichTextBlocks(requirement?.text || requirement?.summary || "");
+  const requirementHasTable = hasTableBlock(requirementBlocks);
 
   useEffect(() => {
     if (activeTab === auxiliaryTabLabel && !auxiliaryTabLabel) {
@@ -649,7 +653,11 @@ export function DetailInspector({
                     <Typography variant="caption" sx={{ color: inspectorMutedText, fontWeight: 700 }}>
                       Full Table
                     </Typography>
-                    <RichTextContent content={requirement?.text || requirement?.summary || ""} dense />
+                    <RichTextContent
+                      blocks={requirementBlocks}
+                      content={requirement?.text || requirement?.summary || ""}
+                      dense
+                    />
                   </Stack>
                 </Paper>
               ) : null}
