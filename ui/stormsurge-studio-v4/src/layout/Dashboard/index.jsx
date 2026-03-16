@@ -40,16 +40,16 @@ export default function DashboardLayout() {
         <Toolbar
           sx={{
             mt: 'inherit',
-            minHeight: { xs: 42, sm: 42 },
+            minHeight: { xs: 38, sm: 38 },
             '&.MuiToolbar-root': {
-              minHeight: { xs: 42, sm: 42 }
+              minHeight: { xs: 38, sm: 38 }
             }
           }}
         />
-        <Box sx={{ display: 'flex', alignItems: 'stretch', minHeight: 'calc(100vh - 92px)' }}>
+        <Box sx={{ display: 'flex', alignItems: 'stretch', minHeight: 'calc(100vh - 80px)' }}>
           <Box
             sx={{
-              minHeight: 'calc(100vh - 92px)',
+              minHeight: 'calc(100vh - 80px)',
               display: 'flex',
               flexDirection: 'column',
               flexGrow: 1,

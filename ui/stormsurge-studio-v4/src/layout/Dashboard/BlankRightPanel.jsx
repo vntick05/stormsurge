@@ -67,7 +67,7 @@ export default function BlankRightPanel({ onWidthChange }) {
     <Box
       sx={(theme) => ({
         position: 'sticky',
-        top: 42,
+        top: 38,
         alignSelf: 'flex-start',
         flexShrink: 0,
         width,
@@ -75,8 +75,8 @@ export default function BlankRightPanel({ onWidthChange }) {
         bgcolor: 'background.paper',
         borderLeft: '1px solid',
         borderColor: 'divider',
-        height: 'calc(100vh - 42px)',
-        minHeight: 'calc(100vh - 42px)',
+        height: 'calc(100vh - 38px)',
+        minHeight: 'calc(100vh - 38px)',
         transition: isResizing ? 'none' : theme.transitions.create('width', {
           easing: theme.transitions.easing.sharp,
           duration: theme.transitions.duration.shorter

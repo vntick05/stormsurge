@@ -23,17 +23,24 @@ export default function HeaderContent() {
 
   const utilityButtonSx = {
     minWidth: 0,
-    px: 0.65,
-    py: 0.2,
+    px: 0.45,
+    py: 0,
     borderRadius: 0,
     color: 'rgba(55, 65, 81, 0.92)',
     fontSize: '0.74rem',
     fontWeight: 400,
     textTransform: 'none',
+    height: 22,
+    minHeight: 22,
+    lineHeight: 1,
+    display: 'inline-flex',
+    alignItems: 'center',
     '& .MuiButton-startIcon': {
-      mr: 0.45,
+      mr: 0.3,
+      display: 'inline-flex',
+      alignItems: 'center',
       '& svg': {
-        fontSize: '1.1rem'
+        fontSize: '0.85rem'
       }
     },
     '&:hover': {
@@ -53,8 +60,29 @@ export default function HeaderContent() {
   return (
     <>
       {!downLG ? (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', ml: downLG ? 1 : 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0, ml: 0.5 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            width: '100%',
+            height: '100%',
+            ml: downLG ? 1 : 0,
+            position: 'relative'
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              minWidth: 0,
+              height: 22,
+              ml: 0.5,
+              bgcolor: 'rgba(245, 158, 11, 0.14)',
+              outline: '1px solid rgba(245, 158, 11, 0.3)'
+            }}
+          >
             <Button
               variant="text"
               color="inherit"
@@ -63,10 +91,12 @@ export default function HeaderContent() {
                 ...utilityButtonSx,
                 color: 'rgba(55, 65, 81, 0.92)',
                 '& .MuiButton-startIcon': {
-                  mr: 0.45,
+                  mr: 0.3,
+                  display: 'inline-flex',
+                  alignItems: 'center',
                   color: '#2f855a',
                   '& svg': {
-                    fontSize: '1.1rem'
+                    fontSize: '0.85rem'
                   }
                 },
                 '&:hover': {
@@ -91,6 +121,7 @@ export default function HeaderContent() {
                 color: 'rgba(55, 65, 81, 0.92)',
                 fontSize: '0.82rem',
                 fontWeight: 400,
+                lineHeight: 1,
                 whiteSpace: 'nowrap',
                 maxWidth: 240,
                 overflow: 'hidden',
@@ -101,7 +132,16 @@ export default function HeaderContent() {
             </Typography>
           </Box>
           <Box sx={{ flexGrow: 1 }} />
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              height: 22,
+              bgcolor: 'rgba(168, 85, 247, 0.12)',
+              outline: '1px solid rgba(168, 85, 247, 0.25)'
+            }}
+          >
             {isImporting ? <CircularProgress size={18} /> : null}
             <input hidden ref={inputRef} type="file" accept=".pdf,.doc,.docx" onChange={handleFileChange} />
             <Button
@@ -113,14 +153,21 @@ export default function HeaderContent() {
               sx={{
                 minWidth: 0,
                 px: 1,
-                py: 0.5,
+                py: 0,
                 borderRadius: 0,
                 color: 'text.secondary',
                 fontSize: '0.875rem',
                 fontWeight: 500,
                 textTransform: 'none',
+                height: 22,
+                minHeight: 22,
+                lineHeight: 1,
+                display: 'inline-flex',
+                alignItems: 'center',
                 '& .MuiButton-startIcon': {
                   mr: 0.5,
+                  display: 'inline-flex',
+                  alignItems: 'center',
                   '& svg': {
                     fontSize: '0.95rem'
                   }

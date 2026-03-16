@@ -16,23 +16,25 @@ export default function MiddleToolbar({ rightOffset }) {
 
   const actionButtonSx = {
     minWidth: 0,
-    px: 0.45,
-    py: 0.15,
+    px: 0.55,
+    py: 0,
     borderRadius: 1,
     color: 'text.secondary',
     fontSize: '0.7rem',
     fontWeight: 400,
     textTransform: 'none',
-    height: 24,
+    height: 22,
+    minHeight: 22,
     display: 'inline-flex',
     alignItems: 'center',
     alignSelf: 'center',
+    lineHeight: 1,
     '& .MuiButton-startIcon': {
-      mr: 0.28,
+      mr: 0.35,
       display: 'inline-flex',
       alignItems: 'center',
       '& svg': {
-        fontSize: '0.72rem'
+        fontSize: '0.76rem'
       }
     },
     '&:hover': {
@@ -55,55 +57,77 @@ export default function MiddleToolbar({ rightOffset }) {
         borderBottom: '1px solid',
         borderBottomColor: 'divider',
         flexShrink: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        pt: 1.3,
-        pl: 'calc(1.25rem + 4px)',
-        pr: 1.25,
         position: 'fixed',
-        top: 42,
+        top: 38,
         left: drawerOpen ? DRAWER_WIDTH : MINI_DRAWER_WIDTH,
         right: `${rightOffset}px`,
-        zIndex: 1100
+        zIndex: 1100,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        outline: '1px solid rgba(59, 130, 246, 0.18)',
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: '50%',
+          borderTop: '1px dashed rgba(239, 68, 68, 0.5)',
+          pointerEvents: 'none',
+          zIndex: 1
+        }
       }}
     >
-      <Box component="span" sx={{ mr: 1.25 }}>
-        <Button
-          variant="text"
-          color="inherit"
-          startIcon={<CopyOutlined style={{ fontSize: '0.72rem' }} />}
-          onClick={copyRequirement}
-          disabled={!selectedRequirement}
-          sx={actionButtonSx}
-        >
-          Copy
-        </Button>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 1.1,
+          height: 22,
+          bgcolor: 'rgba(245, 158, 11, 0.14)',
+          outline: '1px solid rgba(245, 158, 11, 0.3)',
+          position: 'relative',
+          zIndex: 2
+        }}
+      >
+        <Box component="span">
+          <Button
+            variant="text"
+            color="inherit"
+            startIcon={<CopyOutlined style={{ fontSize: '0.72rem' }} />}
+            onClick={copyRequirement}
+            disabled={!selectedRequirement}
+            sx={actionButtonSx}
+          >
+            Copy
+          </Button>
+        </Box>
+        <Box component="span">
+          <Button
+            variant="text"
+            color="inherit"
+            startIcon={<SnippetsOutlined style={{ fontSize: '0.72rem' }} />}
+            onClick={pasteBelowRequirement}
+            disabled={!selectedRequirement || !hasRequirementClipboard}
+            sx={actionButtonSx}
+          >
+            Paste
+          </Button>
+        </Box>
+        <Box component="span">
+          <Button
+            variant="text"
+            color="inherit"
+            startIcon={<ScissorOutlined style={{ fontSize: '0.72rem' }} />}
+            onClick={cutRequirement}
+            disabled={!selectedRequirement}
+            sx={actionButtonSx}
+          >
+            Cut
+          </Button>
+        </Box>
       </Box>
-      <Box component="span" sx={{ mr: 1.25 }}>
-        <Button
-          variant="text"
-          color="inherit"
-          startIcon={<SnippetsOutlined style={{ fontSize: '0.72rem' }} />}
-          onClick={pasteBelowRequirement}
-          disabled={!selectedRequirement || !hasRequirementClipboard}
-          sx={actionButtonSx}
-        >
-          Paste
-        </Button>
-      </Box>
-      <span>
-        <Button
-          variant="text"
-          color="inherit"
-          startIcon={<ScissorOutlined style={{ fontSize: '0.72rem' }} />}
-          onClick={cutRequirement}
-          disabled={!selectedRequirement}
-          sx={actionButtonSx}
-        >
-          Cut
-        </Button>
-      </span>
     </Box>
   );
 }

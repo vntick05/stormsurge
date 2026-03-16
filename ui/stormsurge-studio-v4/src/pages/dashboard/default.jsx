@@ -2,10 +2,13 @@ import { useMemo, useState } from 'react';
 
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
+import DownOutlined from '@ant-design/icons/DownOutlined';
 import HolderOutlined from '@ant-design/icons/HolderOutlined';
+import UpOutlined from '@ant-design/icons/UpOutlined';
 
 import MainCard from 'components/MainCard';
 
@@ -37,12 +40,22 @@ function formatSectionBody(section) {
   return label || 'Untitled Section';
 }
 
-function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSelect, requirement }) {
+function RequirementCard({
+  childCount = 0,
+  dragHandleProps,
+  dropProps,
+  isCollapsed,
+  isDragging,
+  isDragTarget,
+  isSelected,
+  onSelect,
+  onToggleCollapse,
+  requirement
+}) {
   return (
     <Box
-      {...dragProps}
+      {...dropProps}
       sx={{
-        cursor: isDragging ? 'grabbing' : 'grab',
         opacity: isDragging ? 0.45 : 1,
         transform: isDragging ? 'scale(0.99)' : 'scale(1)',
         transition: 'transform 160ms ease, opacity 160ms ease'
@@ -50,20 +63,22 @@ function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSe
     >
       <MainCard
         contentSX={{
-          pl: 1.1,
+          pl: 0.75,
           pr: 1.75,
-          py: 'calc(0.8rem + 0.25px)',
-          minHeight: 46,
+          py: 1,
+          minHeight: 0,
           display: 'flex',
           alignItems: 'center',
           '&:last-child': {
-            pb: 'calc(0.8rem + 0.25px)'
+            pb: 1
           }
         }}
         onClick={onSelect}
         sx={{
           borderRadius: 1,
           cursor: 'pointer',
+          position: 'relative',
+          overflow: 'hidden',
           bgcolor: isSelected ? 'primary.lighter' : 'background.paper',
           boxShadow: isSelected ? '0 0 0 1px rgba(70, 95, 255, 0.24)' : undefined,
           outline: isDragTarget ? '1px dashed rgba(70, 95, 255, 0.4)' : 'none',
@@ -79,10 +94,12 @@ function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSe
             gap: 0.65,
             width: '100%',
             minHeight: 28,
-            alignSelf: 'center'
+            alignSelf: 'center',
+            position: 'relative'
           }}
         >
           <Box
+            {...dragHandleProps}
             sx={{
               display: { xs: 'none', sm: 'inline-flex' },
               alignItems: 'center',
@@ -90,13 +107,13 @@ function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSe
               color: isSelected ? 'primary.main' : 'text.disabled',
               width: 16,
               flexShrink: 0,
-              alignSelf: 'center'
+              alignSelf: 'center',
+              cursor: isDragging ? 'grabbing' : 'grab'
             }}
           >
             <HolderOutlined style={{ fontSize: '0.8rem' }} />
           </Box>
-          <Typography
-            variant="body1"
+          <Box
             component="div"
             sx={{
               fontFamily: "'Visuelt Pro Light', sans-serif",
@@ -107,30 +124,53 @@ function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSe
               letterSpacing: '0.04em',
               color: 'text.secondary',
               flexShrink: 0,
-              height: 20,
-              lineHeight: '20px',
+              minHeight: 24,
+              lineHeight: 1,
               alignSelf: 'center',
               mr: 0.8,
-              transform: 'translateY(1.5px)'
+              whiteSpace: 'nowrap',
+              transform: 'translateY(1px)'
             }}
           >
             {formatRequirementLabel(requirement)}
-          </Typography>
-          <Typography
-            variant="body1"
+          </Box>
+          <Box
+            component="div"
             sx={{
               fontFamily: "'Visuelt Pro Light', sans-serif",
-              display: 'inline-flex',
+              display: 'flex',
               alignItems: 'center',
+              justifyContent: 'flex-start',
               color: 'rgba(15, 23, 42, 0.82)',
-              lineHeight: 1,
+              lineHeight: 1.15,
+              minHeight: 24,
               minWidth: 0,
               alignSelf: 'center',
               transform: 'translateY(1px)'
             }}
           >
             {formatRequirementBody(requirement)}
-          </Typography>
+          </Box>
+          {childCount > 0 ? (
+            <IconButton
+              size="small"
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleCollapse?.();
+              }}
+              sx={{
+                ml: 'auto',
+                color: 'rgba(100, 116, 139, 0.7)',
+                width: 16,
+                height: 16,
+                p: 0,
+                transition: 'transform 220ms ease, color 180ms ease',
+                transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)'
+              }}
+            >
+              <DownOutlined style={{ fontSize: '0.58rem' }} />
+            </IconButton>
+          ) : null}
         </Box>
       </MainCard>
     </Box>
@@ -199,44 +239,72 @@ function SectionCard({ dragProps, isDragging, isDragTarget, isSelected, onSelect
 }
 
 function RequirementTree({
+  collapsedRequirementIds,
   draggedId,
   dragTargetId,
+  moveRequirement,
   onRequirementSelect,
-  reorderRequirements,
   requirement,
   requirements,
   selectedRequirementId,
+  setCollapsedRequirementIds,
   setDraggedId,
   setDragTargetId
 }) {
   const childRequirements = getChildRequirements(requirements, requirement.id);
+  const isCollapsed = collapsedRequirementIds.has(requirement.id);
 
   return (
     <Stack sx={{ gap: 0.75 }}>
       <RequirementCard
+        childCount={childRequirements.length}
         requirement={requirement}
+        isCollapsed={isCollapsed}
         isSelected={selectedRequirementId === requirement.id}
         isDragging={draggedId === requirement.id}
         isDragTarget={dragTargetId === requirement.id && draggedId !== requirement.id}
         onSelect={() => onRequirementSelect(requirement.id)}
-        dragProps={{
-          draggable: true,
+        onToggleCollapse={() => {
+          setCollapsedRequirementIds((current) => {
+            const next = new Set(current);
+            if (next.has(requirement.id)) next.delete(requirement.id);
+            else next.add(requirement.id);
+            return next;
+          });
+        }}
+        dropProps={{
           onDragStart: () => {
-            setDraggedId(requirement.id);
             onRequirementSelect(requirement.id);
           },
           onDragEnter: (event) => {
             event.preventDefault();
             setDragTargetId(requirement.id);
-            reorderRequirements(requirement.id);
+            if (draggedId) {
+              moveRequirement(requirement.sectionId, requirement.parentId, draggedId, requirement.id);
+            }
           },
           onDragOver: (event) => {
             event.preventDefault();
           },
           onDrop: () => {
-            reorderRequirements(requirement.id, true);
+            if (draggedId) {
+              moveRequirement(requirement.sectionId, requirement.parentId, draggedId, requirement.id);
+            }
             setDragTargetId(null);
             setDraggedId(null);
+          }
+        }}
+        dragHandleProps={{
+          draggable: true,
+          onDragStart: (event) => {
+            event.stopPropagation();
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', requirement.id);
+            setDraggedId(requirement.id);
+            onRequirementSelect(requirement.id);
+          },
+          onMouseDown: (event) => {
+            event.stopPropagation();
           },
           onDragEnd: () => {
             setDragTargetId(null);
@@ -245,35 +313,50 @@ function RequirementTree({
         }}
       />
       {childRequirements.length ? (
-        <Stack sx={{ gap: 0.75, pl: { xs: 1, sm: 1.5 } }}>
-          {childRequirements.map((childRequirement) => (
-            <RequirementTree
-              key={childRequirement.id}
-              draggedId={draggedId}
-              dragTargetId={dragTargetId}
-              onRequirementSelect={onRequirementSelect}
-              reorderRequirements={reorderRequirements}
-              requirement={childRequirement}
-              requirements={requirements}
-              selectedRequirementId={selectedRequirementId}
-              setDraggedId={setDraggedId}
-              setDragTargetId={setDragTargetId}
-            />
-          ))}
-        </Stack>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateRows: isCollapsed ? '0fr' : '1fr',
+            opacity: isCollapsed ? 0 : 1,
+            transition: 'grid-template-rows 220ms ease, opacity 180ms ease',
+            overflow: 'hidden'
+          }}
+        >
+          <Stack sx={{ gap: 0.75, pl: { xs: 1, sm: 1.5 }, pt: 0.75, minHeight: 0 }}>
+            {childRequirements.map((childRequirement) => (
+              <RequirementTree
+                collapsedRequirementIds={collapsedRequirementIds}
+                key={childRequirement.id}
+                draggedId={draggedId}
+                dragTargetId={dragTargetId}
+                moveRequirement={moveRequirement}
+                onRequirementSelect={onRequirementSelect}
+                requirement={childRequirement}
+                requirements={requirements}
+                selectedRequirementId={selectedRequirementId}
+                setCollapsedRequirementIds={setCollapsedRequirementIds}
+                setDraggedId={setDraggedId}
+                setDragTargetId={setDragTargetId}
+              />
+            ))}
+          </Stack>
+        </Box>
       ) : null}
     </Stack>
   );
 }
 
 function SectionGroup({
+  collapsedRequirementIds,
   draggedId,
   dragTargetId,
+  moveRequirement,
   onRequirementSelect,
   reorderRequirements,
   requirements,
   sections,
   selectedRequirementId,
+  setCollapsedRequirementIds,
   setDraggedId,
   setDragTargetId,
   subsection
@@ -316,32 +399,33 @@ function SectionGroup({
       <Stack sx={{ gap: 0.75, pl: { xs: 1.5, sm: 2.25 } }}>
         {getSectionRootRequirements(requirements, subsection.id).map((requirement) => (
           <RequirementTree
+            collapsedRequirementIds={collapsedRequirementIds}
             key={requirement.id}
             draggedId={draggedId}
             dragTargetId={dragTargetId}
+            moveRequirement={moveRequirement}
             onRequirementSelect={onRequirementSelect}
-            reorderRequirements={(targetId, isDrop = false) => {
-              const activeId = draggedId || requirement.id;
-              reorderRequirements(subsection.id, null, activeId, targetId);
-              if (isDrop) return;
-            }}
             requirement={requirement}
             requirements={requirements}
             selectedRequirementId={selectedRequirementId}
+            setCollapsedRequirementIds={setCollapsedRequirementIds}
             setDraggedId={setDraggedId}
             setDragTargetId={setDragTargetId}
           />
         ))}
         {childSections.map((childSection) => (
           <SectionGroup
+            collapsedRequirementIds={collapsedRequirementIds}
             key={childSection.id}
             draggedId={draggedId}
             dragTargetId={dragTargetId}
+            moveRequirement={moveRequirement}
             onRequirementSelect={onRequirementSelect}
             reorderRequirements={reorderRequirements}
             requirements={requirements}
             sections={sections}
             selectedRequirementId={selectedRequirementId}
+            setCollapsedRequirementIds={setCollapsedRequirementIds}
             setDraggedId={setDraggedId}
             setDragTargetId={setDragTargetId}
             subsection={childSection}
@@ -365,6 +449,7 @@ export default function DashboardDefault() {
     setSelectedRequirementId,
     sourceFilename
   } = useWorkspace();
+  const [collapsedRequirementIds, setCollapsedRequirementIds] = useState(() => new Set());
   const [draggedId, setDraggedId] = useState(null);
   const [dragTargetId, setDragTargetId] = useState(null);
 
@@ -402,14 +487,16 @@ export default function DashboardDefault() {
       <Stack sx={{ gap: 1 }}>
         {visibleRequirements.map((requirement) => (
           <RequirementTree
+            collapsedRequirementIds={collapsedRequirementIds}
             key={requirement.id}
             draggedId={draggedId}
             dragTargetId={dragTargetId}
+            moveRequirement={moveRequirement}
             onRequirementSelect={setSelectedRequirementId}
-            reorderRequirements={(targetId) => moveRequirement(selectedSectionId, null, draggedId || requirement.id, targetId)}
             requirement={requirement}
             requirements={requirements}
             selectedRequirementId={selectedRequirementId}
+            setCollapsedRequirementIds={setCollapsedRequirementIds}
             setDraggedId={setDraggedId}
             setDragTargetId={setDragTargetId}
           />
@@ -417,9 +504,11 @@ export default function DashboardDefault() {
         {visibleSubsections.length
           ? visibleSubsections.map((section) => (
               <SectionGroup
+                collapsedRequirementIds={collapsedRequirementIds}
                 key={section.id}
                 draggedId={draggedId}
                 dragTargetId={dragTargetId}
+                moveRequirement={moveRequirement}
                 onRequirementSelect={setSelectedRequirementId}
                 reorderRequirements={(sectionId, parentId, activeId, targetId) => {
                   if (parentId === undefined) {
@@ -431,6 +520,7 @@ export default function DashboardDefault() {
                 requirements={requirements}
                 sections={sections}
                 selectedRequirementId={selectedRequirementId}
+                setCollapsedRequirementIds={setCollapsedRequirementIds}
                 setDraggedId={setDraggedId}
                 setDragTargetId={setDragTargetId}
                 subsection={section}

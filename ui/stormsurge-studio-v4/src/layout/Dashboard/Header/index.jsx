@@ -27,10 +27,23 @@ export default function Header() {
   const mainHeader = (
     <Toolbar
       sx={{
-        minHeight: { xs: 42, sm: 42 },
+        minHeight: { xs: 38, sm: 38 },
         px: { xs: 2, sm: 2.5 },
+        position: 'relative',
+        bgcolor: 'rgba(59, 130, 246, 0.05)',
+        outline: '1px solid rgba(59, 130, 246, 0.18)',
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: '50%',
+          borderTop: '1px dashed rgba(239, 68, 68, 0.5)',
+          pointerEvents: 'none',
+          zIndex: 1
+        },
         '&.MuiToolbar-root': {
-          minHeight: { xs: 42, sm: 42 }
+          minHeight: { xs: 38, sm: 38 }
         }
       }}
     >
