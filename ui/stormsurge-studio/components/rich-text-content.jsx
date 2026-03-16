@@ -13,6 +13,29 @@ function stripInlineMarkdown(text) {
     .replace(/`([^`]+)`/g, "$1");
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function isProbablyHtml(value) {
+  return /<\/?[a-z][\s\S]*>/i.test(String(value || ""));
+}
+
+function applyInlineMarkdownHtml(text) {
+  let html = escapeHtml(text);
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+  html = html.replace(/(^|[^\w])\*([^*\n]+)\*(?!\w)/g, "$1<em>$2</em>");
+  html = html.replace(/(^|[^\w])_([^_\n]+)_(?!\w)/g, "$1<em>$2</em>");
+  return html;
+}
+
 function isMarkdownTableSeparator(line) {
   const trimmed = line.trim();
   return /^\|?[\s:-]+(?:\|[\s:-]+)+\|?$/.test(trimmed);
@@ -45,6 +68,10 @@ function parseMarkdownHeading(line) {
 }
 
 function parseBlocks(text) {
+  if (isProbablyHtml(text)) {
+    return [{ type: "html", html: String(text || "") }];
+  }
+
   const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
   const blocks = [];
   let index = 0;
@@ -72,13 +99,20 @@ function parseBlocks(text) {
       continue;
     }
 
-    if (/^\s*[-*]\s+/.test(line)) {
+    if (/^\s*(?:[-*]|\d+[.)])\s+/.test(line)) {
+      const ordered = /^\s*\d+[.)]\s+/.test(line);
       const items = [];
-      while (index < lines.length && /^\s*[-*]\s+/.test(lines[index])) {
-        items.push(stripInlineMarkdown(lines[index].replace(/^\s*[-*]\s+/, "").trim()));
+      while (
+        index < lines.length &&
+        /^\s*(?:[-*]|\d+[.)])\s+/.test(lines[index]) &&
+        /^\s*\d+[.)]\s+/.test(lines[index]) === ordered
+      ) {
+        items.push(
+          stripInlineMarkdown(lines[index].replace(/^\s*(?:[-*]|\d+[.)])\s+/, "").trim()),
+        );
         index += 1;
       }
-      blocks.push({ type: "list", items });
+      blocks.push({ type: "list", items, ordered });
       continue;
     }
 
@@ -98,7 +132,7 @@ function parseBlocks(text) {
         isMarkdownTableRow(lines[index]) &&
         isMarkdownTableSeparator(lines[index + 1])
       ) &&
-      !/^\s*[-*]\s+/.test(lines[index])
+      !/^\s*(?:[-*]|\d+[.)])\s+/.test(lines[index])
     ) {
       paragraphLines.push(lines[index].trim());
       index += 1;
@@ -119,6 +153,34 @@ export function RichTextContent({ content, dense = false }) {
   return (
     <Box sx={{ display: "grid", gap: dense ? 0.85 : 1.2 }}>
       {blocks.map((block, blockIndex) => {
+        if (block.type === "html") {
+          return (
+            <Box
+              key={`html-${blockIndex}`}
+              sx={{
+                color: "inherit",
+                "& p": { my: 0, mb: dense ? 0.7 : 0.9 },
+                "& ul, & ol": { my: 0, mb: dense ? 0.7 : 0.9, pl: 2.5 },
+                "& li": { mb: 0.35 },
+                "& table": { width: "100%", borderCollapse: "collapse", my: 0.5 },
+                "& th, & td": {
+                  border: `1px solid ${GITHUB_BORDER}`,
+                  px: 1,
+                  py: 0.7,
+                  verticalAlign: "top",
+                  textAlign: "left",
+                },
+                "& th": { bgcolor: GITHUB_PANEL, fontWeight: 700 },
+                "& code": {
+                  fontFamily:
+                    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                },
+              }}
+              dangerouslySetInnerHTML={{ __html: block.html }}
+            />
+          );
+        }
+
         if (block.type === "table") {
           return (
             <TableContainer
@@ -180,8 +242,8 @@ export function RichTextContent({ content, dense = false }) {
                     key={`item-${itemIndex}`}
                     variant="body2"
                     sx={{ lineHeight: 1.5, color: "inherit" }}
+                    dangerouslySetInnerHTML={{ __html: applyInlineMarkdownHtml(item) }}
                   >
-                    {item}
                   </Typography>
                 ))}
               </Box>
@@ -189,12 +251,18 @@ export function RichTextContent({ content, dense = false }) {
           }
 
           return (
-            <Box key={`list-${blockIndex}`} component="ul" sx={{ m: 0, pl: 2.5 }}>
+            <Box
+              key={`list-${blockIndex}`}
+              component={block.ordered ? "ol" : "ul"}
+              sx={{ m: 0, pl: 2.5 }}
+            >
               {block.items.map((item, itemIndex) => (
                 <Box key={`item-${itemIndex}`} component="li" sx={{ mb: 0.35 }}>
-                  <Typography variant="body2" sx={{ lineHeight: 1.5, color: "inherit" }}>
-                    {item}
-                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ lineHeight: 1.5, color: "inherit" }}
+                    dangerouslySetInnerHTML={{ __html: applyInlineMarkdownHtml(item) }}
+                  />
                 </Box>
               ))}
             </Box>
@@ -212,8 +280,8 @@ export function RichTextContent({ content, dense = false }) {
                 color: "inherit",
                 mt: dense ? 0.1 : 0.25,
               }}
+              dangerouslySetInnerHTML={{ __html: applyInlineMarkdownHtml(block.text) }}
             >
-              {block.text}
             </Typography>
           );
         }
@@ -227,8 +295,8 @@ export function RichTextContent({ content, dense = false }) {
               lineHeight: 1.5,
               color: "inherit",
             }}
+            dangerouslySetInnerHTML={{ __html: applyInlineMarkdownHtml(block.text) }}
           >
-            {block.text}
           </Typography>
         );
       })}

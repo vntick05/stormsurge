@@ -7,6 +7,7 @@ import CloseRounded from "@mui/icons-material/CloseRounded";
 import ExpandLessRounded from "@mui/icons-material/ExpandLessRounded";
 import CloudUploadRounded from "@mui/icons-material/CloudUploadRounded";
 import DarkModeRounded from "@mui/icons-material/DarkModeRounded";
+import DownloadRounded from "@mui/icons-material/DownloadRounded";
 import HomeRounded from "@mui/icons-material/HomeRounded";
 import LightModeRounded from "@mui/icons-material/LightModeRounded";
 import MoreVertRounded from "@mui/icons-material/MoreVertRounded";
@@ -63,6 +64,7 @@ import { useStudioThemeMode } from "@/app/theme-registry";
 import { DetailInspector } from "@/components/detail-inspector";
 import { PackageProjectCard } from "@/components/package-project-card";
 import { RequirementImportDialog } from "@/components/requirement-import-dialog";
+import { RichTextEditor } from "@/components/rich-text-editor";
 import { UploadWorkspaceCard } from "@/components/upload-workspace-card";
 import { WorkspaceCanvas } from "@/components/workspace-canvas";
 import {
@@ -646,8 +648,10 @@ function buildDefaultMtsSolutionPrompt(sectionLabel) {
     "Explain how the work would actually be executed, coordinated, monitored, and delivered.",
     "Focus on minimum evaluator expectations, not discriminators or stretch features.",
     "Do not restate the requirements one by one.",
-    "Do not use marketing language, headings, bullets, or labels.",
-    "Write in dense evaluator-facing prose.",
+    "Avoid dense walls of text.",
+    "Prefer short structured paragraphs or bullets when they improve readability.",
+    "If bullets are used, begin each bullet with a short titled lead-in followed by a specific explanation.",
+    "Do not use marketing language or fluff.",
   ].join(" ");
 }
 
@@ -674,17 +678,23 @@ function buildDefaultMtsDefinitionPanelPrompt(sectionLabel, panelLabel) {
       "Include all document types you see, such as appendices, attachments, annexes, exhibits, schedules, PWSs, SOWs, SOOs, guides, manuals, plans, standards, specifications, drawings, forms, templates, reports, reference documents, and similar named documents.",
       "List the document whenever the text refers to a separate document, appendix, attachment, sectioned artifact, or named reference.",
       "Do not stop early. Capture every document reference you can find.",
-      "Output only a simple list, one item per line, using the document title and a very short context note if helpful.",
+      "Prefer a clean readable list format.",
+      "Use bullets when they help, but plain short lines are also acceptable.",
+      "For each item, give the document title and a short description or context note.",
     ].join(" ");
   }
 
   return [
     `Write a concise Meets the standard definition for ${scopedSection} as ${scopedPanel} from these selected requirements as a grouped objective.`,
     "Do not restate the requirements.",
+    "Start with a short two-sentence bottom-line definition that explains, in plain evaluator-facing language, what the requirement set is really demanding overall and what kind of real-world solution will be needed to satisfy it.",
+    "After that opening summary, continue in a readable structured format.",
     "State what an evaluator is really looking for: the minimum credible and executable technical and operational approach, the level of control and integration required, and any unusual requirement that signals risk or likely evaluator scrutiny.",
     "Focus on feasibility, completeness, realism, and performance risk.",
-    "Use a tech-dense style with a few short bullets.",
-    "No headings, no marketing, no strengths, no fluff.",
+    "Avoid dense walls of text.",
+    "Prefer short structured paragraphs or bullets when they improve readability.",
+    "If bullets are used, begin each bullet with a short titled lead-in followed by a specific explanation.",
+    "No marketing, no strengths, no fluff.",
   ].join(" ");
 }
 
@@ -985,6 +995,550 @@ function normalizeSavedProjects(savedProjects) {
       project.snapshot &&
       typeof project.snapshot === "object",
   );
+}
+
+function normalizeGeneratedStormText(value) {
+  return String(value || "")
+    .replace(/\r/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function applyInlineMarkdownHtml(value) {
+  let html = escapeHtml(value);
+  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/__([^_]+)__/g, "<strong>$1</strong>");
+  html = html.replace(/(^|[^\w])\*([^*\n]+)\*(?!\w)/g, "$1<em>$2</em>");
+  html = html.replace(/(^|[^\w])_([^_\n]+)_(?!\w)/g, "$1<em>$2</em>");
+  return html;
+}
+
+function isMarkdownTableSeparator(line) {
+  const trimmed = String(line || "").trim();
+  return /^\|?[\s:-]+(?:\|[\s:-]+)+\|?$/.test(trimmed);
+}
+
+function isMarkdownTableRow(line) {
+  const trimmed = String(line || "").trim();
+  return trimmed.includes("|") && /^\|?.+\|.+\|?$/.test(trimmed);
+}
+
+function parseMarkdownTableRow(line) {
+  return String(line || "")
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+function parseListLine(line) {
+  const match = String(line || "").match(/^(\s*)([-*•]|\d+[.)])\s+(.+)$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    ordered: /\d+[.)]/.test(match[2]),
+    text: match[3].trim(),
+  };
+}
+
+function parseMarkdownHeadingLine(line) {
+  const match = String(line || "").match(/^\s*(#{1,6})\s+(.+?)\s*$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    level: match[1].length,
+    text: match[2].trim(),
+  };
+}
+
+function parseTitledLeadIn(text) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const markdownTitleMatch = trimmed.match(
+    /^(?:\*\*([^*]+)\*\*|__([^_]+)__|\*([^*\n]+)\*|_([^_\n]+)_)\s*:?\s*(.*)$/,
+  );
+  if (markdownTitleMatch) {
+    const title = (
+      markdownTitleMatch[1] ||
+      markdownTitleMatch[2] ||
+      markdownTitleMatch[3] ||
+      markdownTitleMatch[4] ||
+      ""
+    ).trim();
+    const detail = String(markdownTitleMatch[5] || "").trim();
+    return title ? { title, detail } : null;
+  }
+
+  const titledMatch = trimmed.match(/^([^:]{2,120}):\s+(.+)$/);
+  if (!titledMatch) {
+    return null;
+  }
+
+  return {
+    title: titledMatch[1].trim(),
+    detail: titledMatch[2].trim(),
+  };
+}
+
+function isProbablyHtml(value) {
+  return /<\/?[a-z][\s\S]*>/i.test(String(value || ""));
+}
+
+function richTextToPlainText(value) {
+  const rawValue = String(value || "");
+  if (!rawValue.trim()) {
+    return "";
+  }
+
+  if (!isProbablyHtml(rawValue) || typeof window === "undefined" || typeof DOMParser === "undefined") {
+    return rawValue;
+  }
+
+  const documentNode = new DOMParser().parseFromString(rawValue, "text/html");
+  return String(documentNode.body.textContent || "").trim();
+}
+
+function renderStoredRichTextHtml(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) {
+    return "<p><em>No content.</em></p>";
+  }
+
+  if (isProbablyHtml(rawValue)) {
+    return rawValue;
+  }
+
+  return renderPlainTextHtml(rawValue);
+}
+
+function convertGeneratedStormTextToHtml(value) {
+  const normalized = normalizeGeneratedStormText(value);
+  if (!normalized) {
+    return "";
+  }
+
+  const lines = normalized.split("\n");
+  return renderStormBlocksAsHtml(parseStormTextBlocks(lines));
+}
+
+function parseStormTextBlocks(lines) {
+  const blocks = [];
+  let paragraphBuffer = [];
+  let listBuffer = [];
+
+  const flushParagraph = () => {
+    if (!paragraphBuffer.length) {
+      return;
+    }
+    const paragraphLines = paragraphBuffer.map((line) => line.trim()).filter(Boolean);
+    if (paragraphLines.length > 1 && paragraphLines.every((line) => parseTitledLeadIn(line))) {
+      blocks.push({
+        type: "titled-paragraph-group",
+        items: paragraphLines,
+      });
+    } else {
+      blocks.push({
+        type: "paragraph",
+        text: paragraphBuffer.join("\n"),
+      });
+    }
+    paragraphBuffer = [];
+  };
+
+  const flushList = () => {
+    if (!listBuffer.length) {
+      return;
+    }
+    blocks.push({
+      type: "list",
+      ordered: listBuffer[0]?.ordered || false,
+      items: listBuffer.map((item) => item.text),
+    });
+    listBuffer = [];
+  };
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index];
+    const line = rawLine.trim();
+    if (!line) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    if (
+      index + 1 < lines.length &&
+      isMarkdownTableRow(line) &&
+      isMarkdownTableSeparator(lines[index + 1])
+    ) {
+      flushParagraph();
+      flushList();
+      const header = parseMarkdownTableRow(line);
+      const rows = [];
+      index += 2;
+      while (index < lines.length && isMarkdownTableRow(lines[index])) {
+        rows.push(parseMarkdownTableRow(lines[index]));
+        index += 1;
+      }
+      index -= 1;
+      blocks.push({ type: "table", header, rows });
+      continue;
+    }
+
+    const heading = parseMarkdownHeadingLine(line);
+    if (heading) {
+      flushParagraph();
+      flushList();
+      blocks.push({ type: "heading", level: heading.level, text: heading.text });
+      continue;
+    }
+
+    const listItem = parseListLine(line);
+    if (listItem) {
+      flushParagraph();
+      if (listBuffer.length && listBuffer[0].ordered !== listItem.ordered) {
+        flushList();
+      }
+      listBuffer.push(listItem);
+      continue;
+    }
+
+    flushList();
+    paragraphBuffer.push(line);
+  }
+
+  flushParagraph();
+  flushList();
+
+  return blocks;
+}
+
+function renderStormBlocksAsHtml(blocks) {
+  return blocks
+    .map((block) => {
+      if (block.type === "titled-paragraph-group") {
+        return block.items
+          .map((item) => {
+            const titledLeadIn = parseTitledLeadIn(item);
+            if (!titledLeadIn) {
+              return `<p>${applyInlineMarkdownHtml(item)}</p>`;
+            }
+            return `<p><strong>${applyInlineMarkdownHtml(titledLeadIn.title)}</strong>${
+              titledLeadIn.detail ? `: ${applyInlineMarkdownHtml(titledLeadIn.detail)}` : ""
+            }</p>`;
+          })
+          .join("");
+      }
+
+      if (block.type === "table") {
+        return `<table><thead><tr>${block.header
+          .map((cell) => `<th>${applyInlineMarkdownHtml(cell)}</th>`)
+          .join("")}</tr></thead><tbody>${block.rows
+          .map(
+            (row) =>
+              `<tr>${row
+                .map((cell) => `<td>${applyInlineMarkdownHtml(cell)}</td>`)
+                .join("")}</tr>`,
+          )
+          .join("")}</tbody></table>`;
+      }
+
+      if (block.type === "heading") {
+        const level = Math.min(Math.max(Number(block.level) || 2, 1), 6);
+        return `<h${level}>${applyInlineMarkdownHtml(block.text)}</h${level}>`;
+      }
+
+      if (block.type === "list") {
+        const tag = block.ordered ? "ol" : "ul";
+        return `<${tag}>${block.items
+          .map((item) => {
+            const titledLeadIn = parseTitledLeadIn(item);
+            if (titledLeadIn) {
+              return `<li><strong>${applyInlineMarkdownHtml(titledLeadIn.title)}</strong>${
+                titledLeadIn.detail ? `: ${applyInlineMarkdownHtml(titledLeadIn.detail)}` : ""
+              }</li>`;
+            }
+            return `<li>${applyInlineMarkdownHtml(item)}</li>`;
+          })
+          .join("")}</${tag}>`;
+      }
+
+      return `<p>${applyInlineMarkdownHtml(block.text).replaceAll("\n", "<br />")}</p>`;
+    })
+    .join("");
+}
+
+function convertStreamingStormTextToHtml(value) {
+  const rawValue = String(value || "").replace(/\r/g, "");
+  const normalized = normalizeGeneratedStormText(rawValue);
+  if (!normalized) {
+    return "";
+  }
+
+  const hasTrailingNewline = /\n$/.test(rawValue);
+  const lines = normalized.split("\n");
+  const trailingLine = hasTrailingNewline ? "" : lines.pop() || "";
+  const completedHtml = renderStormBlocksAsHtml(parseStormTextBlocks(lines));
+  const trailingHtml = trailingLine
+    ? `<p>${escapeHtml(trailingLine).replaceAll("\n", "<br />")}</p>`
+    : "";
+
+  return `${completedHtml}${trailingHtml}`;
+}
+
+function renderPlainTextHtml(value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) {
+    return "<p><em>No content.</em></p>";
+  }
+
+  return trimmed
+    .split(/\n{2,}/)
+    .map((paragraph) => `<p>${escapeHtml(paragraph).replaceAll("\n", "<br />")}</p>`)
+    .join("");
+}
+
+function renderRequirementHtml(title, value) {
+  const trimmed = String(value || "").trim();
+  const titleHtml = `<strong>${escapeHtml(title)}</strong>`;
+  if (!trimmed) {
+    return `<p>${titleHtml} <em>No requirement text.</em></p>`;
+  }
+
+  const paragraphs = trimmed.split(/\n{2,}/);
+  const [firstParagraph, ...restParagraphs] = paragraphs;
+  return [
+    `<p>${titleHtml} ${escapeHtml(firstParagraph).replaceAll("\n", "<br />")}</p>`,
+    ...restParagraphs.map((paragraph) => `<p>${escapeHtml(paragraph).replaceAll("\n", "<br />")}</p>`),
+  ].join("");
+}
+
+function splitStructuredLine(line) {
+  const trimmed = String(line || "").trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const separators = [" - ", ": ", " -- ", " | "];
+  for (const separator of separators) {
+    const index = trimmed.indexOf(separator);
+    if (index > 0) {
+      return {
+        title: trimmed.slice(0, index).trim(),
+        description: trimmed.slice(index + separator.length).trim(),
+      };
+    }
+  }
+
+  return {
+    title: trimmed,
+    description: "",
+  };
+}
+
+function buildDependenciesTableRows(value) {
+  const normalizedValue = richTextToPlainText(value);
+  return String(normalizedValue || "")
+    .split("\n")
+    .map((line) => splitStructuredLine(line))
+    .filter(Boolean);
+}
+
+function buildSolutionTableRows(value) {
+  const trimmed = richTextToPlainText(value).trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  const paragraphs = trimmed.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean);
+  if (paragraphs.length > 1) {
+    return paragraphs.map((paragraph, index) => {
+      const structured = splitStructuredLine(paragraph);
+      if (structured?.description) {
+        return structured;
+      }
+      return {
+        title: `Solution Element ${index + 1}`,
+        description: paragraph,
+      };
+    });
+  }
+
+  const sentences = trimmed
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+
+  return sentences.map((sentence, index) => {
+    const structured = splitStructuredLine(sentence);
+    if (structured?.description) {
+      return structured;
+    }
+    return {
+      title: `Solution Element ${index + 1}`,
+      description: sentence,
+    };
+  });
+}
+
+function renderSimpleTableHtml(headers, rows) {
+  if (!rows.length) {
+    return "<p><em>No content.</em></p>";
+  }
+
+  return `
+    <table>
+      <thead>
+        <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (row) =>
+              `<tr>${row
+                .map((cell) => `<td>${escapeHtml(cell || "").replaceAll("\n", "<br />") || "&nbsp;"}</td>`)
+                .join("")}</tr>`,
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function slugifyExportName(value) {
+  const slug = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return slug || "section-export";
+}
+
+function buildSectionExportHtml({
+  projectLabel,
+  section,
+  requirementsScope,
+  stormNotes,
+  definitionPanels,
+}) {
+  const riskEntries = parseRiskRegister(stormNotes?.Risks);
+  const exceedsEntries = parseExceedsRegister(stormNotes?.["Exceeds MTS"]);
+  const solutionText = String(stormNotes?.["MTS Solution"] || "").trim();
+  const dependenciesText = String(definitionPanels?.definition_1 || "").trim();
+  const mtsDefinitionText = String(definitionPanels?.definition_2 || "").trim();
+  const exportedAt = new Date().toLocaleString();
+  const requirementsHtml = requirementsScope.length
+    ? requirementsScope
+        .map(({ requirement, depth }, index) => {
+          const title = String(requirement?.title || requirement?.sourceRef || `Requirement ${index + 1}`).trim();
+          const summary = String(
+            requirement?.text || requirement?.summary || requirement?.intent || "",
+          ).trim();
+          const indentPx = depth * 28;
+          return `
+            <div class="requirement-block" style="margin-left:${indentPx}px;">
+              <div class="requirement-body">
+                ${renderRequirementHtml(title, summary)}
+              </div>
+            </div>
+          `;
+        })
+        .join("")
+    : "<p><em>No requirements in this section.</em></p>";
+
+  const dependenciesHtml = renderSimpleTableHtml(
+    ["Reference Document", "Description"],
+    buildDependenciesTableRows(dependenciesText).map((entry) => [entry.title, entry.description]),
+  );
+  const solutionHtml = renderSimpleTableHtml(
+    ["Solution Title", "Solution Description"],
+    buildSolutionTableRows(solutionText).map((entry) => [entry.title, entry.description]),
+  );
+
+  const exceedsHtml = exceedsEntries.length
+    ? `<ul>${exceedsEntries
+        .map(
+          (entry) =>
+            `<li><strong>${escapeHtml(entry.element || "Exceeds Element")}</strong><br />${escapeHtml(
+              entry.rationale || "",
+            )}</li>`,
+        )
+        .join("")}</ul>`
+    : "<p><em>No exceeds content.</em></p>";
+
+  const risksHtml = riskEntries.length
+    ? `<ul>${riskEntries
+        .map(
+          (entry) =>
+            `<li><strong>Risk:</strong> ${escapeHtml(entry.risk || "")}<br /><strong>Mitigation:</strong> ${escapeHtml(
+              entry.mitigation || "",
+            )}</li>`,
+        )
+        .join("")}</ul>`
+    : "<p><em>No risks captured.</em></p>";
+
+  return `<!DOCTYPE html>
+  <html>
+    <head>
+      <meta charset="utf-8" />
+      <title>${escapeHtml(section?.label || "Section Export")}</title>
+      <style>
+        @page { margin: 1in; }
+        body { font-family: Calibri, Arial, sans-serif; color: #111827; margin: 0; line-height: 1.45; }
+        h1 { font-size: 22pt; margin: 0 0 6px; }
+        h2 { font-size: 15pt; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #cbd5e1; }
+        h3 { font-size: 12pt; margin: 16px 0 6px; }
+        p { margin: 0 0 10px; }
+        .meta { color: #475569; font-size: 9.5pt; margin: 2px 0 8px; }
+        .requirement-block { margin-bottom: 8px; }
+        .requirement-body { font-size: 8pt; line-height: 1.12; }
+        .requirement-body p { margin: 0 0 4px; }
+        .requirement-body p:last-child { margin-bottom: 0; }
+        table { width: 100%; border-collapse: collapse; margin: 6px 0 12px; }
+        th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
+        th { background: #e2e8f0; font-size: 10pt; }
+        td { font-size: 9pt; line-height: 1.22; }
+        ul { margin: 0; padding-left: 20px; }
+        li { margin: 0 0 10px; }
+      </style>
+    </head>
+    <body>
+      <h1>${escapeHtml(section?.label || "Section Export")}</h1>
+      <p class="meta">${projectLabel ? `Project: ${escapeHtml(projectLabel)} | ` : ""}Exported: ${escapeHtml(exportedAt)}</p>
+      <h2>Requirements</h2>
+      ${requirementsHtml}
+      <h2>MTS Definition</h2>
+      <h3>Dependencies</h3>
+      ${dependenciesHtml}
+      <h3>MTS Definition</h3>
+      ${renderStoredRichTextHtml(mtsDefinitionText)}
+      <h2>MTS Solution</h2>
+      ${solutionHtml}
+      <h2>Exceeds MTS</h2>
+      ${exceedsHtml}
+      <h2>Risks</h2>
+      ${risksHtml}
+    </body>
+  </html>`;
 }
 
 function getSectionRequirementScope(requirements, sectionId) {
@@ -1625,71 +2179,14 @@ function StormWorkspaceBar({
                           boxShadow: "none",
                         }}
                       >
-                        <TextField
-                          multiline
-                          minRows={6}
-                          fullWidth
-                          placeholder={`Draft ${panel.label.toLowerCase()} here...`}
+                        <RichTextEditor
                           value={panelValue}
-                          onChange={(event) => onNotesChange(activeTab, event.target.value, panel.id)}
-                          sx={{ flex: 1 }}
-                          InputProps={{
-                            sx: {
-                              height: "100%",
-                              alignItems: "flex-start",
-                              fontFamily: GITHUB_FONT_STACK,
-                              fontSize: "0.875rem",
-                              lineHeight: 1.45,
-                              fontWeight: 400,
-                              color: panelText,
-                              bgcolor: "transparent",
-                              borderRadius: 0,
-                              overscrollBehavior: "contain",
-                              "& .MuiInputBase-inputMultiline": {
-                                height: "100% !important",
-                                minHeight: "100% !important",
-                                boxSizing: "border-box",
-                              },
-                              "& textarea": {
-                                fontWeight: 400,
-                                color: panelText,
-                                overflowY: "auto !important",
-                                scrollbarWidth: "thin",
-                                scrollbarColor: "rgba(17,24,39,0.14) transparent",
-                              },
-                              "& textarea::-webkit-scrollbar": {
-                                width: 4,
-                              },
-                              "& textarea::-webkit-scrollbar-track": {
-                                background: "transparent",
-                              },
-                              "& textarea::-webkit-scrollbar-thumb": {
-                                backgroundColor: "rgba(17,24,39,0.14)",
-                                borderRadius: 999,
-                                border: "1px solid transparent",
-                                backgroundClip: "padding-box",
-                              },
-                              "& textarea:hover::-webkit-scrollbar-thumb": {
-                                backgroundColor: "rgba(17,24,39,0.22)",
-                              },
-                              "& textarea::placeholder": {
-                                color: panelMutedText,
-                                opacity: 1,
-                              },
-                              "& fieldset": {
-                                borderColor: "transparent",
-                                borderWidth: 0,
-                              },
-                              "&:hover fieldset": {
-                                borderColor: "transparent",
-                                borderWidth: 0,
-                              },
-                              "&.Mui-focused fieldset": {
-                                borderColor: "transparent",
-                                borderWidth: 0,
-                              },
-                            },
-                          }}
+                          onChange={(nextValue) => onNotesChange(activeTab, nextValue, panel.id)}
+                          placeholder={`Draft ${panel.label.toLowerCase()} here...`}
+                          minHeight={220}
+                          toolbarColor={panelText}
+                          textColor={panelText}
+                          surfaceColor="transparent"
                         />
                       </Box>
                     </Stack>
@@ -1860,71 +2357,14 @@ function StormWorkspaceBar({
                   </Stack>
                 </Box>
               ) : (
-                <TextField
-                  multiline
-                  minRows={10}
-                  fullWidth
-                  placeholder={`Draft the ${activeTab} content here...`}
+                <RichTextEditor
                   value={notesByTab[activeTab] || ""}
-                  onChange={(event) => onNotesChange(activeTab, event.target.value)}
-                  sx={{ flex: 1 }}
-                  InputProps={{
-                    sx: {
-                      height: "100%",
-                      alignItems: "flex-start",
-                      fontFamily: GITHUB_FONT_STACK,
-                      fontSize: "0.875rem",
-                      lineHeight: 1.45,
-                      fontWeight: 400,
-                      color: panelText,
-                      bgcolor: "transparent",
-                      borderRadius: 0,
-                      overscrollBehavior: "contain",
-                      "& .MuiInputBase-inputMultiline": {
-                        height: "100% !important",
-                        minHeight: "100% !important",
-                        boxSizing: "border-box",
-                      },
-                      "& textarea": {
-                        fontWeight: 400,
-                        color: panelText,
-                        overflowY: "auto !important",
-                        scrollbarWidth: "thin",
-                        scrollbarColor: "rgba(255,255,255,0.18) transparent",
-                      },
-                      "& textarea::-webkit-scrollbar": {
-                        width: 6,
-                      },
-                      "& textarea::-webkit-scrollbar-track": {
-                        background: "transparent",
-                      },
-                      "& textarea::-webkit-scrollbar-thumb": {
-                        backgroundColor: "rgba(255,255,255,0.18)",
-                        borderRadius: 999,
-                        border: "1px solid transparent",
-                        backgroundClip: "padding-box",
-                      },
-                      "& textarea:hover::-webkit-scrollbar-thumb": {
-                        backgroundColor: "rgba(255,255,255,0.28)",
-                      },
-                      "& textarea::placeholder": {
-                        color: panelMutedText,
-                        opacity: 1,
-                      },
-                      "& fieldset": {
-                        borderColor: "transparent",
-                        borderWidth: 0,
-                      },
-                      "&:hover fieldset": {
-                        borderColor: "transparent",
-                        borderWidth: 0,
-                      },
-                      "&.Mui-focused fieldset": {
-                        borderColor: "transparent",
-                        borderWidth: 0,
-                      },
-                    },
-                  }}
+                  onChange={(nextValue) => onNotesChange(activeTab, nextValue)}
+                  placeholder={`Draft the ${activeTab} content here...`}
+                  minHeight={320}
+                  toolbarColor={panelText}
+                  textColor={panelText}
+                  surfaceColor="transparent"
                 />
               )}
             </Box>
@@ -2084,6 +2524,7 @@ export function StudioApp() {
   const [sectionMenuAnchorEl, setSectionMenuAnchorEl] = useState(null);
   const [sectionMenuSectionId, setSectionMenuSectionId] = useState("");
   const [reqImportDialogOpen, setReqImportDialogOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [reqImportWorkspace, setReqImportWorkspace] = useState(buildEmptyWorkspace);
   const [reqImportSectionId, setReqImportSectionId] = useState("");
   const [reqImportCheckedIds, setReqImportCheckedIds] = useState(() => new Set());
@@ -2204,10 +2645,13 @@ export function StudioApp() {
     setMtsDefinitionGenerationState({ loading: "", error: "" });
   }
 
-  function restoreStudioSnapshot(snapshot) {
+  function restoreStudioSnapshot(snapshot, options = {}) {
+    const resetHistory = options.resetHistory ?? true;
     setWorkspace(snapshot?.workspace ? snapshot.workspace : buildEmptyWorkspace());
-    setUndoHistory([]);
-    setRedoHistory([]);
+    if (resetHistory) {
+      setUndoHistory([]);
+      setRedoHistory([]);
+    }
     setActiveSectionId(typeof snapshot?.activeSectionId === "string" ? snapshot.activeSectionId : "");
     setSelectedRequirementId(
       typeof snapshot?.selectedRequirementId === "string" ? snapshot.selectedRequirementId : "",
@@ -2544,6 +2988,7 @@ export function StudioApp() {
   }
 
   function selectSection(sectionId) {
+    recordStudioHistorySnapshot();
     setActiveSectionId(sectionId);
     const firstRequirement = getSectionRoots(requirements, sectionId)[0];
     if (firstRequirement) {
@@ -2552,6 +2997,7 @@ export function StudioApp() {
   }
 
   function selectRequirement(requirementId) {
+    recordStudioHistorySnapshot();
     setSelectedRequirementId(requirementId);
     const requirement = getRequirementById(requirements, requirementId);
     if (requirement) {
@@ -2578,6 +3024,11 @@ export function StudioApp() {
     setHistory((current) => [snapshot, ...current].slice(0, UNDO_HISTORY_LIMIT));
   }
 
+  function recordStudioHistorySnapshot() {
+    pushHistorySnapshot(setUndoHistory, buildStudioSnapshot());
+    setRedoHistory([]);
+  }
+
   function applyWorkspaceChange(updateWorkspace, options = {}) {
     const nextWorkspace =
       typeof updateWorkspace === "function" ? updateWorkspace(workspace) : updateWorkspace;
@@ -2593,12 +3044,7 @@ export function StudioApp() {
       return;
     }
 
-    pushHistorySnapshot(setUndoHistory, {
-      workspace,
-      activeSectionId,
-      selectedRequirementId,
-    });
-    setRedoHistory([]);
+    recordStudioHistorySnapshot();
     setWorkspace(nextWorkspace);
 
     if (Object.prototype.hasOwnProperty.call(options, "nextActiveSectionId")) {
@@ -2617,15 +3063,8 @@ export function StudioApp() {
 
     const [latestSnapshot, ...remainingHistory] = undoHistory;
     setUndoHistory(remainingHistory);
-    pushHistorySnapshot(setRedoHistory, {
-      workspace,
-      activeSectionId,
-      selectedRequirementId,
-    });
-    setWorkspace(latestSnapshot.workspace);
-    setActiveSectionId(latestSnapshot.activeSectionId || "");
-    setSelectedRequirementId(latestSnapshot.selectedRequirementId || "");
-    setCollapsedRequirementIds(new Set());
+    pushHistorySnapshot(setRedoHistory, buildStudioSnapshot());
+    restoreStudioSnapshot(latestSnapshot, { resetHistory: false });
   }
 
   function handleRedo() {
@@ -2635,15 +3074,8 @@ export function StudioApp() {
 
     const [latestSnapshot, ...remainingHistory] = redoHistory;
     setRedoHistory(remainingHistory);
-    pushHistorySnapshot(setUndoHistory, {
-      workspace,
-      activeSectionId,
-      selectedRequirementId,
-    });
-    setWorkspace(latestSnapshot.workspace);
-    setActiveSectionId(latestSnapshot.activeSectionId || "");
-    setSelectedRequirementId(latestSnapshot.selectedRequirementId || "");
-    setCollapsedRequirementIds(new Set());
+    pushHistorySnapshot(setUndoHistory, buildStudioSnapshot());
+    restoreStudioSnapshot(latestSnapshot, { resetHistory: false });
   }
 
   function handleRequirementChange(field, value) {
@@ -2967,6 +3399,40 @@ export function StudioApp() {
     setReqImportCheckedIds(new Set());
   }
 
+  function handleOpenExportDialog() {
+    setExportDialogOpen(true);
+  }
+
+  function handleCloseExportDialog() {
+    setExportDialogOpen(false);
+  }
+
+  function handleExportSectionDoc() {
+    if (!activeSection) {
+      return;
+    }
+
+    const html = buildSectionExportHtml({
+      projectLabel: currentProjectLabel,
+      section: activeSection,
+      requirementsScope: activeSectionRequirements,
+      stormNotes: activeSectionStormWorkspaceNotes,
+      definitionPanels: activeSectionDefinitionPanels,
+    });
+    const blob = new Blob([`\ufeff${html}`], {
+      type: "application/msword;charset=utf-8",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `stormstudio-${slugifyExportName(activeSection.label)}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    setExportDialogOpen(false);
+  }
+
   if (!mounted) {
     return (
       <Box
@@ -3116,6 +3582,7 @@ export function StudioApp() {
       return;
     }
 
+    recordStudioHistorySnapshot();
     setStormWorkspaceNotes((current) => ({
       ...current,
       [activeSection.id]: {
@@ -3137,6 +3604,7 @@ export function StudioApp() {
       return;
     }
 
+    recordStudioHistorySnapshot();
     setStormWorkspaceNotes((current) => ({
       ...current,
       [activeSection.id]: {
@@ -3232,6 +3700,7 @@ export function StudioApp() {
       return;
     }
 
+    recordStudioHistorySnapshot();
     setStormWorkspacePrompts((current) => ({
       ...current,
       [activeSection.id]: {
@@ -3313,7 +3782,7 @@ export function StudioApp() {
       let eventType = "message";
       let streamedDefinition = "";
 
-      const applyDefinition = (nextDefinition) => {
+      const commitDefinition = (nextDefinition) => {
         setStormWorkspaceNotes((current) => ({
           ...current,
           [activeSection.id]: {
@@ -3354,7 +3823,7 @@ export function StudioApp() {
 
         if (nextEventType === "token") {
           streamedDefinition += String(parsed?.delta || "");
-          applyDefinition(streamedDefinition);
+          commitDefinition(convertStreamingStormTextToHtml(streamedDefinition));
           return;
         }
 
@@ -3392,6 +3861,8 @@ export function StudioApp() {
       if (!streamedDefinition.trim() && eventType !== "done") {
         throw new Error("MTS definition generation returned no content");
       }
+
+      commitDefinition(convertGeneratedStormTextToHtml(streamedDefinition));
 
       setMtsDefinitionGenerationState({ loading: "", error: "" });
     } catch (error) {
@@ -3450,7 +3921,7 @@ export function StudioApp() {
       let eventType = "message";
       let streamedContent = "";
 
-      const applySolution = (nextContent) => {
+      const commitSolution = (nextContent) => {
         setStormWorkspaceNotes((current) => ({
           ...current,
           [activeSection.id]: {
@@ -3488,7 +3959,7 @@ export function StudioApp() {
 
         if (nextEventType === "token") {
           streamedContent += String(parsed?.delta || "");
-          applySolution(streamedContent);
+          commitSolution(convertStreamingStormTextToHtml(streamedContent));
           return;
         }
 
@@ -3526,6 +3997,8 @@ export function StudioApp() {
       if (!streamedContent.trim() && eventType !== "done") {
         throw new Error("MTS solution generation returned no content");
       }
+
+      commitSolution(convertGeneratedStormTextToHtml(streamedContent));
 
       setMtsDefinitionGenerationState({ loading: "", error: "" });
     } catch (error) {
@@ -3970,6 +4443,15 @@ export function StudioApp() {
                 sx={RIBBON_TOOL_BUTTON_SX}
               >
                 Import Reqs
+              </Button>
+              <Button
+                variant="text"
+                startIcon={<DownloadRounded />}
+                onClick={handleOpenExportDialog}
+                disabled={!activeSection || !sections.length}
+                sx={RIBBON_TOOL_BUTTON_SX}
+              >
+                Export
               </Button>
               <Button
                 variant="text"
@@ -4436,6 +4918,32 @@ export function StudioApp() {
         onToggleChecked={handleToggleReqImportChecked}
         onImport={handleImportSelectedRequirements}
       />
+      <Dialog open={exportDialogOpen} onClose={handleCloseExportDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Export Word Doc</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.25} sx={{ pt: 0.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              Export the current section as a Word-compatible document with its middle-pane
+              requirements and STORM content.
+            </Typography>
+            <Typography variant="body2">
+              <strong>Section:</strong> {activeSection?.label || "No section selected"}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Requirements:</strong> {activeSectionRequirements.length}
+            </Typography>
+            <Typography variant="body2">
+              <strong>Includes:</strong> MTS Definition, MTS Solution, Exceeds MTS, and Risks
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseExportDialog}>Cancel</Button>
+          <Button onClick={handleExportSectionDoc} variant="contained" disabled={!activeSection}>
+            Export .doc
+          </Button>
+        </DialogActions>
+      </Dialog>
       {projectSetupState.loading ? (
         <Paper
           elevation={8}
