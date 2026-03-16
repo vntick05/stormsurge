@@ -41,14 +41,12 @@ export default function HeaderContent() {
             sx={{
               minWidth: 0,
               px: 1,
-              py: 0.75,
+              py: 0.5,
               borderRadius: 0,
               color: 'text.secondary',
               fontSize: '0.875rem',
               fontWeight: 500,
               textTransform: 'none',
-              borderBottom: '2px solid',
-              borderColor: sections.length ? 'primary.main' : 'transparent',
               '& .MuiButton-startIcon': {
                 mr: 0.5,
                 '& svg': {
@@ -57,8 +55,7 @@ export default function HeaderContent() {
               },
               '&:hover': {
                 bgcolor: 'transparent',
-                color: 'text.primary',
-                borderColor: 'primary.main'
+                color: 'text.primary'
               }
             }}
           >

@@ -7,6 +7,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'Visuelt Pro Light';
+  src: url('./fonts/VisueltPro-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
 }

@@ -1370,6 +1370,120 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@syncfusion/ej2-base@npm:^33.1.44, @syncfusion/ej2-base@npm:~33.1.44":
+  version: 33.1.44
+  resolution: "@syncfusion/ej2-base@npm:33.1.44"
+  dependencies:
+    "@syncfusion/ej2-icons": "npm:~33.1.44"
+  bin:
+    syncfusion-license: bin/syncfusion-license.js
+  checksum: 10c0/db0a78aad097477528b85db39bc763bbbcfbc8a2a565cd14baac81ae0c69af5a2bb521f57dfdf5ff5df546b63119eb0bc6a3d2953ee70832f653a1242e312045
+  languageName: node
+  linkType: hard
+
+"@syncfusion/ej2-buttons@npm:~33.1.44":
+  version: 33.1.44
+  resolution: "@syncfusion/ej2-buttons@npm:33.1.44"
+  dependencies:
+    "@syncfusion/ej2-base": "npm:~33.1.44"
+  checksum: 10c0/e28903759b94e9ad11b2495c9310b5b7d8fc56eaf4b74374f7b36eeca1bb9b0142a4ded7b77ff87b3bfe80b4f8e67289c7139926fe298e6ccb85c2ff531e065e
+  languageName: node
+  linkType: hard
+
+"@syncfusion/ej2-data@npm:~33.1.44":
+  version: 33.1.44
+  resolution: "@syncfusion/ej2-data@npm:33.1.44"
+  dependencies:
+    "@syncfusion/ej2-base": "npm:~33.1.44"
+  checksum: 10c0/1a5541c4f5df72bb94776e42cd787e663317d09305b5a2242e2e7262d7693dc00eb5d094943ddb2efc5366c4005591e941287c46d16d0f9f12f22eef5a5392a3
+  languageName: node
+  linkType: hard
+
+"@syncfusion/ej2-icons@npm:~33.1.44":
+  version: 33.1.44
+  resolution: "@syncfusion/ej2-icons@npm:33.1.44"
+  checksum: 10c0/42c3f4f9122d2b498ae6ab36322f3a0d9c2452a0de72617256e498b4546a6abbb8106ddd4cf4ad58b8a47e4c50d5560c3c7da3e312298545c15522b99b0eab4c
+  languageName: node
+  linkType: hard
+
+"@syncfusion/ej2-inputs@npm:~33.1.44":
+  version: 33.1.44
+  resolution: "@syncfusion/ej2-inputs@npm:33.1.44"
+  dependencies:
+    "@syncfusion/ej2-base": "npm:~33.1.44"
+    "@syncfusion/ej2-buttons": "npm:~33.1.44"
+    "@syncfusion/ej2-popups": "npm:~33.1.44"
+    "@syncfusion/ej2-splitbuttons": "npm:~33.1.44"
+  checksum: 10c0/ecbb0c21783a9b1a12d761e344eb85d6310befbfc6bbb0806e894026f616e874917fc1cf341c8673c43dcd2d37ef5bd80161e06c16af26ec82c87c4d713c5baf
+  languageName: node
+  linkType: hard
+
+"@syncfusion/ej2-lists@npm:~33.1.44":
+  version: 33.1.44
+  resolution: "@syncfusion/ej2-lists@npm:33.1.44"
+  dependencies:
+    "@syncfusion/ej2-base": "npm:~33.1.44"
+    "@syncfusion/ej2-buttons": "npm:~33.1.44"
+    "@syncfusion/ej2-data": "npm:~33.1.44"
+    "@syncfusion/ej2-popups": "npm:~33.1.44"
+  checksum: 10c0/e3104911cd1d3dfafbd554592a1e934774a9a642fb31e2427247593de4f019f922b0996a5cdd9d672b9a6373780cbce8e07baa7910ee8d52399f44dd79282913
+  languageName: node
+  linkType: hard
+
+"@syncfusion/ej2-navigations@npm:33.1.44":
+  version: 33.1.44
+  resolution: "@syncfusion/ej2-navigations@npm:33.1.44"
+  dependencies:
+    "@syncfusion/ej2-base": "npm:~33.1.44"
+    "@syncfusion/ej2-buttons": "npm:~33.1.44"
+    "@syncfusion/ej2-data": "npm:~33.1.44"
+    "@syncfusion/ej2-inputs": "npm:~33.1.44"
+    "@syncfusion/ej2-lists": "npm:~33.1.44"
+    "@syncfusion/ej2-popups": "npm:~33.1.44"
+  checksum: 10c0/749c87eb69e3419ea39ff0f156d413cfb461445565e605ec5e9b4b253bd1d2d588b0c83b4356579a4b2a36453ac38830e43fea316facb78ab76cfbe3b1046edd
+  languageName: node
+  linkType: hard
+
+"@syncfusion/ej2-popups@npm:~33.1.44":
+  version: 33.1.44
+  resolution: "@syncfusion/ej2-popups@npm:33.1.44"
+  dependencies:
+    "@syncfusion/ej2-base": "npm:~33.1.44"
+    "@syncfusion/ej2-buttons": "npm:~33.1.44"
+  checksum: 10c0/d9adb791909e39131b2605094c40d3318074713c73cc8df543f73e25bc7b82eb77909658bea12756bb19e43dc19fd4bfa1e4a9e0f17489967210783fa9f7261b
+  languageName: node
+  linkType: hard
+
+"@syncfusion/ej2-react-base@npm:^33.1.44, @syncfusion/ej2-react-base@npm:~33.1.44":
+  version: 33.1.44
+  resolution: "@syncfusion/ej2-react-base@npm:33.1.44"
+  dependencies:
+    "@syncfusion/ej2-base": "npm:~33.1.44"
+  checksum: 10c0/df5ab21cb4aea82871c9a1a7adf312b682d53d1491234ba00b00221923c6085536df78e215285722de505ed68a09d15645eeb453d981ba455e45a7cc79d21da1
+  languageName: node
+  linkType: hard
+
+"@syncfusion/ej2-react-navigations@npm:^33.1.44":
+  version: 33.1.44
+  resolution: "@syncfusion/ej2-react-navigations@npm:33.1.44"
+  dependencies:
+    "@syncfusion/ej2-base": "npm:~33.1.44"
+    "@syncfusion/ej2-navigations": "npm:33.1.44"
+    "@syncfusion/ej2-react-base": "npm:~33.1.44"
+  checksum: 10c0/55c778fec1b6667db925ef6f55b47b020697f97e396401ee68451cff2f924be192202d9065829a277053ba565cbb6fa53c3c8057b6dc36f45707a7c1688a2fb1
+  languageName: node
+  linkType: hard
+
+"@syncfusion/ej2-splitbuttons@npm:~33.1.44":
+  version: 33.1.44
+  resolution: "@syncfusion/ej2-splitbuttons@npm:33.1.44"
+  dependencies:
+    "@syncfusion/ej2-base": "npm:~33.1.44"
+    "@syncfusion/ej2-popups": "npm:~33.1.44"
+  checksum: 10c0/977f81312e50f7c28c55a66c220d70b4f182435aad620c28063ef5a712d705ff9e311f35bd913310e10d42576fcb3d63c8693c8f7d179f029667fa6aaf26487f
+  languageName: node
+  linkType: hard
+
 "@types/babel__core@npm:^7.20.5":
   version: 7.20.5
   resolution: "@types/babel__core@npm:7.20.5"
@@ -4786,6 +4900,9 @@ __metadata:
     "@mui/material": "npm:7.3.8"
     "@mui/system": "npm:7.3.8"
     "@mui/x-charts": "npm:8.27.0"
+    "@syncfusion/ej2-base": "npm:^33.1.44"
+    "@syncfusion/ej2-react-base": "npm:^33.1.44"
+    "@syncfusion/ej2-react-navigations": "npm:^33.1.44"
     "@vitejs/plugin-react": "npm:5.1.4"
     eslint: "npm:10.0.0"
     eslint-config-prettier: "npm:10.1.8"

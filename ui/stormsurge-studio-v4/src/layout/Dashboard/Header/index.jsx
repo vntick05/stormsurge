@@ -30,7 +30,15 @@ export default function Header() {
 
   // common header
   const mainHeader = (
-    <Toolbar>
+    <Toolbar
+      sx={{
+        minHeight: { xs: 46, sm: 46 },
+        px: { xs: 2, sm: 2.5 },
+        '&.MuiToolbar-root': {
+          minHeight: { xs: 46, sm: 46 }
+        }
+      }}
+    >
       <IconButton
         aria-label="open drawer"
         onClick={() => handlerDrawerOpen(!drawerOpen)}
@@ -40,7 +48,9 @@ export default function Header() {
         sx={(theme) => ({
           color: 'text.primary',
           bgcolor: drawerOpen ? 'transparent' : 'grey.100',
-          ml: { xs: 0, lg: -2 }
+          ml: { xs: 0, lg: -2 },
+          width: 32,
+          height: 32
         })}
       >
         {!drawerOpen ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}

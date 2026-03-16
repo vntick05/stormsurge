@@ -68,7 +68,7 @@ export default function BlankRightPanel() {
         bgcolor: 'background.paper',
         borderLeft: '1px solid',
         borderColor: 'divider',
-        minHeight: 'calc(100vh - 110px)',
+        minHeight: 'calc(100vh - 92px)',
         transition: isResizing ? 'none' : theme.transitions.create('width', {
           easing: theme.transitions.easing.sharp,
           duration: theme.transitions.duration.shorter
@@ -94,7 +94,7 @@ export default function BlankRightPanel() {
           display: 'flex',
           justifyContent: isCollapsed ? 'center' : 'flex-end',
           alignItems: 'center',
-          minHeight: 56,
+          minHeight: 46,
           px: 0.5
         }}
       >

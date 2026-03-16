@@ -53,13 +53,15 @@ function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSe
           px: 1.75,
           py: 0.8,
           minHeight: 46,
+          display: 'flex',
+          alignItems: 'center',
           '&:last-child': {
             pb: 0.8
           }
         }}
         onClick={onSelect}
         sx={{
-          borderRadius: 2,
+          borderRadius: 1,
           cursor: 'pointer',
           bgcolor: isSelected ? 'primary.lighter' : 'background.paper',
           boxShadow: isSelected ? '0 0 0 1px rgba(70, 95, 255, 0.24)' : undefined,
@@ -75,7 +77,8 @@ function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSe
             alignItems: 'center',
             gap: 1,
             width: '100%',
-            minHeight: 28
+            minHeight: 28,
+            alignSelf: 'center'
           }}
         >
           <Box
@@ -85,7 +88,8 @@ function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSe
               justifyContent: 'center',
               color: isSelected ? 'primary.main' : 'text.disabled',
               width: 18,
-              flexShrink: 0
+              flexShrink: 0,
+              alignSelf: 'center'
             }}
           >
             <HolderOutlined style={{ fontSize: '0.8rem' }} />
@@ -93,16 +97,31 @@ function RequirementCard({ dragProps, isDragging, isDragTarget, isSelected, onSe
           <Typography
             variant="body1"
             sx={{
+              fontFamily: "'Visuelt Pro Light', sans-serif",
+              display: 'inline-flex',
+              alignItems: 'center',
               textTransform: 'uppercase',
               letterSpacing: '0.04em',
               color: 'text.secondary',
               flexShrink: 0,
-              lineHeight: 1.2
+              lineHeight: 1,
+              alignSelf: 'center'
             }}
           >
             {formatRequirementLabel(requirement)}
           </Typography>
-          <Typography variant="body1" sx={{ color: 'text.primary', lineHeight: 1.2, minWidth: 0 }}>
+          <Typography
+            variant="body1"
+            sx={{
+              fontFamily: "'Visuelt Pro Light', sans-serif",
+              display: 'inline-flex',
+              alignItems: 'center',
+              color: 'text.primary',
+              lineHeight: 1,
+              minWidth: 0,
+              alignSelf: 'center'
+            }}
+          >
             {formatRequirementBody(requirement)}
           </Typography>
         </Box>
@@ -190,7 +209,7 @@ function SectionGroup({
         isSelected={selectedRequirementId === subsection.id}
         onSelect={() => onRequirementSelect(subsection.id)}
       />
-      <Stack sx={{ gap: 0.75, pl: { xs: 1.25, sm: 2.5 } }}>
+      <Stack sx={{ gap: 0.75, pl: { xs: 0.5, sm: 0.75 } }}>
         {getSectionRootRequirements(requirements, subsection.id).map((requirement) => (
           <RequirementCard
             key={requirement.id}
@@ -285,18 +304,6 @@ export default function DashboardDefault() {
 
   return (
     <Stack sx={{ gap: 1.25 }}>
-      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-        <Stack sx={{ gap: 0.25, minWidth: 0 }}>
-          <Typography variant="subtitle1">{selectedSection?.label || 'Importing Outline'}</Typography>
-          {sourceFilename ? (
-            <Typography variant="caption" color="text.secondary">
-              {sourceFilename}
-            </Typography>
-          ) : null}
-        </Stack>
-        <Box />
-      </Stack>
-
       {importError ? <Alert severity="error">{importError}</Alert> : null}
 
       <Stack sx={{ gap: 1 }}>

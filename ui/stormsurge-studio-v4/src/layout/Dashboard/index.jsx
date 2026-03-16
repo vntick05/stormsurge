@@ -34,22 +34,39 @@ export default function DashboardLayout() {
       <Drawer />
 
       <Box component="main" sx={{ width: 'calc(100% - 260px)', flexGrow: 1 }}>
-        <Toolbar sx={{ mt: 'inherit' }} />
-        <Box sx={{ display: 'flex', alignItems: 'stretch', minHeight: 'calc(100vh - 110px)' }}>
+        <Toolbar
+          sx={{
+            mt: 'inherit',
+            minHeight: { xs: 46, sm: 46 },
+            '&.MuiToolbar-root': {
+              minHeight: { xs: 46, sm: 46 }
+            }
+          }}
+        />
+        <Box sx={{ display: 'flex', alignItems: 'stretch', minHeight: 'calc(100vh - 92px)' }}>
           <Box
             sx={{
-              p: { xs: 2, sm: 3 },
-              position: 'relative',
-              minHeight: 'calc(100vh - 110px)',
+              minHeight: 'calc(100vh - 92px)',
               display: 'flex',
               flexDirection: 'column',
               flexGrow: 1,
               minWidth: 0
             }}
           >
-            <Breadcrumbs />
-            <Outlet />
-            <Footer />
+            <Box
+              sx={{
+                p: { xs: 2, sm: 3 },
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                flexGrow: 1,
+                minWidth: 0
+              }}
+            >
+              <Breadcrumbs />
+              <Outlet />
+              <Footer />
+            </Box>
           </Box>
           <BlankRightPanel />
         </Box>
