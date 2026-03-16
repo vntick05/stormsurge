@@ -67,7 +67,39 @@ function parseMarkdownHeading(line) {
   };
 }
 
-function parseBlocks(text) {
+function parseCompressedInlineTable(line) {
+  const rowMatches = [...String(line || "").matchAll(/\|[^|\n]*(?:\|[^|\n]*)+\|/g)];
+  if (rowMatches.length < 3) {
+    return null;
+  }
+
+  const separatorIndex = rowMatches.findIndex((match) => isMarkdownTableSeparator(match[0]));
+  if (separatorIndex < 1 || separatorIndex === rowMatches.length - 1) {
+    return null;
+  }
+
+  const headerMatch = rowMatches[separatorIndex - 1];
+  const header = parseTableRow(headerMatch[0]);
+  const rows = rowMatches.slice(separatorIndex + 1).map((match) => parseTableRow(match[0]));
+  if (!header.length || !rows.length) {
+    return null;
+  }
+
+  const prefix = String(line || "").slice(0, headerMatch.index).trim();
+  const lastRowMatch = rowMatches[rowMatches.length - 1];
+  const suffix = String(line || "")
+    .slice((lastRowMatch.index || 0) + lastRowMatch[0].length)
+    .trim();
+
+  return {
+    prefix,
+    suffix,
+    header,
+    rows,
+  };
+}
+
+export function parseRichTextBlocks(text) {
   if (isProbablyHtml(text)) {
     return [{ type: "html", html: String(text || "") }];
   }
@@ -96,6 +128,29 @@ function parseBlocks(text) {
         index += 1;
       }
       blocks.push({ type: "table", header, rows });
+      continue;
+    }
+
+    const compressedInlineTable = parseCompressedInlineTable(line);
+    if (compressedInlineTable) {
+      if (compressedInlineTable.prefix) {
+        blocks.push({
+          type: "paragraph",
+          text: stripInlineMarkdown(compressedInlineTable.prefix),
+        });
+      }
+      blocks.push({
+        type: "table",
+        header: compressedInlineTable.header,
+        rows: compressedInlineTable.rows,
+      });
+      if (compressedInlineTable.suffix) {
+        blocks.push({
+          type: "paragraph",
+          text: stripInlineMarkdown(compressedInlineTable.suffix),
+        });
+      }
+      index += 1;
       continue;
     }
 
@@ -143,8 +198,17 @@ function parseBlocks(text) {
   return blocks;
 }
 
-export function RichTextContent({ content, dense = false }) {
-  const blocks = parseBlocks(content);
+export function hasTableBlock(content) {
+  return parseRichTextBlocks(content).some((block) => block.type === "table");
+}
+
+export function RichTextContent({
+  content,
+  dense = false,
+  tablePreviewRows = null,
+  showTableOverflowNote = false,
+}) {
+  const blocks = parseRichTextBlocks(content);
 
   if (!blocks.length) {
     return null;
@@ -182,58 +246,70 @@ export function RichTextContent({ content, dense = false }) {
         }
 
         if (block.type === "table") {
+          const previewRows =
+            typeof tablePreviewRows === "number" && tablePreviewRows >= 0
+              ? block.rows.slice(0, tablePreviewRows)
+              : block.rows;
+          const hasOverflowRows = previewRows.length < block.rows.length;
+
           return (
-            <TableContainer
-              key={`table-${blockIndex}`}
-              sx={{
-                border: `1px solid ${GITHUB_BORDER}`,
-                borderRadius: 1,
-                bgcolor: GITHUB_PANEL,
-                overflowX: "auto",
-              }}
-            >
-              <Table size="small" sx={{ minWidth: 320, tableLayout: "fixed" }}>
-                <TableHead>
-                  <TableRow>
-                    {block.header.map((cell, cellIndex) => (
-                      <TableCell
-                        key={`head-${cellIndex}`}
-                        sx={{
-                          color: "inherit",
-                          fontWeight: 700,
-                          borderColor: GITHUB_BORDER,
-                          whiteSpace: "normal",
-                          wordBreak: "break-word",
-                          verticalAlign: "top",
-                        }}
-                      >
-                        {cell}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {block.rows.map((row, rowIndex) => (
-                    <TableRow key={`row-${rowIndex}`}>
-                      {row.map((cell, cellIndex) => (
+            <Box key={`table-${blockIndex}`} sx={{ display: "grid", gap: 0.6 }}>
+              <TableContainer
+                sx={{
+                  border: `1px solid ${GITHUB_BORDER}`,
+                  borderRadius: 1,
+                  bgcolor: GITHUB_PANEL,
+                  overflowX: "auto",
+                }}
+              >
+                <Table size="small" sx={{ minWidth: 320, tableLayout: "fixed" }}>
+                  <TableHead>
+                    <TableRow>
+                      {block.header.map((cell, cellIndex) => (
                         <TableCell
-                          key={`cell-${rowIndex}-${cellIndex}`}
+                          key={`head-${cellIndex}`}
                           sx={{
                             color: "inherit",
+                            fontWeight: 700,
                             borderColor: GITHUB_BORDER,
-                            verticalAlign: "top",
                             whiteSpace: "normal",
                             wordBreak: "break-word",
+                            verticalAlign: "top",
                           }}
                         >
                           {cell}
                         </TableCell>
                       ))}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {previewRows.map((row, rowIndex) => (
+                      <TableRow key={`row-${rowIndex}`}>
+                        {row.map((cell, cellIndex) => (
+                          <TableCell
+                            key={`cell-${rowIndex}-${cellIndex}`}
+                            sx={{
+                              color: "inherit",
+                              borderColor: GITHUB_BORDER,
+                              verticalAlign: "top",
+                              whiteSpace: "normal",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {cell}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              {showTableOverflowNote && hasOverflowRows ? (
+                <Typography variant="caption" sx={{ color: GITHUB_TEXT_MUTED }}>
+                  Showing {previewRows.length} of {block.rows.length} rows. Full table in inspector.
+                </Typography>
+              ) : null}
+            </Box>
           );
         }
 

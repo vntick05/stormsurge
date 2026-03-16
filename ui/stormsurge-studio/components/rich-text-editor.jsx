@@ -10,6 +10,27 @@ import FormatUnderlinedRounded from "@mui/icons-material/FormatUnderlinedRounded
 import FormatClearRounded from "@mui/icons-material/FormatClearRounded";
 import { Box, IconButton, Stack, Tooltip } from "@mui/material";
 
+const subtleScrollbarSx = {
+  scrollbarWidth: "thin",
+  scrollbarColor: "var(--studio-scrollbar) transparent",
+  "&::-webkit-scrollbar": {
+    width: 6,
+    height: 6,
+  },
+  "&::-webkit-scrollbar-track": {
+    background: "transparent",
+  },
+  "&::-webkit-scrollbar-thumb": {
+    backgroundColor: "var(--studio-scrollbar)",
+    borderRadius: 999,
+    border: "1px solid transparent",
+    backgroundClip: "padding-box",
+  },
+  "&:hover::-webkit-scrollbar-thumb": {
+    backgroundColor: "var(--studio-text-muted)",
+  },
+};
+
 export function RichTextEditor({
   value,
   onChange,
@@ -75,7 +96,15 @@ export function RichTextEditor({
   }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        minHeight: 0,
+        overflow: "hidden",
+      }}
+    >
       <Stack
         direction="row"
         spacing={0.5}
@@ -140,88 +169,106 @@ export function RichTextEditor({
         </Tooltip>
       </Stack>
       <Box
-        ref={editorRef}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={emitChange}
-        data-placeholder={placeholder}
         sx={{
           flex: 1,
           minHeight,
-          px: 1.4,
-          py: 1.1,
-          color: textColor,
-          bgcolor: surfaceColor,
-          fontSize: "0.875rem",
-          lineHeight: 1.45,
-          outline: "none",
+          minWidth: 0,
           overflowY: "auto",
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-word",
-          "& p": {
-            my: 0,
-            mb: 0.85,
-          },
-          "& ul": {
-            my: 0,
-            mb: 0.85,
-            pl: 2.5,
-          },
-          "& ol": {
-            my: 0,
-            mb: 0.85,
-            pl: 2.6,
-          },
-          "& li": {
-            mb: 0.35,
-          },
-          "& h1, & h2, & h3, & h4, & h5, & h6": {
-            my: 0,
-            mb: 0.65,
-            lineHeight: 1.25,
-            fontWeight: 700,
-          },
-          "& h1": {
-            fontSize: "1.2rem",
-          },
-          "& h2": {
-            fontSize: "1.08rem",
-          },
-          "& h3": {
-            fontSize: "0.98rem",
-          },
-          "& table": {
-            width: "100%",
-            borderCollapse: "collapse",
-            my: 0.4,
-            mb: 0.9,
-          },
-          "& th, & td": {
-            border: "1px solid rgba(255,255,255,0.18)",
-            px: 0.85,
-            py: 0.6,
-            textAlign: "left",
-            verticalAlign: "top",
-          },
-          "& th": {
-            fontWeight: 700,
-            bgcolor: "rgba(255,255,255,0.06)",
-          },
-          "& code": {
-            fontFamily:
-              'ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-            fontSize: "0.82em",
-            px: 0.45,
-            py: 0.15,
-            borderRadius: 0.5,
-            bgcolor: "rgba(255,255,255,0.08)",
-          },
-          "&:empty:before": {
-            content: "attr(data-placeholder)",
-            color: "rgba(255,255,255,0.52)",
-          },
+          overflowX: "hidden",
+          boxSizing: "border-box",
+          pb: 0.75,
+          ...subtleScrollbarSx,
         }}
-      />
+      >
+        <Box
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={emitChange}
+          data-placeholder={placeholder}
+          sx={{
+            minHeight: "100%",
+            boxSizing: "border-box",
+            px: 1.4,
+            pt: 1.1,
+            pb: 1.8,
+            color: textColor,
+            bgcolor: surfaceColor,
+            fontSize: "0.875rem",
+            lineHeight: 1.45,
+            outline: "none",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            "& p": {
+              my: 0,
+              mb: 0.85,
+            },
+            "& ul": {
+              my: 0,
+              mb: 0.85,
+              pl: 2.5,
+            },
+            "& ol": {
+              my: 0,
+              mb: 0.85,
+              pl: 2.6,
+            },
+            "& li": {
+              mb: 0.35,
+            },
+            "& h1, & h2, & h3, & h4, & h5, & h6": {
+              my: 0,
+              mb: 0.65,
+              lineHeight: 1.25,
+              fontWeight: 700,
+            },
+            "& h1": {
+              fontSize: "1.2rem",
+            },
+            "& h2": {
+              fontSize: "1.08rem",
+            },
+            "& h3": {
+              fontSize: "0.98rem",
+            },
+            "& table": {
+              width: "100%",
+              borderCollapse: "collapse",
+              my: 0.4,
+              mb: 0.9,
+            },
+            "& th, & td": {
+              border: "1px solid rgba(255,255,255,0.18)",
+              px: 0.85,
+              py: 0.6,
+              textAlign: "left",
+              verticalAlign: "top",
+            },
+            "& th": {
+              fontWeight: 700,
+              bgcolor: "rgba(255,255,255,0.06)",
+            },
+            "& code": {
+              fontFamily:
+                'ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+              fontSize: "0.82em",
+              px: 0.45,
+              py: 0.15,
+              borderRadius: 0.5,
+              bgcolor: "rgba(255,255,255,0.08)",
+            },
+            "&:empty:before": {
+              content: "attr(data-placeholder)",
+              color: "rgba(255,255,255,0.52)",
+            },
+            "&::after": {
+              content: '""',
+              display: "block",
+              height: "12px",
+            },
+          }}
+        />
+      </Box>
     </Box>
   );
 }

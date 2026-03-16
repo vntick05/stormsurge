@@ -194,8 +194,8 @@ const subtleScrollbarSx = {
   scrollbarWidth: "thin",
   scrollbarColor: "var(--studio-scrollbar) transparent",
   "&::-webkit-scrollbar": {
-    width: 8,
-    height: 8,
+    width: 6,
+    height: 6,
   },
   "&::-webkit-scrollbar-track": {
     background: "transparent",
@@ -203,7 +203,7 @@ const subtleScrollbarSx = {
   "&::-webkit-scrollbar-thumb": {
     backgroundColor: "var(--studio-scrollbar)",
     borderRadius: 999,
-    border: "2px solid transparent",
+    border: "1px solid transparent",
     backgroundClip: "padding-box",
   },
   "&:hover::-webkit-scrollbar-thumb": {
@@ -2833,7 +2833,7 @@ function StormWorkspaceBar({
                           value={panelValue}
                           onChange={(nextValue) => onNotesChange(activeTab, nextValue, panel.id)}
                           placeholder={`Draft ${panel.label.toLowerCase()} here...`}
-                          minHeight={220}
+                          minHeight={0}
                           toolbarColor={panelText}
                           textColor={panelText}
                           surfaceColor="transparent"

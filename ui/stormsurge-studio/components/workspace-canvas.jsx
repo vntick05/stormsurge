@@ -27,6 +27,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { RichTextContent, hasTableBlock, parseRichTextBlocks } from "@/components/rich-text-content";
 import { getChildren, getRequirementById, getSectionRoots, resequenceGroup } from "@/lib/studio-graph";
 
 const REQUIREMENT_INDENT_STEP = "18px";
@@ -85,6 +86,28 @@ function RequirementCard({
   const accent = getRequirementAccent(requirement);
   const theme = useTheme();
   const isLightMode = theme.palette.mode === "light";
+  const richBlocks = parseRichTextBlocks(requirement.text || requirement.summary || "");
+  const containsTable = hasTableBlock(requirement.text || requirement.summary || "");
+  const firstNarrativeBlock = richBlocks.find(
+    (block) => block.type === "paragraph" || block.type === "heading",
+  );
+  const leadingNarrativeText =
+    firstNarrativeBlock?.type === "paragraph"
+      ? firstNarrativeBlock.text
+      : firstNarrativeBlock?.type === "heading"
+        ? firstNarrativeBlock.text
+        : "";
+  const trailingTableContent = containsTable
+    ? richBlocks
+        .filter((block) => block.type === "table")
+        .map((block) => {
+          const header = `| ${block.header.join(" | ")} |`;
+          const separator = `| ${block.header.map(() => "---").join(" | ")} |`;
+          const rows = block.rows.map((row) => `| ${row.join(" | ")} |`);
+          return [header, separator, ...rows].join("\n");
+        })
+        .join("\n\n")
+    : "";
   const requirementSurface = isLightMode ? LIGHT_SHARED_SURFACE : GITHUB_PANEL;
   const requirementSurfaceHover = isLightMode ? LIGHT_SHARED_SURFACE_HOVER : GITHUB_PANEL_HOVER;
   const requirementSurfaceSelected = isLightMode
@@ -148,49 +171,59 @@ function RequirementCard({
                 pr: 0.15,
                 py: 0.1,
                 display: "flex",
-                alignItems: "center",
-                minHeight: 28,
+                alignItems: containsTable ? "flex-start" : "center",
+                minHeight: containsTable ? 0 : 28,
               }}
             >
-              <Typography
-                variant="body2"
-                color="text.primary"
+              <Box
                 sx={{
-                  fontFamily: GITHUB_FONT_STACK,
-                  fontSize: "0.875rem",
-                  lineHeight: 1.45,
-                  fontWeight: 400,
                   width: "100%",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 4,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
                 }}
               >
-                <Box
-                  component="span"
+                <Typography
+                  variant="body2"
+                  color="text.primary"
                   sx={{
                     fontFamily: GITHUB_FONT_STACK,
-                    color: accent.text,
-                    fontWeight: 600,
-                    letterSpacing: 0,
-                    mr: 0.45,
-                  }}
-                >
-                  {formatRequirementMarker(requirement)}
-                </Box>
-                <Box
-                  component="span"
-                  sx={{
-                    fontFamily: GITHUB_FONT_STACK,
-                    color: "#111827",
+                    fontSize: "0.875rem",
+                    lineHeight: 1.45,
                     fontWeight: 400,
-                    letterSpacing: 0,
+                    width: "100%",
+                    display: "-webkit-box",
+                    WebkitLineClamp: containsTable ? 3 : 4,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
                   }}
                 >
-                  {requirement.text || requirement.summary}
-                </Box>
-              </Typography>
+                  <Box
+                    component="span"
+                    sx={{
+                      fontFamily: GITHUB_FONT_STACK,
+                      color: accent.text,
+                      fontWeight: 600,
+                      letterSpacing: 0,
+                      mr: 0.45,
+                    }}
+                  >
+                    {formatRequirementMarker(requirement)}
+                  </Box>
+                  <Box component="span" sx={{ color: "#111827", fontWeight: 400, letterSpacing: 0 }}>
+                    {containsTable
+                      ? leadingNarrativeText || requirement.text || requirement.summary
+                      : requirement.text || requirement.summary}
+                  </Box>
+                </Typography>
+                {containsTable && trailingTableContent ? (
+                  <Box sx={{ mt: 0.55 }}>
+                    <RichTextContent
+                      content={trailingTableContent}
+                      dense
+                      tablePreviewRows={3}
+                      showTableOverflowNote
+                    />
+                  </Box>
+                ) : null}
+              </Box>
             </Box>
             <Button
               size="small"
