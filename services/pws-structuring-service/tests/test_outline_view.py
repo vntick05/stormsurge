@@ -61,6 +61,34 @@ Child paragraph.
         self.assertEqual(outline[2]["section_title"], "Performance Objectives")
         self.assertEqual(outline[2]["children"][1]["section_number"], "4.1")
 
+    def test_parses_alpha_prefixed_section_numbers(self) -> None:
+        outline = build_outline(
+            "## L.10 Page Limitations\n\nPara.\n\n### L.10.1 Volume I\n\nChild para.\n"
+        )
+        self.assertEqual([section["section_number"] for section in outline], ["L.10"])
+        self.assertEqual(outline[0]["section_title"], "Page Limitations")
+        self.assertEqual(outline[0]["children"][1]["section_number"], "L.10.1")
+
+    def test_parses_bold_standalone_section_lines(self) -> None:
+        outline = build_outline(
+            "**L.4 Proposal Preparation and Delivery**\n\nPara.\n\n**L.5 General Instructions**\n\nNext.\n"
+        )
+        self.assertEqual([section["section_number"] for section in outline], ["L.4", "L.5"])
+        self.assertEqual(outline[0]["section_title"], "Proposal Preparation and Delivery")
+        self.assertEqual(outline[1]["children"][0]["text_exact"], "Next.")
+
+    def test_preserves_pipe_table_as_single_paragraph(self) -> None:
+        outline = build_outline(
+            "**L.8 Proposal Volumes and Organization**\n\n"
+            "| **Volume** | **Volume Title** | **Page Limit** | **Contents & Format** |\n"
+            "|--------------|------------------|----------------|-----------------------|\n"
+            "| **1** | **Offer** | **Page Limit** | **Cover Letter and Table of Contents. MS Word File.** |\n"
+            "| Appendix 1-A | Cover Letter | 2 | MS Word File or Adobe PDF |\n"
+        )
+        paragraph = outline[0]["children"][0]
+        self.assertIn("| **Volume** | **Volume Title** |", paragraph["text_exact"])
+        self.assertEqual(paragraph["children"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,7 +5,10 @@ from typing import Any
 
 
 HEADING_PATTERN = re.compile(r"^(?P<hashes>#+)\s+(?P<body>.+)$")
-NUMBERED_TITLE_PATTERN = re.compile(r"^(?P<section_number>\d+(?:\.\d+)*)\s+(?P<section_title>.+)$")
+NUMBERED_TITLE_PATTERN = re.compile(
+    r"^(?P<section_number>(?:[A-Za-z]+\.)?\d+(?:\.\d+)*|[A-Za-z]+\.\d+(?:\.\d+)*)\s+(?P<section_title>.+)$"
+)
+BOLD_LINE_PATTERN = re.compile(r"^\*\*(?P<body>.+?)\*\*$")
 BULLET_PATTERN = re.compile(r"^[-*]\s+(?P<body>.+)$")
 ORDERED_BULLET_PATTERN = re.compile(r"^(?P<marker>\d+\.|[A-Za-z]\.|(?:\([A-Za-z0-9ivxIVX]+\))+)\s+(?P<body>.+)$")
 INLINE_ORDERED_ITEM_PATTERN = re.compile(
@@ -34,11 +37,25 @@ def is_classification_marker(marker: str) -> bool:
     return token in {"U", "C", "S", "TS", "FOUO"}
 
 
+def is_likely_table_text(text: str) -> bool:
+    normalized = str(text or "").strip()
+    return normalized.count("|") >= 6
+
+
 def parse_heading(line: str) -> dict[str, Any] | None:
-    match = HEADING_PATTERN.match(line.strip())
-    if match is None:
-        return None
-    body = normalize_text(match.group("body"))
+    stripped = line.strip()
+    match = HEADING_PATTERN.match(stripped)
+    markdown_level = None
+    body = ""
+    if match is not None:
+        markdown_level = len(match.group("hashes"))
+        body = normalize_text(match.group("body"))
+    else:
+        bold_match = BOLD_LINE_PATTERN.match(stripped)
+        if bold_match is None:
+            return None
+        body = normalize_text(bold_match.group("body"))
+
     numbered = NUMBERED_TITLE_PATTERN.match(body)
     if numbered is None:
         return None
@@ -48,7 +65,7 @@ def parse_heading(line: str) -> dict[str, Any] | None:
         "section_number": section_number,
         "section_title": section_title,
         "depth": len(section_number.split(".")),
-        "markdown_level": len(match.group("hashes")),
+        "markdown_level": markdown_level,
         "children": [],
     }
 
@@ -64,6 +81,8 @@ def build_outline(markdown: str) -> list[dict[str, Any]]:
 
     def attach_inline_ordered_items(paragraph: dict[str, Any]) -> None:
         text = paragraph.get("text_exact", "")
+        if is_likely_table_text(text):
+            return
         matches = list(INLINE_ORDERED_ITEM_PATTERN.finditer(text))
         if len(matches) < 2:
             return

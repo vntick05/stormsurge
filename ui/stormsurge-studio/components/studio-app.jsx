@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ChevronLeftRounded from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRounded from "@mui/icons-material/ChevronRightRounded";
 import CloseRounded from "@mui/icons-material/CloseRounded";
@@ -54,6 +54,14 @@ import {
   MenuItem,
   Paper,
   Stack,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tabs,
   TextField,
   Toolbar,
   Tooltip,
@@ -258,6 +266,10 @@ function buildSectionBarSx(selected) {
   };
 }
 
+function getSectionAccentColor(section) {
+  return section?.sourceKind === "l-helper" ? "#3fb950" : "#5f8dff";
+}
+
 function SectionTabContent({ section, selected, dragHandleProps, onOpenMenu, completed }) {
   return (
     <>
@@ -401,6 +413,7 @@ function RailShell({
   onToggleCollapsed,
   onResizeStart,
   hideHeader = false,
+  headerContent = null,
   sx,
   children,
 }) {
@@ -467,7 +480,11 @@ function RailShell({
             zIndex: 3,
           }}
         >
-          {collapsed ? null : title ? (
+          {collapsed ? null : headerContent ? (
+            <Box sx={{ order: 1, flexGrow: 1, minWidth: 0 }}>
+              {headerContent}
+            </Box>
+          ) : title ? (
             <Typography
               variant="subtitle1"
               sx={{
@@ -624,6 +641,606 @@ function buildEmptyWorkspace() {
     sourceFilename: null,
     sourceFormat: null,
     projectId: null,
+  };
+}
+
+function normalizeMatchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getRequirementDisplayText(requirement) {
+  return String(requirement?.text || requirement?.summary || requirement?.title || "").trim();
+}
+
+function buildWorkspaceSlice(sourceWorkspace, sectionIds) {
+  const allowedSectionIds = new Set(sectionIds);
+  const sections = (sourceWorkspace?.sections || []).filter((section) => allowedSectionIds.has(section.id));
+  const requirements = (sourceWorkspace?.requirements || []).filter(
+    (requirement) => allowedSectionIds.has(requirement.sectionId),
+  );
+
+  return {
+    sections,
+    requirements,
+    sourceFilename: sourceWorkspace?.sourceFilename || null,
+    sourceFormat: sourceWorkspace?.sourceFormat || null,
+    projectId: sourceWorkspace?.projectId || null,
+  };
+}
+
+function slugifyValue(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "item";
+}
+
+function isTechnicalManagementSection(section, requirements) {
+  const sectionLabel = normalizeMatchText(section?.label);
+  const sectionText = normalizeMatchText(
+    requirements
+      .filter((requirement) => requirement.sectionId === section.id)
+      .map((requirement) => getRequirementDisplayText(requirement))
+      .join(" "),
+  );
+  const haystack = `${sectionLabel} ${sectionText}`;
+  const directMatches = [
+    "technical/management",
+    "technical / management",
+    "technical management",
+    "volume 2",
+    "technical volume",
+    "management volume",
+    "sub-factor 1",
+    "subfactor 1",
+  ];
+
+  if (directMatches.some((token) => haystack.includes(token))) {
+    return true;
+  }
+
+  return haystack.includes("technical") && haystack.includes("management");
+}
+
+function parseMarkdownTable(text) {
+  const normalized = String(text || "")
+    .replace(/\|\s+\|/g, "|\n|")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("|") && line.endsWith("|"));
+
+  if (normalized.length < 2) {
+    return null;
+  }
+
+  const rows = normalized
+    .map((line) => line.slice(1, -1).split("|").map((cell) => cell.trim()))
+    .filter((cells) => cells.some(Boolean));
+
+  if (rows.length < 2) {
+    return null;
+  }
+
+  const filteredRows = rows.filter(
+    (cells) => !cells.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s+/g, ""))),
+  );
+
+  if (filteredRows.length < 2) {
+    return null;
+  }
+
+  const headers = filteredRows[0];
+  const bodyRows = filteredRows.slice(1).filter((cells) => cells.length >= headers.length);
+  if (!bodyRows.length) {
+    return null;
+  }
+
+  return { headers, rows: bodyRows };
+}
+
+function normalizeHeaderKey(header) {
+  return normalizeMatchText(header)
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function getTableCell(row, headerIndexMap, candidates) {
+  for (const candidate of candidates) {
+    const index = headerIndexMap.get(candidate);
+    if (typeof index === "number") {
+      return row[index] || "";
+    }
+  }
+  return "";
+}
+
+function isLikelyVolumeIdentifier(value) {
+  const normalized = normalizeMatchText(value);
+  return (
+    /^\d+$/.test(normalized) ||
+    /^volume\s+\d+$/.test(normalized) ||
+    /^appendix\s+[a-z0-9-]+$/.test(normalized) ||
+    /^attachment\s+[a-z0-9-]+$/.test(normalized)
+  );
+}
+
+function formatProposalVolumeLabel(value) {
+  const trimmed = String(value || "").trim();
+  const normalized = normalizeMatchText(trimmed);
+  if (!trimmed) {
+    return "Unspecified";
+  }
+  if (/^\d+$/.test(normalized)) {
+    return `Volume ${trimmed}`;
+  }
+  if (/^volume\s+\d+$/.test(normalized)) {
+    return trimmed.replace(/^volume\s+/i, "Volume ");
+  }
+  if (/^appendix\s+/i.test(trimmed)) {
+    return trimmed.replace(/^appendix\s+/i, "Appendix ");
+  }
+  if (/^attachment\s+/i.test(trimmed)) {
+    return trimmed.replace(/^attachment\s+/i, "Attachment ");
+  }
+  return trimmed;
+}
+
+function cleanProposalCellText(value) {
+  return String(value || "")
+    .replace(/\*\*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isTechManagementArtifact(artifact) {
+  const volumeText = normalizeMatchText(artifact?.rawVolume || artifact?.volume);
+  const titleText = normalizeMatchText(artifact?.volumeTitle || artifact?.title);
+  const formatText = normalizeMatchText(artifact?.contentsFormat || artifact?.format);
+  const haystack = `${volumeText} ${titleText} ${formatText}`;
+
+  if (titleText.includes("acronym list")) {
+    return false;
+  }
+
+  if (volumeText.startsWith("appendix 2-")) {
+    return true;
+  }
+
+  return [
+    "basis of estimate",
+    "key personnel",
+    "small business participation",
+    "technical / management volume",
+    "technical/management volume",
+  ].some((token) => haystack.includes(token));
+}
+
+function scoreProposalArtifactTable({ title, sectionLabel, headers, rows }) {
+  const headerText = headers.map((header) => normalizeMatchText(header)).join(" ");
+  const headerKeys = headers.map(normalizeHeaderKey);
+  const titleText = `${normalizeMatchText(title)} ${normalizeMatchText(sectionLabel)}`;
+  const sampleText = rows
+    .slice(0, 4)
+    .flat()
+    .map((cell) => normalizeMatchText(cell))
+    .join(" ");
+  const firstColMatches = rows.slice(0, 8).filter((row) => isLikelyVolumeIdentifier(row[0] || "")).length;
+
+  let score = 0;
+  if (titleText.includes("proposal organization")) score += 7;
+  if (titleText.includes("table l.1")) score += 6;
+  if (titleText.includes("proposal volumes")) score += 6;
+  if (headerText.includes("volume")) score += 3;
+  if (headerText.includes("page limit")) score += 3;
+  if (headerText.includes("contents")) score += 2;
+  if (headerText.includes("format")) score += 2;
+  if (headerText.includes("title")) score += 2;
+  if (sampleText.includes("appendix")) score += 2;
+  if (sampleText.includes("ms word")) score += 2;
+  if (sampleText.includes("ms excel")) score += 2;
+  if (sampleText.includes("page limit")) score += 2;
+  if (sampleText.includes("technical / management")) score += 2;
+  if (headerKeys.some((key) => key === "volume")) score += 5;
+  if (headerKeys.some((key) => key === "volume_title" || key === "title")) score += 4;
+  if (headerKeys.some((key) => key === "page_limit" || key === "page_limits")) score += 4;
+  if (headerKeys.some((key) => key === "contents_format" || key === "contents" || key === "format")) score += 4;
+  if (firstColMatches >= Math.min(rows.length, 3)) score += 6;
+
+  return score;
+}
+
+function normalizeProposalArtifactRows(headers, rows) {
+  const headerKeys = headers.map(normalizeHeaderKey);
+  const headerIndexMap = new Map(headerKeys.map((key, index) => [key, index]));
+
+  return rows.map((row, index) => {
+    const volume = getTableCell(row, headerIndexMap, ["volume", "attach_no", "attachment_no"]);
+    const title = getTableCell(row, headerIndexMap, ["volume_title", "title"]);
+    const pageLimit = getTableCell(row, headerIndexMap, ["page_limit", "page_limits"]);
+    const format = getTableCell(row, headerIndexMap, ["contents_format", "format", "contents"]);
+    const normalizedTitle = title || row[1] || row[0] || `Row ${index + 1}`;
+    const fallbackFormat =
+      format ||
+      row.find(
+        (cell, cellIndex) =>
+          cellIndex > 1 && normalizeMatchText(cell).includes("ms "),
+      ) ||
+      row[row.length - 1] ||
+      "";
+    const fallbackPageLimit =
+      pageLimit ||
+      row.find((cell) => {
+        const normalized = normalizeMatchText(cell);
+        return normalized.includes("page") || normalized.includes("no limit");
+      }) ||
+      "";
+
+    return {
+      id: `proposal-artifact-${index + 1}`,
+      volume: cleanProposalCellText(formatProposalVolumeLabel(volume || row[0] || "")),
+      rawVolume: volume || row[0] || "",
+      title: cleanProposalCellText(normalizedTitle),
+      volumeTitle: cleanProposalCellText(normalizedTitle),
+      pageLimit: cleanProposalCellText(fallbackPageLimit || "—"),
+      format: cleanProposalCellText(fallbackFormat || "—"),
+      contentsFormat: cleanProposalCellText(fallbackFormat || "—"),
+      raw: row,
+    };
+  });
+}
+
+function createArtifactRequirement(sectionId, artifact, suffix, title, text, position) {
+  return {
+    id: `${sectionId}-req-${suffix}`,
+    sectionId,
+    parentId: null,
+    position,
+    sourceType: "extracted",
+    sourceOrigin: "l-helper",
+    accentColor: "#3fb950",
+    sourceRef: title,
+    kind: "paragraph",
+    title,
+    summary: String(text || "").slice(0, 160),
+    text: text || "",
+    intent: "Proposal organization requirement",
+    marker: null,
+  };
+}
+
+function isSubfactorHeadingText(text) {
+  return /sub-?factor\s+1\./i.test(String(text || ""));
+}
+
+function parseSubfactorHeading(text) {
+  const normalized = String(text || "").replace(/\*\*/g, "").trim();
+  const match = normalized.match(/L\.16\.1\.(\d+)\s*[–-]?\s*Sub-?Factor\s+1\.(\d+)\s+(.+)$/i);
+  if (!match) {
+    return null;
+  }
+  return {
+    index: Number(match[1] || match[2]),
+    number: `1.${match[2]}`,
+    title: match[3].trim(),
+    label: `Sub-Factor 1.${match[2]} ${match[3].trim()}`,
+  };
+}
+
+function parseFactorHeading(text) {
+  const normalized = String(text || "").replace(/\*\*/g, "").trim();
+  const match = normalized.match(/L\.16\.(\d+)\s*[–-]?\s*Factor\s+(\d+)[,:]?\s+(.+)$/i);
+  if (!match) {
+    return null;
+  }
+  return {
+    index: Number(match[1] || match[2]),
+    number: String(match[2] || "").trim(),
+    title: match[3].trim(),
+    label: `Factor ${match[2]} ${match[3].trim()}`,
+  };
+}
+
+function buildTechManagementWorkspaceFromLSection(sourceWorkspace) {
+  const l16Section = (sourceWorkspace?.sections || []).find(
+    (section) =>
+      normalizeMatchText(section?.sectionNumber) === "l.16" ||
+      normalizeMatchText(section?.label).startsWith("l.16 volume 2"),
+  );
+
+  if (!l16Section) {
+    return buildEmptyWorkspace();
+  }
+
+  const l16Requirements = getSectionRoots(sourceWorkspace?.requirements || [], l16Section.id)
+    .slice()
+    .sort((left, right) => (left.position || 0) - (right.position || 0));
+
+  const sections = [];
+  const requirements = [];
+  let currentSectionId = "";
+  let currentPosition = 0;
+  let mergedParagraphBuffer = [];
+
+  function shouldMergeParagraphIntoBuffer(buffer, nextRequirement) {
+    if (!buffer.length) {
+      return true;
+    }
+
+    const previousText = String(
+      buffer[buffer.length - 1]?.text || buffer[buffer.length - 1]?.summary || "",
+    ).trim();
+    const nextText = String(nextRequirement?.text || nextRequirement?.summary || "").trim();
+
+    if (!previousText || !nextText) {
+      return false;
+    }
+
+    const previousEndsSentence = /[.!?:]"?$/.test(previousText);
+    const nextStartsContinuation =
+      /^[a-z(]/.test(nextText) ||
+      /^(and|or|to|for|with|of|by|including|including,|as|that|which)\b/i.test(nextText);
+
+    return !previousEndsSentence && nextStartsContinuation;
+  }
+
+  function flushMergedParagraphBuffer() {
+    if (!currentSectionId || !mergedParagraphBuffer.length) {
+      mergedParagraphBuffer = [];
+      return;
+    }
+
+    currentPosition += 1;
+    const firstRequirement = mergedParagraphBuffer[0];
+    const mergedText = mergedParagraphBuffer
+      .map((requirement) => String(requirement.text || requirement.summary || "").trim())
+      .filter(Boolean)
+      .join(" ");
+
+    if (!mergedText) {
+      mergedParagraphBuffer = [];
+      return;
+    }
+
+    requirements.push({
+      ...firstRequirement,
+      id: `${currentSectionId}-req-${currentPosition}`,
+      sectionId: currentSectionId,
+      parentId: null,
+      position: currentPosition,
+      sourceType: "extracted",
+      sourceOrigin: "l-helper",
+      accentColor: "#3fb950",
+      summary: mergedText.slice(0, 160),
+      text: mergedText,
+    });
+    mergedParagraphBuffer = [];
+  }
+
+  function appendRequirementSubtree(sourceRequirement, parentId = null) {
+    currentPosition += 1;
+    const clonedId = `${currentSectionId}-req-${currentPosition}`;
+    requirements.push({
+      ...sourceRequirement,
+      id: clonedId,
+      sectionId: currentSectionId,
+      parentId,
+      position: currentPosition,
+      sourceType: "extracted",
+      sourceOrigin: "l-helper",
+      accentColor: "#3fb950",
+    });
+
+    const childRequirements = getChildren(sourceWorkspace?.requirements || [], sourceRequirement.id)
+      .slice()
+      .sort((left, right) => (left.position || 0) - (right.position || 0));
+
+    childRequirements.forEach((child) => appendRequirementSubtree(child, clonedId));
+  }
+
+  l16Requirements.forEach((requirement) => {
+    const requirementText = getRequirementDisplayText(requirement);
+    const factorHeading = parseFactorHeading(requirementText);
+    if (factorHeading) {
+      flushMergedParagraphBuffer();
+      currentSectionId = `tm-factor-${factorHeading.number.replace(/[^0-9]+/g, "-")}`;
+      currentPosition = 0;
+      sections.push({
+        id: currentSectionId,
+        label: factorHeading.label,
+        shortLabel: `F${factorHeading.number}`,
+        prompt: "Review the Section L technical/management factor requirements.",
+        description: `Derived from ${l16Section.label}.`,
+        sourceKind: "l-helper",
+        sectionNumber: factorHeading.number,
+      });
+      return;
+    }
+
+    const subfactorHeading = parseSubfactorHeading(requirementText);
+    if (subfactorHeading) {
+      flushMergedParagraphBuffer();
+      currentSectionId = `tm-subfactor-${subfactorHeading.number.replace(/[^0-9]+/g, "-")}`;
+      currentPosition = 0;
+      sections.push({
+        id: currentSectionId,
+        label: subfactorHeading.label,
+        shortLabel: subfactorHeading.number,
+        prompt: "Review the Section L technical/management sub-factor requirements.",
+        description: `Derived from ${l16Section.label}.`,
+        sourceKind: "l-helper",
+        sectionNumber: subfactorHeading.number,
+      });
+      return;
+    }
+
+    if (!currentSectionId) {
+      return;
+    }
+
+    const childRequirements = getChildren(sourceWorkspace?.requirements || [], requirement.id)
+      .slice()
+      .sort((left, right) => (left.position || 0) - (right.position || 0));
+    const isPlainParagraph = requirement.kind === "paragraph" && childRequirements.length === 0;
+
+    if (isPlainParagraph) {
+      if (shouldMergeParagraphIntoBuffer(mergedParagraphBuffer, requirement)) {
+        mergedParagraphBuffer.push(requirement);
+      } else {
+        flushMergedParagraphBuffer();
+        mergedParagraphBuffer.push(requirement);
+      }
+      return;
+    }
+
+    flushMergedParagraphBuffer();
+    appendRequirementSubtree(requirement);
+  });
+
+  flushMergedParagraphBuffer();
+
+  return sections.length
+    ? {
+        sections,
+        requirements,
+        sourceFilename: sourceWorkspace?.sourceFilename || null,
+        sourceFormat: "section_l_subfactors_v1",
+        projectId: sourceWorkspace?.projectId || null,
+      }
+    : buildEmptyWorkspace();
+}
+
+function buildTechManagementWorkspaceFromArtifacts(deliverableTables) {
+  const sourceArtifacts = (deliverableTables || []).flatMap((table) => table.artifacts || []);
+  const artifacts = sourceArtifacts
+    .filter(isTechManagementArtifact)
+    .sort((left, right) => String(left.rawVolume || "").localeCompare(String(right.rawVolume || "")));
+
+  if (!artifacts.length) {
+    return buildEmptyWorkspace();
+  }
+
+  const sections = [];
+  const requirements = [];
+
+  artifacts.forEach((artifact, index) => {
+    const sectionId = `tm-section-${slugifyValue(`${artifact.rawVolume}-${artifact.volumeTitle}`)}`;
+    sections.push({
+      id: sectionId,
+      label: artifact.volumeTitle || artifact.title || artifact.volume,
+      shortLabel: artifact.rawVolume || artifact.volume || `TM-${index + 1}`,
+      prompt: "Review the Section L technical/management proposal requirement lane.",
+      description: artifact.contentsFormat || "Derived from the proposal organization table.",
+      sourceKind: "l-helper",
+      sectionNumber: artifact.rawVolume || artifact.volume || null,
+    });
+
+    requirements.push(
+      createArtifactRequirement(
+        sectionId,
+        artifact,
+        "page-limit",
+        "Page Limit",
+        artifact.pageLimit || "—",
+        1,
+      ),
+    );
+    requirements.push(
+      createArtifactRequirement(
+        sectionId,
+        artifact,
+        "contents-format",
+        "Contents & Format",
+        artifact.contentsFormat || artifact.format || "—",
+        2,
+      ),
+    );
+  });
+
+  return {
+    sections,
+    requirements,
+    sourceFilename: null,
+    sourceFormat: "section_l_tech_management_helper_v1",
+    projectId: null,
+  };
+}
+
+function extractDeliverableTables(workspace) {
+  const sectionLabelById = new Map((workspace?.sections || []).map((section) => [section.id, section.label]));
+
+  return (workspace?.requirements || [])
+    .map((requirement) => {
+      const text = getRequirementDisplayText(requirement);
+      if (!text.includes("|")) {
+        return null;
+      }
+
+      const table = parseMarkdownTable(text);
+      if (!table) {
+        return null;
+      }
+
+      return {
+        id: requirement.id,
+        title: requirement.title || requirement.sourceRef || "Extracted table",
+        sourceRef: requirement.sourceRef || requirement.title || requirement.id,
+        sectionLabel: sectionLabelById.get(requirement.sectionId) || requirement.sectionId,
+        headers: table.headers,
+        rows: table.rows,
+        score: scoreProposalArtifactTable({
+          title: requirement.title || requirement.sourceRef || "Extracted table",
+          sectionLabel: sectionLabelById.get(requirement.sectionId) || requirement.sectionId,
+          headers: table.headers,
+          rows: table.rows,
+        }),
+      };
+    })
+    .filter(Boolean)
+    .filter((table) => table.score >= 6)
+    .sort((left, right) => right.score - left.score)
+    .map((table) => ({
+      ...table,
+      artifacts: normalizeProposalArtifactRows(table.headers, table.rows),
+    }));
+}
+
+function remapWorkspaceForImport(sourceWorkspace, labelPrefix = "import") {
+  const importToken = `${labelPrefix}-${Date.now()}`;
+  const sectionIdMap = new Map();
+  const requirementIdMap = new Map();
+
+  const sections = (sourceWorkspace?.sections || []).map((section, index) => {
+    const nextId = `${importToken}-section-${index + 1}`;
+    sectionIdMap.set(section.id, nextId);
+    return {
+      ...section,
+      id: nextId,
+      sourceKind: labelPrefix === "l-helper" ? "l-helper" : section.sourceKind,
+    };
+  });
+
+  const requirements = (sourceWorkspace?.requirements || []).map((requirement, index) => {
+    const nextId = `${importToken}-req-${index + 1}`;
+    requirementIdMap.set(requirement.id, nextId);
+    return {
+      ...requirement,
+      id: nextId,
+    };
+  }).map((requirement) => ({
+    ...requirement,
+    sectionId: sectionIdMap.get(requirement.sectionId) || requirement.sectionId,
+    parentId: requirement.parentId ? requirementIdMap.get(requirement.parentId) || null : null,
+  }));
+
+  return {
+    sections,
+    requirements,
+    sourceFilename: sourceWorkspace?.sourceFilename || null,
+    sourceFormat: sourceWorkspace?.sourceFormat || null,
+    projectId: sourceWorkspace?.projectId || null,
   };
 }
 
@@ -2407,6 +3024,8 @@ export function StudioApp() {
   });
   const [activeSectionId, setActiveSectionId] = useState("");
   const [selectedRequirementId, setSelectedRequirementId] = useState("");
+  const [selectedRequirementIds, setSelectedRequirementIds] = useState(() => new Set());
+  const [requirementClipboard, setRequirementClipboard] = useState(null);
   const [uploadState, setUploadState] = useState({
     loading: false,
     error: "",
@@ -2422,8 +3041,10 @@ export function StudioApp() {
   const [collapsedRequirementIds, setCollapsedRequirementIds] = useState(() => new Set());
   const [sectionMenuAnchorEl, setSectionMenuAnchorEl] = useState(null);
   const [sectionMenuSectionId, setSectionMenuSectionId] = useState("");
+  const [sectionMenuSource, setSectionMenuSource] = useState("sections");
   const [reqImportDialogOpen, setReqImportDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [leftRailTab, setLeftRailTab] = useState("sections");
   const [reqImportWorkspace, setReqImportWorkspace] = useState(buildEmptyWorkspace);
   const [reqImportSectionId, setReqImportSectionId] = useState("");
   const [reqImportCheckedIds, setReqImportCheckedIds] = useState(() => new Set());
@@ -2431,6 +3052,18 @@ export function StudioApp() {
     loading: false,
     error: "",
   });
+  const [lHelperWorkspace, setLHelperWorkspace] = useState(buildEmptyWorkspace);
+  const [lHelperSectionId, setLHelperSectionId] = useState("");
+  const [lHelperSelectedRequirementId, setLHelperSelectedRequirementId] = useState("");
+  const [lHelperSelectedRequirementIds, setLHelperSelectedRequirementIds] = useState(() => new Set());
+  const [lHelperState, setLHelperState] = useState({
+    loading: false,
+    error: "",
+  });
+  const [lHelperSectionMeta, setLHelperSectionMeta] = useState({});
+  const [lHelperTableId, setLHelperTableId] = useState("");
+  const [lHelperVolumeFilter, setLHelperVolumeFilter] = useState("");
+  const lHelperInputRef = useRef(null);
 
   const sections = workspace.sections;
   const requirements = workspace.requirements;
@@ -2445,9 +3078,108 @@ export function StudioApp() {
   const activeSection =
     displaySections.find((section) => section.id === activeSectionId) ?? displaySections[0] ?? null;
   const selectedRequirement = getRequirementById(requirements, selectedRequirementId);
+  const lHelperSections = lHelperWorkspace.sections;
+  const lHelperRequirements = lHelperWorkspace.requirements;
+  const filteredLHelperSectionIds = useMemo(() => {
+    const matches = lHelperSections
+      .filter((section) => isTechnicalManagementSection(section, lHelperRequirements))
+      .map((section) => section.id);
+    return matches.length ? matches : lHelperSections.map((section) => section.id);
+  }, [lHelperRequirements, lHelperSections]);
+  const filteredLHelperWorkspace = useMemo(
+    () => buildWorkspaceSlice(lHelperWorkspace, filteredLHelperSectionIds),
+    [filteredLHelperSectionIds, lHelperWorkspace],
+  );
+  const lHelperDeliverableTables = useMemo(
+    () => extractDeliverableTables(lHelperWorkspace),
+    [lHelperWorkspace],
+  );
+  const techManagementSubfactorWorkspace = useMemo(
+    () => buildTechManagementWorkspaceFromLSection(lHelperWorkspace),
+    [lHelperWorkspace],
+  );
+  const techManagementLHelperWorkspace = useMemo(
+    () => buildTechManagementWorkspaceFromArtifacts(lHelperDeliverableTables),
+    [lHelperDeliverableTables],
+  );
+  const displayedLHelperBaseWorkspace = techManagementSubfactorWorkspace.sections.length
+    ? techManagementSubfactorWorkspace
+    : techManagementLHelperWorkspace;
+  const displayedLHelperSections = useMemo(
+    () =>
+      displayedLHelperBaseWorkspace.sections
+        .filter((section) => !lHelperSectionMeta[section.id]?.hidden)
+        .map((section) => ({
+          ...section,
+          label: lHelperSectionMeta[section.id]?.label || section.label,
+        })),
+    [displayedLHelperBaseWorkspace.sections, lHelperSectionMeta],
+  );
+  const displayedLHelperSectionIds = useMemo(
+    () => new Set(displayedLHelperSections.map((section) => section.id)),
+    [displayedLHelperSections],
+  );
+  const displayedLHelperRequirements = useMemo(
+    () =>
+      displayedLHelperBaseWorkspace.requirements.filter((requirement) =>
+        displayedLHelperSectionIds.has(requirement.sectionId),
+      ),
+    [displayedLHelperBaseWorkspace.requirements, displayedLHelperSectionIds],
+  );
+  const activeLHelperSectionId =
+    (displayedLHelperSections.some((section) => section.id === lHelperSectionId) ? lHelperSectionId : "") ||
+    displayedLHelperSections[0]?.id ||
+    "";
+  const lHelperSectionRequirements = useMemo(
+    () =>
+      activeLHelperSectionId
+        ? getSectionRoots(displayedLHelperRequirements, activeLHelperSectionId)
+        : [],
+    [activeLHelperSectionId, displayedLHelperRequirements],
+  );
+  const activeLHelperSection =
+    displayedLHelperSections.find((section) => section.id === activeLHelperSectionId) ??
+    displayedLHelperSections[0] ??
+    null;
+  const selectedLHelperRequirement = getRequirementById(
+    displayedLHelperRequirements,
+    lHelperSelectedRequirementId,
+  );
+  const activeLHelperTable =
+    lHelperDeliverableTables.find((table) => table.id === lHelperTableId) ??
+    lHelperDeliverableTables[0] ??
+    null;
+  const activeLHelperVolumes = useMemo(() => {
+    if (!activeLHelperTable) {
+      return [];
+    }
+    return [...new Set(activeLHelperTable.artifacts.map((artifact) => artifact.volume).filter(Boolean))];
+  }, [activeLHelperTable]);
+  const activeLHelperVolume =
+    lHelperVolumeFilter === "All"
+      ? "All"
+      : activeLHelperVolumes.includes(lHelperVolumeFilter)
+        ? lHelperVolumeFilter
+        : "All";
+  const visibleLHelperArtifacts = useMemo(() => {
+    if (!activeLHelperTable) {
+      return [];
+    }
+    if (!activeLHelperVolume || activeLHelperVolume === "All") {
+      return activeLHelperTable.artifacts;
+    }
+    return activeLHelperTable.artifacts.filter((artifact) => artifact.volume === activeLHelperVolume);
+  }, [activeLHelperTable, activeLHelperVolume]);
   const activeSectionRequirements = useMemo(
     () => (activeSection ? getSectionRequirementScope(requirements, activeSection.id) : []),
     [activeSection, requirements],
+  );
+  const activeLHelperSectionRequirements = useMemo(
+    () =>
+      activeLHelperSection
+        ? getSectionRequirementScope(displayedLHelperRequirements, activeLHelperSection.id)
+        : [],
+    [activeLHelperSection, displayedLHelperRequirements],
   );
   const activeSectionStormWorkspaceNotes = useMemo(() => {
     if (!activeSection?.id) {
@@ -2511,12 +3243,48 @@ export function StudioApp() {
   }, [workspace.sourceFilename, workspace.sourceFormat]);
 
   const isHomeScreen = !sections.length;
+  const showLHelperCanvas = !isHomeScreen && leftRailTab === "l-helper";
+  const activeStormSection = showLHelperCanvas ? activeLHelperSection : activeSection;
+  const activeStormSectionRequirements = showLHelperCanvas
+    ? activeLHelperSectionRequirements
+    : activeSectionRequirements;
+  const activeStormWorkspaceNotes = useMemo(() => {
+    if (!activeStormSection?.id) {
+      return buildEmptyStormWorkspace();
+    }
+
+    return {
+      ...buildEmptyStormWorkspace(),
+      ...(stormWorkspaceNotes[activeStormSection.id] || {}),
+    };
+  }, [activeStormSection, stormWorkspaceNotes]);
+  const activeStormMtsPrompts = useMemo(() => {
+    const sectionLabel = activeStormSection?.label || "this section";
+    return normalizeMtsPromptSet(
+      activeStormSection?.id ? stormWorkspacePrompts[activeStormSection.id] : {},
+      sectionLabel,
+    );
+  }, [activeStormSection, stormWorkspacePrompts]);
+  const activeStormDefinitionPanels = useMemo(
+    () => parseMtsDefinitionPanels(activeStormWorkspaceNotes["MTS Definition"]),
+    [activeStormWorkspaceNotes],
+  );
+  const showMainCanvas = !isHomeScreen && leftRailTab === "sections";
 
   function buildStudioSnapshot() {
     return {
       workspace,
       activeSectionId,
       selectedRequirementId,
+      selectedRequirementIds: Array.from(selectedRequirementIds),
+      leftRailTab,
+      lHelperWorkspace,
+      lHelperSectionMeta,
+      lHelperSectionId,
+      lHelperSelectedRequirementId,
+      lHelperSelectedRequirementIds: Array.from(lHelperSelectedRequirementIds),
+      lHelperTableId,
+      lHelperVolumeFilter,
       stormWorkspaceTab,
       stormWorkspaceNotes,
       stormWorkspacePrompts,
@@ -2531,11 +3299,21 @@ export function StudioApp() {
     setWorkspace(buildEmptyWorkspace());
     setUndoHistory([]);
     setRedoHistory([]);
+    setLeftRailTab("sections");
+    setLHelperWorkspace(buildEmptyWorkspace());
+    setLHelperSectionMeta({});
+    setLHelperSectionId("");
+    setLHelperSelectedRequirementId("");
+    setLHelperSelectedRequirementIds(new Set());
+    setLHelperTableId("");
+    setLHelperVolumeFilter("");
+    setLHelperState({ loading: false, error: "" });
     setStormWorkspaceTab(STORM_WORKSPACE_TABS[0]);
     setStormWorkspaceNotes({});
     setStormWorkspacePrompts({});
     setActiveSectionId("");
     setSelectedRequirementId("");
+    setSelectedRequirementIds(new Set());
     setCollapsedRequirementIds(new Set());
     setUploadState({ loading: false, error: "" });
     setSelectedPackageProjectId("");
@@ -2547,6 +3325,35 @@ export function StudioApp() {
   function restoreStudioSnapshot(snapshot, options = {}) {
     const resetHistory = options.resetHistory ?? true;
     setWorkspace(snapshot?.workspace ? snapshot.workspace : buildEmptyWorkspace());
+    setLeftRailTab(snapshot?.leftRailTab === "l-helper" ? "l-helper" : "sections");
+    setLHelperWorkspace(
+      snapshot?.lHelperWorkspace ? snapshot.lHelperWorkspace : buildEmptyWorkspace(),
+    );
+    setLHelperSectionMeta(
+      snapshot?.lHelperSectionMeta &&
+        typeof snapshot.lHelperSectionMeta === "object" &&
+        !Array.isArray(snapshot.lHelperSectionMeta)
+        ? snapshot.lHelperSectionMeta
+        : {},
+    );
+    setLHelperSectionId(
+      typeof snapshot?.lHelperSectionId === "string" ? snapshot.lHelperSectionId : "",
+    );
+    setLHelperSelectedRequirementId(
+      typeof snapshot?.lHelperSelectedRequirementId === "string"
+        ? snapshot.lHelperSelectedRequirementId
+        : "",
+    );
+    setLHelperSelectedRequirementIds(
+      Array.isArray(snapshot?.lHelperSelectedRequirementIds)
+        ? new Set(snapshot.lHelperSelectedRequirementIds.filter((value) => typeof value === "string"))
+        : new Set(),
+    );
+    setLHelperTableId(typeof snapshot?.lHelperTableId === "string" ? snapshot.lHelperTableId : "");
+    setLHelperVolumeFilter(
+      typeof snapshot?.lHelperVolumeFilter === "string" ? snapshot.lHelperVolumeFilter : "",
+    );
+    setLHelperState({ loading: false, error: "" });
     if (resetHistory) {
       setUndoHistory([]);
       setRedoHistory([]);
@@ -2554,6 +3361,11 @@ export function StudioApp() {
     setActiveSectionId(typeof snapshot?.activeSectionId === "string" ? snapshot.activeSectionId : "");
     setSelectedRequirementId(
       typeof snapshot?.selectedRequirementId === "string" ? snapshot.selectedRequirementId : "",
+    );
+    setSelectedRequirementIds(
+      Array.isArray(snapshot?.selectedRequirementIds)
+        ? new Set(snapshot.selectedRequirementIds.filter((value) => typeof value === "string"))
+        : new Set(),
     );
     setStormWorkspaceTab(
       typeof snapshot?.stormWorkspaceTab === "string"
@@ -2773,6 +3585,12 @@ export function StudioApp() {
         workspace,
         activeSectionId,
         selectedRequirementId,
+        leftRailTab,
+        lHelperWorkspace,
+        lHelperSectionId,
+        lHelperSelectedRequirementId,
+        lHelperTableId,
+        lHelperVolumeFilter,
         stormWorkspaceTab,
         stormWorkspaceNotes,
         stormWorkspacePrompts,
@@ -2787,6 +3605,12 @@ export function StudioApp() {
     workspace,
     activeSectionId,
     selectedRequirementId,
+    leftRailTab,
+    lHelperWorkspace,
+    lHelperSectionId,
+    lHelperSelectedRequirementId,
+    lHelperTableId,
+    lHelperVolumeFilter,
     stormWorkspaceTab,
     stormWorkspaceNotes,
     stormWorkspacePrompts,
@@ -2847,6 +3671,71 @@ export function StudioApp() {
     );
   }, [mounted, savedProjects]);
 
+  useEffect(() => {
+    if (!showLHelperCanvas) {
+      return;
+    }
+
+    if (!displayedLHelperSections.length) {
+      if (lHelperSectionId) {
+        setLHelperSectionId("");
+      }
+      if (lHelperSelectedRequirementId) {
+        setLHelperSelectedRequirementId("");
+      }
+      return;
+    }
+
+    const hasActiveSection = displayedLHelperSections.some((section) => section.id === lHelperSectionId);
+    if (!hasActiveSection) {
+      const nextSectionId = displayedLHelperSections[0]?.id || "";
+      setLHelperSectionId(nextSectionId);
+      setLHelperSelectedRequirementId(
+        getSectionRoots(displayedLHelperRequirements, nextSectionId)[0]?.id || "",
+      );
+    }
+  }, [
+    displayedLHelperRequirements,
+    displayedLHelperSections,
+    lHelperSectionId,
+    lHelperSelectedRequirementId,
+    showLHelperCanvas,
+  ]);
+
+  useEffect(() => {
+    if (!showLHelperCanvas) {
+      return;
+    }
+
+    if (!lHelperDeliverableTables.length) {
+      if (lHelperTableId) {
+        setLHelperTableId("");
+      }
+      return;
+    }
+
+    if (!lHelperDeliverableTables.some((table) => table.id === lHelperTableId)) {
+      setLHelperTableId(lHelperDeliverableTables[0]?.id || "");
+    }
+  }, [lHelperDeliverableTables, lHelperTableId, showLHelperCanvas]);
+
+  useEffect(() => {
+    if (!showLHelperCanvas) {
+      return;
+    }
+
+    if (!activeLHelperVolumes.length) {
+      if (lHelperVolumeFilter) {
+        setLHelperVolumeFilter("");
+      }
+      return;
+    }
+
+    if (lHelperVolumeFilter !== "All" && !activeLHelperVolumes.includes(lHelperVolumeFilter)) {
+      setLHelperVolumeFilter("All");
+    }
+  }, [activeLHelperVolumes, lHelperVolumeFilter, showLHelperCanvas]);
+
   const leftRailDisplayWidth = leftRailCollapsed ? RAIL_COLLAPSED_WIDTH : leftRailWidth;
   const rightRailDisplayWidth = rightRailWidth;
   const sectionTabSensors = useSensors(
@@ -2892,16 +3781,55 @@ export function StudioApp() {
     const firstRequirement = getSectionRoots(requirements, sectionId)[0];
     if (firstRequirement) {
       setSelectedRequirementId(firstRequirement.id);
+      setSelectedRequirementIds(new Set([firstRequirement.id]));
+      return;
     }
+    setSelectedRequirementIds(new Set());
   }
 
-  function selectRequirement(requirementId) {
+  function selectRequirement(requirementId, options = {}) {
+    const multiSelectKey = Boolean(options?.multiSelectKey);
     recordStudioHistorySnapshot();
     setSelectedRequirementId(requirementId);
     const requirement = getRequirementById(requirements, requirementId);
     if (requirement) {
       setActiveSectionId(requirement.sectionId);
     }
+    setSelectedRequirementIds((current) => {
+      if (!multiSelectKey) {
+        return new Set([requirementId]);
+      }
+      const next = new Set(current);
+      if (next.has(requirementId)) {
+        next.delete(requirementId);
+      } else {
+        next.add(requirementId);
+      }
+      if (!next.size) {
+        next.add(requirementId);
+      }
+      return next;
+    });
+  }
+
+  function selectLHelperRequirement(requirementId, options = {}) {
+    const multiSelectKey = Boolean(options?.multiSelectKey);
+    setLHelperSelectedRequirementId(requirementId);
+    setLHelperSelectedRequirementIds((current) => {
+      if (!multiSelectKey) {
+        return new Set([requirementId]);
+      }
+      const next = new Set(current);
+      if (next.has(requirementId)) {
+        next.delete(requirementId);
+      } else {
+        next.add(requirementId);
+      }
+      if (!next.size) {
+        next.add(requirementId);
+      }
+      return next;
+    });
   }
 
   function patchSelectedRequirement(updater) {
@@ -3043,6 +3971,69 @@ export function StudioApp() {
     }, { nextSelectedRequirementId: insertedRequirement.id });
   }
 
+  function buildRequirementClipboard(requirementIds, sourceRequirements = requirements) {
+    const requestedIds = Array.isArray(requirementIds) ? requirementIds : [requirementIds];
+    const validIds = requestedIds.filter((id) => getRequirementById(sourceRequirements, id));
+    if (!validIds.length) {
+      return null;
+    }
+
+    const selectedIdSet = new Set(validIds);
+    const rootIds = validIds.filter((id) => {
+      const requirement = getRequirementById(sourceRequirements, id);
+      let parentId = requirement?.parentId || null;
+      while (parentId) {
+        if (selectedIdSet.has(parentId)) {
+          return false;
+        }
+        parentId = getRequirementById(sourceRequirements, parentId)?.parentId || null;
+      }
+      return true;
+    });
+    const rootRequirements = sourceRequirements
+      .filter((requirement) => rootIds.includes(requirement.id))
+      .sort((left, right) => (left.position || 0) - (right.position || 0));
+    const clipboardEntries = [];
+
+    function collectSubtree(currentRequirement) {
+      clipboardEntries.push({ ...currentRequirement });
+      const children = getChildren(sourceRequirements, currentRequirement.id);
+      children.forEach((child) => collectSubtree(child));
+    }
+
+    rootRequirements.forEach((rootRequirement) => collectSubtree(rootRequirement));
+    return {
+      rootIds,
+      entries: clipboardEntries,
+    };
+  }
+
+  function materializeRequirementClipboard(clipboard, targetSectionId) {
+    if (!Array.isArray(clipboard?.rootIds) || !Array.isArray(clipboard.entries) || !clipboard.entries.length) {
+      return null;
+    }
+
+    const idMap = new Map();
+    let counter = Date.now();
+    clipboard.entries.forEach((entry) => {
+      idMap.set(entry.id, `clip-${counter++}`);
+    });
+
+    const clonedEntries = clipboard.entries.map((entry) => ({
+      ...entry,
+      id: idMap.get(entry.id),
+      sectionId: targetSectionId,
+      parentId: entry.parentId ? idMap.get(entry.parentId) || null : null,
+    }));
+    const rootRequirementIdSet = new Set(clipboard.rootIds.map((id) => idMap.get(id)));
+    const rootRequirements = clonedEntries.filter((entry) => rootRequirementIdSet.has(entry.id));
+
+    return {
+      rootRequirements,
+      descendantRequirements: clonedEntries.filter((entry) => !rootRequirementIdSet.has(entry.id)),
+    };
+  }
+
   function handleCreateChildRequirement() {
     if (!selectedRequirement || selectedRequirement.sectionId === "unassigned") {
       return;
@@ -3138,6 +4129,127 @@ export function StudioApp() {
       ...current,
       requirements: deleteRequirement(current.requirements, requirementId),
     }), { nextSelectedRequirementId: fallbackRequirement?.id ?? "" });
+  }
+
+  function handleCutRequirement() {
+    if (!selectedRequirement) {
+      return;
+    }
+
+    const selectedIds = selectedRequirementIds.size
+      ? Array.from(selectedRequirementIds)
+      : [selectedRequirement.id];
+    const clipboard = buildRequirementClipboard(selectedIds);
+    if (!clipboard) {
+      return;
+    }
+
+    setRequirementClipboard(clipboard);
+    const fallbackSectionId = activeSection?.id || selectedRequirement.sectionId;
+    const idsToRemove = clipboard.rootIds;
+    const remainingRequirements = idsToRemove.reduce(
+      (current, requirementId) => deleteRequirement(current, requirementId),
+      requirements,
+    );
+    const nextSelectedRequirementId =
+      getSectionRoots(remainingRequirements, fallbackSectionId)[0]?.id || "";
+
+    applyWorkspaceChange(
+      (current) => ({
+        ...current,
+        requirements: idsToRemove.reduce(
+          (workingRequirements, requirementId) => deleteRequirement(workingRequirements, requirementId),
+          current.requirements,
+        ),
+      }),
+      {
+        nextActiveSectionId: fallbackSectionId,
+        nextSelectedRequirementId,
+      },
+    );
+    setSelectedRequirementIds(new Set(nextSelectedRequirementId ? [nextSelectedRequirementId] : []));
+  }
+
+  function handlePasteBelowRequirement() {
+    if (!selectedRequirement || !requirementClipboard) {
+      return;
+    }
+
+    applyWorkspaceChange((current) => {
+      const targetRequirement = getRequirementById(current.requirements, selectedRequirement.id);
+      if (!targetRequirement) {
+        return current;
+      }
+
+      const materialized = materializeRequirementClipboard(requirementClipboard, targetRequirement.sectionId);
+      if (!materialized?.rootRequirements?.length) {
+        return current;
+      }
+
+      const siblingGroup = getSiblingGroup(current.requirements, targetRequirement);
+      const targetIndex = siblingGroup.findIndex((entry) => entry.id === targetRequirement.id);
+      const nextSiblingGroup = [...siblingGroup];
+      const insertedRoots = materialized.rootRequirements.map((rootRequirement) => ({
+        ...rootRequirement,
+        sectionId: targetRequirement.sectionId,
+        parentId: targetRequirement.parentId,
+        kind: targetRequirement.parentId ? "child" : "top-level",
+      }));
+      nextSiblingGroup.splice(targetIndex + 1, 0, ...insertedRoots);
+      const nextPositions = new Map(nextSiblingGroup.map((entry, index) => [entry.id, index + 1]));
+      const requirementsWithRoot = current.requirements.map((requirement) =>
+        nextPositions.has(requirement.id)
+          ? { ...requirement, position: nextPositions.get(requirement.id) }
+          : requirement,
+      );
+
+      return {
+        ...current,
+        requirements: [
+          ...requirementsWithRoot,
+          ...insertedRoots.map((entry) => ({ ...entry, position: nextPositions.get(entry.id) })),
+          ...materialized.descendantRequirements,
+        ],
+      };
+    }, {
+      nextActiveSectionId: selectedRequirement.sectionId,
+      nextSelectedRequirementId: selectedRequirementId,
+    });
+  }
+
+  function handlePasteAsChildRequirement() {
+    if (!selectedRequirement || !requirementClipboard) {
+      return;
+    }
+
+    applyWorkspaceChange((current) => {
+      const targetRequirement = getRequirementById(current.requirements, selectedRequirement.id);
+      if (!targetRequirement) {
+        return current;
+      }
+
+      const materialized = materializeRequirementClipboard(requirementClipboard, targetRequirement.sectionId);
+      if (!materialized?.rootRequirements?.length) {
+        return current;
+      }
+
+      const childGroup = getChildren(current.requirements, targetRequirement.id);
+      const rootRequirements = materialized.rootRequirements.map((rootRequirement, index) => ({
+        ...rootRequirement,
+        sectionId: targetRequirement.sectionId,
+        parentId: targetRequirement.id,
+        kind: "child",
+        position: childGroup.length + index + 1,
+      }));
+
+      return {
+        ...current,
+        requirements: [...current.requirements, ...rootRequirements, ...materialized.descendantRequirements],
+      };
+    }, {
+      nextActiveSectionId: selectedRequirement.sectionId,
+      nextSelectedRequirementId: selectedRequirementId,
+    });
   }
 
   function handleReorderRequirements(nextRequirements) {
@@ -3275,14 +4387,16 @@ export function StudioApp() {
     }));
   }
 
-  function handleOpenSectionMenu(anchorEl, sectionId) {
+  function handleOpenSectionMenu(anchorEl, sectionId, source = "sections") {
     setSectionMenuAnchorEl(anchorEl);
     setSectionMenuSectionId(sectionId);
+    setSectionMenuSource(source);
   }
 
   function handleCloseSectionMenu() {
     setSectionMenuAnchorEl(null);
     setSectionMenuSectionId("");
+    setSectionMenuSource("sections");
   }
 
   function handleOpenReqImportDialog() {
@@ -3472,25 +4586,117 @@ export function StudioApp() {
     }
 
     const sectionId = sectionMenuSectionId;
+    const source = sectionMenuSource;
     handleCloseSectionMenu();
+    if (source === "l-helper") {
+      const section = displayedLHelperSections.find((entry) => entry.id === sectionId);
+      if (!section) {
+        return;
+      }
+
+      const label = window.prompt("Rename section tab", section.label);
+      if (label === null) {
+        return;
+      }
+
+      const trimmedLabel = label.trim();
+      if (!trimmedLabel || trimmedLabel === section.label) {
+        return;
+      }
+
+      setLHelperSectionMeta((current) => ({
+        ...current,
+        [sectionId]: {
+          ...(current[sectionId] || {}),
+          label: trimmedLabel,
+        },
+      }));
+      return;
+    }
+
     handleRenameSection(sectionId);
   }
 
+  function handleDeleteSectionFromMenu() {
+    if (!sectionMenuSectionId) {
+      return;
+    }
+
+    const sectionId = sectionMenuSectionId;
+    const source = sectionMenuSource;
+    handleCloseSectionMenu();
+
+    if (source === "l-helper") {
+      const section = displayedLHelperSections.find((entry) => entry.id === sectionId);
+      if (!section) {
+        return;
+      }
+
+      const confirmed = window.confirm(`Hide "${section.label}" from the L Helper list?`);
+      if (!confirmed) {
+        return;
+      }
+
+      const remainingSections = displayedLHelperSections.filter((entry) => entry.id !== sectionId);
+      setLHelperSectionMeta((current) => ({
+        ...current,
+        [sectionId]: {
+          ...(current[sectionId] || {}),
+          hidden: true,
+        },
+      }));
+      if (lHelperSectionId === sectionId) {
+        selectLHelperSection(remainingSections[0]?.id || "");
+      }
+      return;
+    }
+
+    const section = sections.find((entry) => entry.id === sectionId);
+    if (!section) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete "${section.label}" and its requirements?`);
+    if (!confirmed) {
+      return;
+    }
+
+    const remainingSections = sections.filter((entry) => entry.id !== sectionId);
+    const nextActiveSectionId =
+      activeSectionId === sectionId ? remainingSections[0]?.id || "" : activeSectionId;
+    const nextSelectedRequirementId =
+      selectedRequirement?.sectionId === sectionId
+        ? getSectionRoots(requirements, nextActiveSectionId)[0]?.id || ""
+        : selectedRequirementId;
+
+    applyWorkspaceChange(
+      (current) => ({
+        ...current,
+        sections: current.sections.filter((entry) => entry.id !== sectionId),
+        requirements: current.requirements.filter((requirement) => requirement.sectionId !== sectionId),
+      }),
+      {
+        nextActiveSectionId,
+        nextSelectedRequirementId,
+      },
+    );
+  }
+
   function handleStormWorkspaceNoteChange(tab, value, panelId = "") {
-    if (!activeSection?.id) {
+    if (!activeStormSection?.id) {
       return;
     }
 
     recordStudioHistorySnapshot();
     setStormWorkspaceNotes((current) => ({
       ...current,
-      [activeSection.id]: {
+      [activeStormSection.id]: {
         ...buildEmptyStormWorkspace(),
-        ...(current[activeSection.id] || {}),
+        ...(current[activeStormSection.id] || {}),
         [tab]:
           tab === "MTS Definition" && panelId
             ? serializeMtsDefinitionPanels({
-                ...parseMtsDefinitionPanels(current[activeSection.id]?.[tab]),
+                ...parseMtsDefinitionPanels(current[activeStormSection.id]?.[tab]),
                 [panelId]: value,
               })
             : value,
@@ -3499,20 +4705,20 @@ export function StudioApp() {
   }
 
   function handleClearStormWorkspaceTab(panelId = "") {
-    if (!activeSection?.id) {
+    if (!activeStormSection?.id) {
       return;
     }
 
     recordStudioHistorySnapshot();
     setStormWorkspaceNotes((current) => ({
       ...current,
-      [activeSection.id]: {
+      [activeStormSection.id]: {
         ...buildEmptyStormWorkspace(),
-        ...(current[activeSection.id] || {}),
+        ...(current[activeStormSection.id] || {}),
         [stormWorkspaceTab]:
           stormWorkspaceTab === "MTS Definition" && panelId
             ? serializeMtsDefinitionPanels({
-                ...parseMtsDefinitionPanels(current[activeSection.id]?.[stormWorkspaceTab]),
+                ...parseMtsDefinitionPanels(current[activeStormSection.id]?.[stormWorkspaceTab]),
                 [panelId]: "",
               })
             : "",
@@ -3523,8 +4729,8 @@ export function StudioApp() {
   function handleOpenMtsConfirm(action, panelId = "") {
     const currentTabText =
       stormWorkspaceTab === "MTS Definition" && panelId
-        ? String(activeSectionDefinitionPanels[panelId] || "").trim()
-        : String(activeSectionStormWorkspaceNotes[stormWorkspaceTab] || "").trim();
+        ? String(activeStormDefinitionPanels[panelId] || "").trim()
+        : String(activeStormWorkspaceNotes[stormWorkspaceTab] || "").trim();
     if (!currentTabText) {
       if (action === "clear") {
         handleClearStormWorkspaceTab(panelId);
@@ -3568,12 +4774,12 @@ export function StudioApp() {
   }
 
   function handleEditMtsPrompt(panelId) {
-    if (!activeSection?.id) {
+    if (!activeStormSection?.id) {
       return;
     }
     const nextPanelId = panelId || MTS_DEFINITION_PANELS[0].id;
     setMtsPromptTargetPanelId(nextPanelId);
-    setMtsPromptDraft(activeSectionMtsPrompts[nextPanelId] || "");
+    setMtsPromptDraft(activeStormMtsPrompts[nextPanelId] || "");
     setMtsPromptDialogOpen(true);
   }
 
@@ -3582,7 +4788,7 @@ export function StudioApp() {
   }
 
   function handleUseDefaultMtsPrompt() {
-    const sectionLabel = activeSection?.label || "this section";
+    const sectionLabel = activeStormSection?.label || "this section";
     const activePanel =
       MTS_DEFINITION_PANELS.find((panel) => panel.id === mtsPromptTargetPanelId) ||
       MTS_DEFINITION_PANELS[0];
@@ -3590,7 +4796,7 @@ export function StudioApp() {
   }
 
   function handleSaveMtsPrompt() {
-    if (!activeSection?.id) {
+    if (!activeStormSection?.id) {
       return;
     }
 
@@ -3602,8 +4808,8 @@ export function StudioApp() {
     recordStudioHistorySnapshot();
     setStormWorkspacePrompts((current) => ({
       ...current,
-      [activeSection.id]: {
-        ...normalizeMtsPromptSet(current[activeSection.id], activeSection.label),
+      [activeStormSection.id]: {
+        ...normalizeMtsPromptSet(current[activeStormSection.id], activeStormSection.label),
         [mtsPromptTargetPanelId]: trimmedPrompt,
       },
     }));
@@ -3611,7 +4817,7 @@ export function StudioApp() {
   }
 
   function buildStormGenerationRequirements() {
-    return activeSectionRequirements.map(({ requirement }) => {
+    return activeStormSectionRequirements.map(({ requirement }) => {
       const sourceLabel = String(requirement.sourceRef || "").trim();
       const titleLabel = String(requirement.title || "").trim();
       const summaryText = String(
@@ -3623,14 +4829,14 @@ export function StudioApp() {
 
       return {
         id: sourceLabel || titleLabel || requirement.id,
-        section: activeSection.label,
+        section: activeStormSection?.label || "",
         text: combinedText,
       };
     });
   }
 
   async function handleGenerateMtsDefinition(panelId = MTS_DEFINITION_PANELS[0].id) {
-    if (!activeSection || !activeSectionRequirements.length) {
+    if (!activeStormSection || !activeStormSectionRequirements.length) {
       setMtsDefinitionGenerationState({
         loading: "",
         error: "Select a section that has requirements before generating.",
@@ -3643,11 +4849,11 @@ export function StudioApp() {
     setStormWorkspaceTab("MTS Definition");
     setStormWorkspaceNotes((current) => ({
       ...current,
-      [activeSection.id]: {
+      [activeStormSection.id]: {
         ...buildEmptyStormWorkspace(),
-        ...(current[activeSection.id] || {}),
+        ...(current[activeStormSection.id] || {}),
         ["MTS Definition"]: serializeMtsDefinitionPanels({
-          ...parseMtsDefinitionPanels(current[activeSection.id]?.["MTS Definition"]),
+          ...parseMtsDefinitionPanels(current[activeStormSection.id]?.["MTS Definition"]),
           [targetPanelId]: "",
         }),
       },
@@ -3660,8 +4866,8 @@ export function StudioApp() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          sectionLabel: activeSection.label,
-          prompt: activeSectionMtsPrompts[targetPanelId],
+          sectionLabel: activeStormSection.label,
+          prompt: activeStormMtsPrompts[targetPanelId],
           requirements: buildStormGenerationRequirements(),
         }),
       });
@@ -3684,11 +4890,11 @@ export function StudioApp() {
       const commitDefinition = (nextDefinition) => {
         setStormWorkspaceNotes((current) => ({
           ...current,
-          [activeSection.id]: {
+          [activeStormSection.id]: {
             ...buildEmptyStormWorkspace(),
-            ...(current[activeSection.id] || {}),
+            ...(current[activeStormSection.id] || {}),
             ["MTS Definition"]: serializeMtsDefinitionPanels({
-              ...parseMtsDefinitionPanels(current[activeSection.id]?.["MTS Definition"]),
+              ...parseMtsDefinitionPanels(current[activeStormSection.id]?.["MTS Definition"]),
               [targetPanelId]: nextDefinition,
             }),
           },
@@ -3773,7 +4979,7 @@ export function StudioApp() {
   }
 
   async function handleGenerateMtsSolution() {
-    if (!activeSection || !activeSectionRequirements.length) {
+    if (!activeStormSection || !activeStormSectionRequirements.length) {
       setMtsDefinitionGenerationState({
         loading: "",
         error: "Select a section that has requirements before generating.",
@@ -3785,9 +4991,9 @@ export function StudioApp() {
     setStormWorkspaceTab("MTS Solution");
     setStormWorkspaceNotes((current) => ({
       ...current,
-      [activeSection.id]: {
+      [activeStormSection.id]: {
         ...buildEmptyStormWorkspace(),
-        ...(current[activeSection.id] || {}),
+        ...(current[activeStormSection.id] || {}),
         ["MTS Solution"]: "",
       },
     }));
@@ -3799,8 +5005,8 @@ export function StudioApp() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          sectionLabel: activeSection.label,
-          prompt: activeSectionMtsPrompts["MTS Solution"],
+          sectionLabel: activeStormSection.label,
+          prompt: activeStormMtsPrompts["MTS Solution"],
           requirements: buildStormGenerationRequirements(),
         }),
       });
@@ -3823,9 +5029,9 @@ export function StudioApp() {
       const commitSolution = (nextContent) => {
         setStormWorkspaceNotes((current) => ({
           ...current,
-          [activeSection.id]: {
+          [activeStormSection.id]: {
             ...buildEmptyStormWorkspace(),
-            ...(current[activeSection.id] || {}),
+            ...(current[activeStormSection.id] || {}),
             ["MTS Solution"]: nextContent,
           },
         }));
@@ -3909,7 +5115,7 @@ export function StudioApp() {
   }
 
   async function handleGenerateRisks() {
-    if (!activeSection || !activeSectionRequirements.length) {
+    if (!activeStormSection || !activeStormSectionRequirements.length) {
       setMtsDefinitionGenerationState({
         loading: "",
         error: "Select a section that has requirements before generating.",
@@ -3927,8 +5133,8 @@ export function StudioApp() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          sectionLabel: activeSection.label,
-          prompt: buildDefaultRiskGenerationPrompt(activeSection.label),
+          sectionLabel: activeStormSection.label,
+          prompt: buildDefaultRiskGenerationPrompt(activeStormSection.label),
           requirements: buildStormGenerationRequirements(),
         }),
       });
@@ -4018,14 +5224,14 @@ export function StudioApp() {
       }
 
       setStormWorkspaceNotes((current) => {
-        const existingRisks = parseRiskRegister(current[activeSection.id]?.Risks);
+        const existingRisks = parseRiskRegister(current[activeStormSection.id]?.Risks);
         const nextRisks = [...existingRisks, ...generatedRisks].slice(0, 3);
 
         return {
           ...current,
-          [activeSection.id]: {
+          [activeStormSection.id]: {
             ...buildEmptyStormWorkspace(),
-            ...(current[activeSection.id] || {}),
+            ...(current[activeStormSection.id] || {}),
             Risks: serializeRiskRegister(nextRisks),
           },
         };
@@ -4080,6 +5286,109 @@ export function StudioApp() {
     }
 
     setUploadState({ loading: false, error: "" });
+  }
+
+  async function handleLHelperUpload(file) {
+    setLHelperState({ loading: true, error: "" });
+
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      if (selectedPackageProjectId) {
+        body.append("projectId", selectedPackageProjectId);
+      }
+
+      const response = await fetch("/api/pws/outline-upload", {
+        method: "POST",
+        body,
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.detail || "Section L upload failed");
+      }
+
+      const payload = await response.json();
+      const nextWorkspace = transformOutlineToWorkspace(payload);
+      const nextFilteredSectionIds = nextWorkspace.sections
+        .filter((section) => isTechnicalManagementSection(section, nextWorkspace.requirements))
+        .map((section) => section.id);
+      const nextVisibleWorkspace = buildWorkspaceSlice(
+        nextWorkspace,
+        nextFilteredSectionIds.length
+          ? nextFilteredSectionIds
+          : nextWorkspace.sections.map((section) => section.id),
+      );
+      const nextTables = extractDeliverableTables(nextWorkspace);
+      const nextTechManagementWorkspace = buildTechManagementWorkspaceFromArtifacts(nextTables);
+      const nextDisplayedWorkspace =
+        nextTechManagementWorkspace.sections.length ? nextTechManagementWorkspace : nextVisibleWorkspace;
+      setLHelperWorkspace(nextWorkspace);
+      setLHelperSectionMeta({});
+      setLHelperSectionId(nextDisplayedWorkspace.sections[0]?.id || "");
+      setLHelperSelectedRequirementId(
+        getSectionRoots(
+          nextDisplayedWorkspace.requirements,
+          nextDisplayedWorkspace.sections[0]?.id || "",
+        )[0]?.id || "",
+      );
+      setLHelperSelectedRequirementIds(
+        new Set(
+          [
+            getSectionRoots(
+              nextDisplayedWorkspace.requirements,
+              nextDisplayedWorkspace.sections[0]?.id || "",
+            )[0]?.id || "",
+          ].filter(Boolean),
+        ),
+      );
+      setLHelperTableId(nextTables[0]?.id || "");
+      setLHelperVolumeFilter("All");
+      setLeftRailTab("l-helper");
+      setLHelperState({ loading: false, error: "" });
+    } catch (error) {
+      setLHelperState({
+        loading: false,
+        error: error instanceof Error ? error.message : "Section L upload failed",
+      });
+    }
+  }
+
+  function handleAddLHelperToWorkspace() {
+    if (!displayedLHelperSections.length) {
+      return;
+    }
+
+    const importedWorkspace = remapWorkspaceForImport(
+      {
+        ...displayedLHelperBaseWorkspace,
+        sections: displayedLHelperSections,
+        requirements: displayedLHelperRequirements,
+      },
+      "l-helper",
+    );
+    const firstSectionId = importedWorkspace.sections[0]?.id || "";
+    const firstRequirementId = importedWorkspace.requirements.find(
+      (requirement) => requirement.sectionId === firstSectionId && !requirement.parentId,
+    )?.id || "";
+
+    applyWorkspaceChange((current) => ({
+      ...current,
+      sections: [...current.sections, ...importedWorkspace.sections],
+      requirements: [...current.requirements, ...importedWorkspace.requirements],
+    }), {
+      nextActiveSectionId: firstSectionId || activeSectionId,
+      nextSelectedRequirementId: firstRequirementId || selectedRequirementId,
+    });
+    setLeftRailTab("sections");
+  }
+
+  function selectLHelperSection(sectionId) {
+    setLHelperSectionId(sectionId);
+    const nextRequirementId =
+      getSectionRoots(displayedLHelperRequirements, sectionId)[0]?.id || "";
+    setLHelperSelectedRequirementId(nextRequirementId);
+    setLHelperSelectedRequirementIds(new Set(nextRequirementId ? [nextRequirementId] : []));
   }
 
   async function handleCreatePackageProject({ projectName, files }) {
@@ -4345,6 +5654,15 @@ export function StudioApp() {
               </Button>
               <Button
                 variant="text"
+                onClick={() =>
+                  setLeftRailTab((current) => (current === "l-helper" ? "sections" : "l-helper"))
+                }
+                sx={RIBBON_TOOL_BUTTON_SX}
+              >
+                {leftRailTab === "l-helper" ? "Workspace View" : "L Helper"}
+              </Button>
+              <Button
+                variant="text"
                 startIcon={<DownloadRounded />}
                 onClick={handleOpenExportDialog}
                 disabled={!activeSection || !sections.length}
@@ -4380,12 +5698,71 @@ export function StudioApp() {
         {!isHomeScreen ? (
           <RailShell
             side="left"
-            title="Sections"
+            title=""
             subtitle=""
             width={leftRailDisplayWidth}
             collapsed={leftRailCollapsed}
             onToggleCollapsed={() => setLeftRailCollapsed((current) => !current)}
             onResizeStart={startRailResize("left")}
+            headerContent={
+              <Tabs
+                value={leftRailTab}
+                onChange={(_event, value) => setLeftRailTab(value)}
+                variant="fullWidth"
+                sx={{
+                  minHeight: 34,
+                  mb: -0.15,
+                  bgcolor: "transparent !important",
+                  boxShadow: "none !important",
+                  "& .MuiTabs-flexContainer": {
+                    gap: 0,
+                  },
+                  "& .MuiTabs-indicator": {
+                    height: 3,
+                    borderRadius: 999,
+                    bgcolor: "#58a6ff",
+                  },
+                  "& .MuiTab-root": {
+                    minHeight: 34,
+                    px: 1,
+                    py: 0.25,
+                    minWidth: 0,
+                    color: "rgba(255,255,255,0.7)",
+                    bgcolor: "transparent !important",
+                    backgroundColor: "transparent !important",
+                    boxShadow: "none !important",
+                    borderRadius: 0,
+                    textTransform: "none",
+                    fontSize: "0.82rem",
+                    outline: "none",
+                    WebkitTapHighlightColor: "transparent",
+                    "&:hover": {
+                      bgcolor: "transparent !important",
+                      backgroundColor: "transparent !important",
+                    },
+                    "&.Mui-focusVisible": {
+                      bgcolor: "transparent !important",
+                      backgroundColor: "transparent !important",
+                      boxShadow: "none !important",
+                      outline: "none",
+                    },
+                    "&::before": {
+                      display: "none",
+                    },
+                  },
+                  "& .Mui-selected": {
+                    color: "#ffffff !important",
+                    bgcolor: "transparent !important",
+                    backgroundColor: "transparent !important",
+                    boxShadow: "none !important",
+                    outline: "none",
+                  },
+                }}
+              >
+                <Tab disableRipple disableFocusRipple value="sections" label="Sections" />
+                <Tab disableRipple disableFocusRipple value="l-helper" label="L Helper" />
+              </Tabs>
+            }
             sx={{
               order: 1,
               "@media (max-width: 1600px)": {
@@ -4395,55 +5772,118 @@ export function StudioApp() {
           >
             {uploadState.error ? <Alert severity="error">{uploadState.error}</Alert> : null}
 
-            <Box sx={{ minHeight: 0 }}>
-              <DndContext
-                sensors={sectionTabSensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleSectionTabDragEnd}
-              >
-                <SortableContext
-                  items={sections.map((section) => section.id)}
-                  strategy={verticalListSortingStrategy}
+            {leftRailTab === "sections" ? (
+              <Box sx={{ minHeight: 0, pt: 1.1 }}>
+                <DndContext
+                  sensors={sectionTabSensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleSectionTabDragEnd}
                 >
-                  <List
-                    sx={{
-                      mt: 0.7,
-                      p: 0,
-                      bgcolor: "transparent",
-                      border: 0,
-                      boxShadow: "none",
-                    }}
+                  <SortableContext
+                    items={sections.map((section) => section.id)}
+                    strategy={verticalListSortingStrategy}
                   >
-                    {sections.map((section) => (
-                      <SortableSectionTab
-                        key={section.id}
-                        section={section}
-                        selected={section.id === activeSectionId}
-                        completed={completedStormSectionIds.has(section.id)}
-                        onSelect={selectSection}
-                        onRename={handleRenameSection}
-                        onOpenMenu={handleOpenSectionMenu}
-                      />
-                    ))}
-                    {unassignedRequirements.length ? (
-                      <ListItemButton
-                        selected={activeSectionId === "unassigned"}
-                        onClick={() => selectSection("unassigned")}
-                        sx={buildSectionBarSx(activeSectionId === "unassigned")}
-                      >
-                        <SectionTabContent
-                          section={UNASSIGNED_SECTION}
-                          selected={activeSectionId === "unassigned"}
-                          completed={completedStormSectionIds.has("unassigned")}
+                    <List
+                      sx={{
+                        mt: 0,
+                        p: 0,
+                        bgcolor: "transparent",
+                        border: 0,
+                        boxShadow: "none",
+                      }}
+                    >
+                      {sections.map((section) => (
+                        <SortableSectionTab
+                          key={section.id}
+                          section={section}
+                          selected={section.id === activeSectionId}
+                          completed={completedStormSectionIds.has(section.id)}
+                          onSelect={selectSection}
+                          onRename={handleRenameSection}
+                          onOpenMenu={handleOpenSectionMenu}
                         />
-                      </ListItemButton>
-                    ) : null}
-                  </List>
-                </SortableContext>
-              </DndContext>
-            </Box>
-            <Stack spacing={1.1} sx={{ pt: 1.1 }}>
-            </Stack>
+                      ))}
+                      {unassignedRequirements.length ? (
+                        <ListItemButton
+                          selected={activeSectionId === "unassigned"}
+                          onClick={() => selectSection("unassigned")}
+                          sx={buildSectionBarSx(activeSectionId === "unassigned")}
+                        >
+                          <SectionTabContent
+                            section={UNASSIGNED_SECTION}
+                            selected={activeSectionId === "unassigned"}
+                            completed={completedStormSectionIds.has("unassigned")}
+                          />
+                        </ListItemButton>
+                      ) : null}
+                    </List>
+                  </SortableContext>
+                </DndContext>
+              </Box>
+            ) : (
+              <Stack spacing={1.1} sx={{ pt: 1.3 }}>
+                <input
+                  hidden
+                  ref={lHelperInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) {
+                      return;
+                    }
+                    void handleLHelperUpload(file);
+                    event.target.value = "";
+                  }}
+                />
+                <Stack direction="row" spacing={0.8}>
+                  <Button
+                    variant="text"
+                    startIcon={<CloudUploadRounded />}
+                    onClick={() => lHelperInputRef.current?.click()}
+                    disabled={lHelperState.loading}
+                    sx={RIBBON_TOOL_BUTTON_SX}
+                  >
+                    {lHelperSections.length ? "Open Another L" : "Upload L"}
+                  </Button>
+                  <Button
+                    variant="text"
+                    startIcon={<PlaylistAddRounded />}
+                    onClick={handleAddLHelperToWorkspace}
+                    disabled={!displayedLHelperSections.length}
+                    sx={RIBBON_TOOL_BUTTON_SX}
+                  >
+                    Add to Workspace
+                  </Button>
+                </Stack>
+                {lHelperState.error ? <Alert severity="error">{lHelperState.error}</Alert> : null}
+                {lHelperState.loading ? (
+                  <Alert severity="info">Extracting Section L structure...</Alert>
+                ) : null}
+                {displayedLHelperSections.length ? (
+                  <Stack spacing={0.9}>
+                    <List sx={{ p: 0, m: 0 }}>
+                      {displayedLHelperSections.map((section) => (
+                        <ListItemButton
+                          key={section.id}
+                          selected={section.id === activeLHelperSectionId}
+                          onClick={() => selectLHelperSection(section.id)}
+                          sx={buildSectionBarSx(section.id === activeLHelperSectionId)}
+                        >
+                          <SectionTabContent
+                            section={section}
+                            selected={section.id === activeLHelperSectionId}
+                            onOpenMenu={(anchorEl, nextSectionId) =>
+                              handleOpenSectionMenu(anchorEl, nextSectionId, "l-helper")
+                            }
+                          />
+                        </ListItemButton>
+                      ))}
+                    </List>
+                  </Stack>
+                ) : null}
+              </Stack>
+            )}
           </RailShell>
         ) : null}
 
@@ -4625,7 +6065,7 @@ export function StudioApp() {
               </Paper>
             ) : null}
 
-            {sections.length && mounted ? (
+            {showMainCanvas && sections.length && mounted ? (
               <Box
                 sx={{
                   flex: "1 1 auto",
@@ -4637,12 +6077,57 @@ export function StudioApp() {
                 <WorkspaceCanvas
                   section={activeSection}
                   allRequirements={requirements}
-                  selectedRequirementId={selectedRequirementId}
+                  selectedRequirementIds={selectedRequirementIds}
                   onReorderRequirements={handleReorderRequirements}
                   onSelectRequirement={selectRequirement}
                   collapsedIds={collapsedRequirementIds}
                   onToggleCollapsed={toggleCollapsedRequirement}
+                  titleColorOverride={getSectionAccentColor(activeSection)}
                 />
+              </Box>
+            ) : null}
+
+            {showLHelperCanvas && mounted ? (
+              <Box
+                sx={{
+                  flex: "1 1 auto",
+                  minWidth: 0,
+                  borderRadius: 1,
+                  bgcolor: middleCanvasBg,
+                }}
+              >
+                {displayedLHelperSections.length ? (
+                  <WorkspaceCanvas
+                    section={activeLHelperSection}
+                    allRequirements={displayedLHelperRequirements}
+                    selectedRequirementIds={lHelperSelectedRequirementIds}
+                    onReorderRequirements={() => {}}
+                    onSelectRequirement={selectLHelperRequirement}
+                    collapsedIds={collapsedRequirementIds}
+                    onToggleCollapsed={toggleCollapsedRequirement}
+                    titleColorOverride={getSectionAccentColor(activeLHelperSection)}
+                  />
+                ) : (
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 4,
+                      borderRadius: 1,
+                      borderColor: GITHUB_BORDER,
+                      bgcolor: "transparent",
+                      boxShadow: "none",
+                    }}
+                  >
+                    <Stack spacing={1.2}>
+                      <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                        L Helper
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Select an extracted Section L lane from the left rail.
+                      </Typography>
+                    </Stack>
+                  </Paper>
+                )}
               </Box>
             ) : null}
           </Stack>
@@ -4666,47 +6151,190 @@ export function StudioApp() {
               },
             }}
           >
-            <DetailInspector
-              projectId={workspace.projectId}
-              section={activeSection}
-              requirement={selectedRequirement}
-              sectionRequirements={activeSectionRequirements}
-              allRequirements={requirements}
-              sections={sections}
-              hasCollapsibleRequirements={hasCollapsibleRequirements}
-              onSelectRequirement={selectRequirement}
-              onCreateTopLevelRequirement={handleCreateTopLevelRequirement}
-              onCreateChildRequirement={handleCreateChildRequirement}
-              onExpandAllRequirements={expandAllRequirements}
-              onCollapseAllRequirements={collapseAllRequirements}
-              onRequirementChange={handleRequirementChange}
-              onAssignToSection={handleAssignToActiveSection}
-              onMoveRequirement={handleMoveRequirement}
-              onMoveToUnassigned={handleMoveToUnassigned}
-              onPromoteRequirement={handlePromoteRequirement}
-              onDemoteRequirement={handleDemoteRequirement}
-              onCreateSectionFromRequirement={handleCreateSectionFromRequirement}
-              onDeleteRequirement={handleDeleteRequirement}
-              sectionSolutionPanel={
-                <StormWorkspaceBar
-                  activeTab={stormWorkspaceTab}
-                  onTabChange={setStormWorkspaceTab}
-                  notesByTab={activeSectionStormWorkspaceNotes}
-                  onNotesChange={handleStormWorkspaceNoteChange}
-                  onGenerateMtsDefinition={(panelId) => handleOpenMtsConfirm("generate", panelId)}
-                  onGenerateMtsSolution={handleGenerateMtsSolution}
-                  onGenerateRisks={handleGenerateRisks}
-                  onClearActiveTab={() => handleOpenMtsConfirm("clear")}
-                  onEditMtsPrompt={handleEditMtsPrompt}
-                  generationState={mtsDefinitionGenerationState}
-                  activeSection={activeSection}
-                  activeSectionRequirementCount={activeSectionRequirements.length}
-                  definitionPanels={activeSectionDefinitionPanels}
-                  definitionPrompts={activeSectionMtsPrompts}
-                  hideCollapseToggle
-                />
-              }
-            />
+            {showMainCanvas ? (
+              <DetailInspector
+                projectId={workspace.projectId}
+                section={activeSection}
+                requirement={selectedRequirement}
+                sectionRequirements={activeSectionRequirements}
+                allRequirements={requirements}
+                sections={sections}
+                hasCollapsibleRequirements={hasCollapsibleRequirements}
+                onSelectRequirement={selectRequirement}
+                onCreateTopLevelRequirement={handleCreateTopLevelRequirement}
+                onCreateChildRequirement={handleCreateChildRequirement}
+                onExpandAllRequirements={expandAllRequirements}
+                onCollapseAllRequirements={collapseAllRequirements}
+                onRequirementChange={handleRequirementChange}
+                onAssignToSection={handleAssignToActiveSection}
+                onMoveRequirement={handleMoveRequirement}
+                onMoveToUnassigned={handleMoveToUnassigned}
+                onPromoteRequirement={handlePromoteRequirement}
+                onDemoteRequirement={handleDemoteRequirement}
+                onCreateSectionFromRequirement={handleCreateSectionFromRequirement}
+                onDeleteRequirement={handleDeleteRequirement}
+                onCutRequirement={handleCutRequirement}
+                onPasteBelowRequirement={handlePasteBelowRequirement}
+                onPasteAsChildRequirement={handlePasteAsChildRequirement}
+                hasRequirementClipboard={Boolean(requirementClipboard?.entries?.length)}
+                sectionSolutionPanel={
+                  <StormWorkspaceBar
+                    activeTab={stormWorkspaceTab}
+                    onTabChange={setStormWorkspaceTab}
+                    notesByTab={activeSectionStormWorkspaceNotes}
+                    onNotesChange={handleStormWorkspaceNoteChange}
+                    onGenerateMtsDefinition={(panelId) => handleOpenMtsConfirm("generate", panelId)}
+                    onGenerateMtsSolution={handleGenerateMtsSolution}
+                    onGenerateRisks={handleGenerateRisks}
+                    onClearActiveTab={() => handleOpenMtsConfirm("clear")}
+                    onEditMtsPrompt={handleEditMtsPrompt}
+                    generationState={mtsDefinitionGenerationState}
+                    activeSection={activeSection}
+                    activeSectionRequirementCount={activeSectionRequirements.length}
+                    definitionPanels={activeSectionDefinitionPanels}
+                    definitionPrompts={activeSectionMtsPrompts}
+                    hideCollapseToggle
+                  />
+                }
+              />
+            ) : (
+              <DetailInspector
+                projectId={workspace.projectId}
+                section={activeLHelperSection}
+                requirement={selectedLHelperRequirement}
+                sectionRequirements={activeLHelperSectionRequirements}
+                allRequirements={displayedLHelperRequirements}
+                sections={displayedLHelperSections}
+                hasCollapsibleRequirements={Boolean(activeLHelperSectionRequirements.length)}
+                onSelectRequirement={setLHelperSelectedRequirementId}
+                onCreateTopLevelRequirement={() => {}}
+                onCreateChildRequirement={() => {}}
+                onExpandAllRequirements={() => {}}
+                onCollapseAllRequirements={() => {}}
+                onRequirementChange={() => {}}
+                onAssignToSection={() => {}}
+                onMoveRequirement={() => {}}
+                onMoveToUnassigned={() => {}}
+                onPromoteRequirement={() => {}}
+                onDemoteRequirement={() => {}}
+                onCreateSectionFromRequirement={() => {}}
+                onDeleteRequirement={() => {}}
+                onCutRequirement={() => {}}
+                onPasteBelowRequirement={() => {}}
+                onPasteAsChildRequirement={() => {}}
+                hasRequirementClipboard={false}
+                sectionSolutionPanel={
+                  <StormWorkspaceBar
+                    activeTab={stormWorkspaceTab}
+                    onTabChange={setStormWorkspaceTab}
+                    notesByTab={activeStormWorkspaceNotes}
+                    onNotesChange={handleStormWorkspaceNoteChange}
+                    onGenerateMtsDefinition={(panelId) => handleOpenMtsConfirm("generate", panelId)}
+                    onGenerateMtsSolution={handleGenerateMtsSolution}
+                    onGenerateRisks={handleGenerateRisks}
+                    onClearActiveTab={() => handleOpenMtsConfirm("clear")}
+                    onEditMtsPrompt={handleEditMtsPrompt}
+                    generationState={mtsDefinitionGenerationState}
+                    activeSection={activeStormSection}
+                    activeSectionRequirementCount={activeStormSectionRequirements.length}
+                    definitionPanels={activeStormDefinitionPanels}
+                    definitionPrompts={activeStormMtsPrompts}
+                    hideCollapseToggle
+                  />
+                }
+                auxiliaryTabLabel="Volume"
+                auxiliaryTabPanel={
+                  activeLHelperTable ? (
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        borderRadius: 1,
+                        bgcolor: "rgba(255,255,255,0.04)",
+                        borderColor: "rgba(255,255,255,0.08)",
+                        boxShadow: "none",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <TableContainer
+                        sx={{
+                          maxHeight: "calc(100vh - 210px)",
+                          ...subtleScrollbarSx,
+                        }}
+                      >
+                        <Table
+                          stickyHeader
+                          size="small"
+                          sx={{
+                            minWidth: 0,
+                            width: "100%",
+                            tableLayout: "fixed",
+                            "& .MuiTableCell-root": {
+                              borderColor: "rgba(255,255,255,0.08)",
+                              color: "#ffffff",
+                              verticalAlign: "top",
+                              px: 0.9,
+                              py: 0.65,
+                              whiteSpace: "normal",
+                              overflowWrap: "anywhere",
+                              wordBreak: "break-word",
+                            },
+                          }}
+                        >
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ width: 74, bgcolor: "rgba(18,24,31,0.96)", color: "rgba(255,255,255,0.72) !important", fontSize: "0.68rem", letterSpacing: 0.3, textTransform: "uppercase" }}>
+                                Volume
+                              </TableCell>
+                              <TableCell sx={{ width: "34%", bgcolor: "rgba(18,24,31,0.96)", color: "rgba(255,255,255,0.72) !important", fontSize: "0.68rem", letterSpacing: 0.3, textTransform: "uppercase" }}>
+                                Volume Title
+                              </TableCell>
+                              <TableCell sx={{ width: 92, bgcolor: "rgba(18,24,31,0.96)", color: "rgba(255,255,255,0.72) !important", fontSize: "0.68rem", letterSpacing: 0.3, textTransform: "uppercase" }}>
+                                Page Limit
+                              </TableCell>
+                              <TableCell sx={{ bgcolor: "rgba(18,24,31,0.96)", color: "rgba(255,255,255,0.72) !important", fontSize: "0.68rem", letterSpacing: 0.3, textTransform: "uppercase" }}>
+                                Contents & Format
+                              </TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {visibleLHelperArtifacts.map((artifact) => (
+                              <TableRow
+                                key={`${activeLHelperTable.id}-${artifact.id}`}
+                                hover
+                                sx={{
+                                  bgcolor: "rgba(255,255,255,0.02)",
+                                  "&:hover": { bgcolor: "rgba(255,255,255,0.05)" },
+                                  "&:nth-of-type(even)": { bgcolor: "rgba(255,255,255,0.035)" },
+                                }}
+                              >
+                                <TableCell sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+                                  {artifact.volume}
+                                </TableCell>
+                                <TableCell>
+                                  <Typography variant="body2" sx={{ color: "#ffffff", fontWeight: 600, lineHeight: 1.3, fontSize: "0.82rem" }}>
+                                    {artifact.volumeTitle}
+                                  </Typography>
+                                </TableCell>
+                                <TableCell sx={{ color: "rgba(255,255,255,0.84)", lineHeight: 1.3, fontSize: "0.8rem" }}>
+                                  {artifact.pageLimit}
+                                </TableCell>
+                                <TableCell sx={{ color: "rgba(255,255,255,0.84)", lineHeight: 1.3, fontSize: "0.8rem" }}>
+                                  {artifact.contentsFormat}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Paper>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: "var(--studio-chrome-text)" }}>
+                      No proposal organization table was detected from Section L.
+                    </Typography>
+                  )
+                }
+              />
+            )}
           </RailShell>
         ) : null}
       </Box>
@@ -4802,6 +6430,9 @@ export function StudioApp() {
         }}
       >
         <MenuItem onClick={handleRenameSectionFromMenu}>Rename</MenuItem>
+        <MenuItem onClick={handleDeleteSectionFromMenu} sx={{ color: "#f85149" }}>
+          Delete
+        </MenuItem>
       </Menu>
       <RequirementImportDialog
         open={reqImportDialogOpen}

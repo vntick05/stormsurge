@@ -67,8 +67,18 @@ export function DetailInspector({
   onDemoteRequirement,
   onCreateSectionFromRequirement,
   onDeleteRequirement,
+  onCutRequirement,
+  onPasteBelowRequirement,
+  onPasteAsChildRequirement,
+  hasRequirementClipboard = false,
   sectionSolutionPanel,
+  auxiliaryTabLabel = "",
+  auxiliaryTabPanel = null,
 }) {
+  const inspectorTabs = useMemo(
+    () => (auxiliaryTabLabel ? [...INSPECTOR_TABS, auxiliaryTabLabel] : INSPECTOR_TABS),
+    [auxiliaryTabLabel],
+  );
   const [activeTab, setActiveTab] = useState(INSPECTOR_TABS[0]);
   const [searchTerm, setSearchTerm] = useState("");
   const [relatedSearchState, setRelatedSearchState] = useState({
@@ -127,6 +137,12 @@ export function DetailInspector({
   const aiMessagesEndRef = useRef(null);
   const docUploadInputRef = useRef(null);
   const aiAbortControllerRef = useRef(null);
+
+  useEffect(() => {
+    if (activeTab === auxiliaryTabLabel && !auxiliaryTabLabel) {
+      setActiveTab(INSPECTOR_TABS[0]);
+    }
+  }, [activeTab, auxiliaryTabLabel]);
 
   useEffect(() => {
     setSelectedProjectId(projectId || "");
@@ -598,8 +614,8 @@ export function DetailInspector({
             },
           }}
         >
-          {INSPECTOR_TABS.map((label) => {
-            const TabIcon = INSPECTOR_TAB_ICONS[label];
+          {inspectorTabs.map((label) => {
+            const TabIcon = INSPECTOR_TAB_ICONS[label] || PlaylistAddRounded;
             return (
               <Tab
                 key={label}
@@ -704,6 +720,108 @@ export function DetailInspector({
                   }}
                 >
                   Create Section
+                </Button>
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<PlaylistAddRounded />}
+                  onClick={onPromoteRequirement}
+                  sx={{
+                    justifyContent: "flex-start",
+                    color: inspectorText,
+                    textTransform: "none",
+                    px: 0.7,
+                    py: 0.35,
+                    minHeight: 32,
+                    borderRadius: 1,
+                    "&:hover": {
+                      bgcolor: "var(--studio-hover-soft)",
+                    },
+                  }}
+                >
+                  Promote
+                </Button>
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<PlaylistAddRounded />}
+                  onClick={onDemoteRequirement}
+                  sx={{
+                    justifyContent: "flex-start",
+                    color: inspectorText,
+                    textTransform: "none",
+                    px: 0.7,
+                    py: 0.35,
+                    minHeight: 32,
+                    borderRadius: 1,
+                    "&:hover": {
+                      bgcolor: "var(--studio-hover-soft)",
+                    },
+                  }}
+                >
+                  Demote
+                </Button>
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<DeleteOutlineRounded />}
+                  onClick={onCutRequirement}
+                  sx={{
+                    justifyContent: "flex-start",
+                    color: "#f2cc60",
+                    textTransform: "none",
+                    px: 0.7,
+                    py: 0.35,
+                    minHeight: 32,
+                    borderRadius: 1,
+                    "&:hover": {
+                      bgcolor: "rgba(242, 204, 96, 0.12)",
+                    },
+                  }}
+                >
+                  Cut
+                </Button>
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<PlaylistAddRounded />}
+                  onClick={onPasteBelowRequirement}
+                  disabled={!hasRequirementClipboard}
+                  sx={{
+                    justifyContent: "flex-start",
+                    color: inspectorText,
+                    textTransform: "none",
+                    px: 0.7,
+                    py: 0.35,
+                    minHeight: 32,
+                    borderRadius: 1,
+                    "&:hover": {
+                      bgcolor: "var(--studio-hover-soft)",
+                    },
+                  }}
+                >
+                  Paste Below
+                </Button>
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<PlaylistAddRounded />}
+                  onClick={onPasteAsChildRequirement}
+                  disabled={!hasRequirementClipboard}
+                  sx={{
+                    justifyContent: "flex-start",
+                    color: inspectorText,
+                    textTransform: "none",
+                    px: 0.7,
+                    py: 0.35,
+                    minHeight: 32,
+                    borderRadius: 1,
+                    "&:hover": {
+                      bgcolor: "var(--studio-hover-soft)",
+                    },
+                  }}
+                >
+                  Paste As Child
                 </Button>
                 <Button
                   size="small"
@@ -1183,6 +1301,8 @@ export function DetailInspector({
               </Stack>
             </Stack>
           ) : null}
+
+          {auxiliaryTabLabel && activeTab === auxiliaryTabLabel ? auxiliaryTabPanel : null}
 
           {activeTab === "STORM" ? (
             <Box

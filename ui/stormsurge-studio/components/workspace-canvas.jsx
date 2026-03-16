@@ -50,26 +50,17 @@ function formatRequirementMarker(requirement) {
 }
 
 function getRequirementAccent(requirement) {
-  const isManualDraft =
-    requirement.sourceType === "manual" || String(requirement.sourceRef || "").trim() === "New Req";
-  const isImported = requirement.sourceType === "imported";
-
-  if (isImported) {
+  if (requirement.accentColor === "#3fb950") {
     return {
-      text: "#E3B341",
-      dots: "rgba(227, 179, 65, 0.95)",
+      text: "#3fb950",
+      dots: "rgba(63, 185, 80, 0.95)",
     };
   }
 
-  return isManualDraft
-    ? {
-        text: "#F29B5C",
-        dots: "rgba(242, 155, 92, 0.95)",
-      }
-    : {
-        text: "#5f8dff",
-        dots: "rgba(95, 141, 255, 0.95)",
-      };
+  return {
+    text: "#5f8dff",
+    dots: "rgba(95, 141, 255, 0.95)",
+  };
 }
 
 function RequirementCard({
@@ -96,7 +87,11 @@ function RequirementCard({
   return (
     <Box ref={setNodeRef} style={style} sx={{ mb: REQUIREMENT_ROW_GAP }}>
       <Box
-        onClick={() => onSelect(requirement.id)}
+        onClick={(event) =>
+          onSelect(requirement.id, {
+            multiSelectKey: event.ctrlKey || event.metaKey,
+          })
+        }
         sx={{
           position: "relative",
           pl: 0.55,
@@ -225,7 +220,7 @@ function RequirementCard({
 function SortableRequirementNode({
   requirement,
   allRequirements,
-  selectedRequirementId,
+  selectedRequirementIds,
   onSelectRequirement,
   onReorderRequirements,
   collapsedIds,
@@ -245,7 +240,7 @@ function SortableRequirementNode({
   return (
     <RequirementCard
       requirement={requirement}
-      selected={selectedRequirementId === requirement.id}
+      selected={selectedRequirementIds.has(requirement.id)}
       onSelect={onSelectRequirement}
       collapsed={collapsed}
       hasChildren={childRequirements.length > 0}
@@ -262,7 +257,7 @@ function SortableRequirementNode({
           <RequirementList
             requirements={childRequirements}
             allRequirements={allRequirements}
-            selectedRequirementId={selectedRequirementId}
+            selectedRequirementIds={selectedRequirementIds}
             onSelectRequirement={onSelectRequirement}
             onReorderRequirements={onReorderRequirements}
             collapsedIds={collapsedIds}
@@ -278,7 +273,7 @@ function SortableRequirementNode({
 function RequirementList({
   requirements,
   allRequirements,
-  selectedRequirementId,
+  selectedRequirementIds,
   onSelectRequirement,
   onReorderRequirements,
   collapsedIds,
@@ -338,7 +333,7 @@ function RequirementList({
               key={requirement.id}
               requirement={requirement}
               allRequirements={allRequirements}
-              selectedRequirementId={selectedRequirementId}
+              selectedRequirementIds={selectedRequirementIds}
               onSelectRequirement={onSelectRequirement}
               onReorderRequirements={onReorderRequirements}
               collapsedIds={collapsedIds}
@@ -355,11 +350,12 @@ function RequirementList({
 export function WorkspaceCanvas({
   section,
   allRequirements,
-  selectedRequirementId,
+  selectedRequirementIds,
   onReorderRequirements,
   onSelectRequirement,
   collapsedIds,
   onToggleCollapsed,
+  titleColorOverride = "",
 }) {
   const sectionRoots = useMemo(
     () => (section ? getSectionRoots(allRequirements, section.id) : []),
@@ -389,7 +385,9 @@ export function WorkspaceCanvas({
           }}
         >
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            {section.label}
+            <Box component="span" sx={{ color: titleColorOverride || "inherit" }}>
+              {section.label}
+            </Box>
           </Typography>
         </Box>
 
@@ -397,7 +395,7 @@ export function WorkspaceCanvas({
           <RequirementList
             requirements={sectionRoots}
             allRequirements={allRequirements}
-            selectedRequirementId={selectedRequirementId}
+            selectedRequirementIds={selectedRequirementIds}
             onSelectRequirement={onSelectRequirement}
             onReorderRequirements={onReorderRequirements}
             collapsedIds={collapsedIds}
