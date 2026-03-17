@@ -16,6 +16,23 @@ That script:
 - warms local model caches for Docling and `BAAI/bge-small-en-v1.5`
 - refuses to continue if any extra `trtllm` container besides `perfect-rfp-trtllm` is already running
 
+## Auto-start on login
+
+To install the desktop-login autostart entry:
+
+```bash
+cd /home/admin/stormsurge
+./scripts/install_stormsurge_autostart.sh
+```
+
+That creates:
+
+- `~/.config/autostart/StormSurge-Autostart.desktop`
+
+The autostart entry launches:
+
+- `/home/admin/stormsurge/scripts/start_full_local_stack.sh`
+
 ## StormSurge-only startup
 
 Use this only when TRT is already running and you just need the app stack:
