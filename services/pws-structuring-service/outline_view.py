@@ -22,6 +22,8 @@ IMAGE_ONLY_PATTERN = re.compile(r"^<!--\s*image\s*-->$", re.IGNORECASE)
 FRONT_MATTER_TITLES = {"table of contents", "figures", "tables"}
 LINE_NUMBER_ONLY_PATTERN = re.compile(r"^\s*\d{1,4}\s*$")
 LINE_NUMBER_PREFIX_PATTERN = re.compile(r"^\s*\d{1,4}(?:\s{2,}|\t+)(?=\S)")
+IMAGE_FILENAME_PATTERN = re.compile(r"^image\d+\.(?:png|jpg|jpeg|gif|webp)$", re.IGNORECASE)
+DOT_LEADER_PAGE_PATTERN = re.compile(r"\.{4,}\s*[A-Z]?\-?\d+\s*$")
 
 
 def normalize_text(text: str) -> str:
@@ -29,15 +31,29 @@ def normalize_text(text: str) -> str:
     for raw_line in html.unescape(text).replace("\r", "\n").split("\n"):
         if LINE_NUMBER_ONLY_PATTERN.match(raw_line):
             continue
-        cleaned_lines.append(LINE_NUMBER_PREFIX_PATTERN.sub("", raw_line))
+        cleaned_lines.append(normalize_source_line(raw_line))
     return " ".join(" ".join(cleaned_lines).split())
+
+
+def normalize_heading_text(text: str) -> str:
+    return " ".join(html.unescape(text or "").replace("\r", "\n").split())
 
 
 def normalize_source_line(text: str) -> str:
     raw_line = html.unescape(text or "").replace("\r", "")
     if LINE_NUMBER_ONLY_PATTERN.match(raw_line):
         return ""
-    return LINE_NUMBER_PREFIX_PATTERN.sub("", raw_line).rstrip()
+    cleaned = LINE_NUMBER_PREFIX_PATTERN.sub("", raw_line).rstrip()
+    stripped = cleaned.strip()
+    if not stripped:
+        return ""
+    if IMAGE_FILENAME_PATTERN.match(stripped):
+        return ""
+    if parse_heading(stripped) is not None:
+        return cleaned
+    if BULLET_PATTERN.match(stripped) or ORDERED_BULLET_PATTERN.match(stripped):
+        return cleaned
+    return re.sub(r"^\s*\d{1,4}\s+(?=\S)", "", cleaned).rstrip()
 
 
 def strip_inline_markdown(text: str) -> str:
@@ -57,6 +73,22 @@ def clean_display_text(text: str) -> str:
 def is_classification_marker(marker: str) -> bool:
     token = marker.strip("()").upper()
     return token in {"U", "C", "S", "TS", "FOUO"}
+
+
+def is_non_list_parenthetical_marker(marker: str) -> bool:
+    if not marker.startswith("("):
+        return False
+    token = marker.strip("()")
+    if not token:
+        return False
+    upper = token.upper()
+    if upper in {"I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"}:
+        return False
+    if token.isdigit() and len(token) <= 2:
+        return False
+    if len(token) == 1 and token.isalpha():
+        return False
+    return True
 
 
 def is_likely_table_text(text: str) -> bool:
@@ -188,20 +220,33 @@ def parse_heading(line: str) -> dict[str, Any] | None:
     match = HEADING_PATTERN.match(stripped)
     markdown_level = None
     body = ""
+    plain_numbered_candidate = False
     if match is not None:
         markdown_level = len(match.group("hashes"))
-        body = normalize_text(match.group("body"))
+        body = normalize_heading_text(match.group("body"))
     else:
         bold_match = BOLD_LINE_PATTERN.match(stripped)
-        if bold_match is None:
-            return None
-        body = normalize_text(bold_match.group("body"))
+        if bold_match is not None:
+            body = normalize_heading_text(bold_match.group("body"))
+        else:
+            body = normalize_heading_text(stripped)
+            plain_numbered_candidate = True
 
     numbered = NUMBERED_TITLE_PATTERN.match(body)
     if numbered is None:
         return None
     section_number = numbered.group("section_number")
     section_title = numbered.group("section_title")
+    if plain_numbered_candidate:
+        title_words = section_title.split()
+        if len(title_words) > 18:
+            return None
+        if re.search(r"[.!?;:]$", section_title):
+            return None
+        if section_title.lower().startswith(("the ", "this ", "these ", "those ")):
+            return None
+    if DOT_LEADER_PAGE_PATTERN.search(section_title):
+        return None
     return {
         "section_number": section_number,
         "section_title": section_title,
@@ -233,7 +278,7 @@ def build_outline(markdown: str) -> list[dict[str, Any]]:
         else:
             paragraph["text_exact"] = ""
         for match in matches:
-            if is_classification_marker(match.group("marker")):
+            if is_classification_marker(match.group("marker")) or is_non_list_parenthetical_marker(match.group("marker")):
                 paragraph["text_exact"] = normalize_text(text)
                 paragraph["children"] = []
                 return
@@ -289,7 +334,10 @@ def build_outline(markdown: str) -> list[dict[str, Any]]:
             continue
         bullet = BULLET_PATTERN.match(line.strip())
         ordered_bullet = ORDERED_BULLET_PATTERN.match(line.strip())
-        if ordered_bullet is not None and is_classification_marker(ordered_bullet.group("marker")):
+        if ordered_bullet is not None and (
+            is_classification_marker(ordered_bullet.group("marker"))
+            or is_non_list_parenthetical_marker(ordered_bullet.group("marker"))
+        ):
             ordered_bullet = None
         if bullet is not None or ordered_bullet is not None:
             flush_paragraph()
@@ -356,7 +404,7 @@ def build_generic_outline(markdown: str, section_title: str = "Imported Document
         else:
             paragraph["text_exact"] = ""
         for match in matches:
-            if is_classification_marker(match.group("marker")):
+            if is_classification_marker(match.group("marker")) or is_non_list_parenthetical_marker(match.group("marker")):
                 paragraph["text_exact"] = normalize_text(text)
                 paragraph["children"] = []
                 return
@@ -396,7 +444,10 @@ def build_generic_outline(markdown: str, section_title: str = "Imported Document
             continue
         bullet = BULLET_PATTERN.match(line.strip())
         ordered_bullet = ORDERED_BULLET_PATTERN.match(line.strip())
-        if ordered_bullet is not None and is_classification_marker(ordered_bullet.group("marker")):
+        if ordered_bullet is not None and (
+            is_classification_marker(ordered_bullet.group("marker"))
+            or is_non_list_parenthetical_marker(ordered_bullet.group("marker"))
+        ):
             ordered_bullet = None
         if bullet is not None or ordered_bullet is not None:
             flush_paragraph()

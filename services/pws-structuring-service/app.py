@@ -102,6 +102,9 @@ def get_converter() -> DocumentConverter:
 
 
 def normalize_with_docling(filename: str, content: bytes) -> tuple[str | None, dict[str, Any]]:
+    suffix = Path(filename).suffix.lower()
+    if suffix in {".md", ".markdown", ".txt"}:
+        return content.decode("utf-8", errors="ignore"), {}
     stream = DocumentStream(name=filename, stream=io.BytesIO(content))
     result = get_converter().convert(stream)
     markdown = result.document.export_to_markdown()

@@ -77,6 +77,29 @@ Child paragraph.
         self.assertEqual(outline[0]["section_title"], "Proposal Preparation and Delivery")
         self.assertEqual(outline[1]["children"][0]["text_exact"], "Next.")
 
+    def test_parses_plain_numbered_section_lines_without_markdown(self) -> None:
+        outline = build_outline(
+            "1 Overview\n\nPara.\n\n1.1 Purpose\n\nChild para.\n"
+        )
+        self.assertEqual([section["section_number"] for section in outline], ["1"])
+        self.assertEqual(outline[0]["section_title"], "Overview")
+        self.assertEqual(outline[0]["children"][1]["section_number"], "1.1")
+
+    def test_does_not_split_acronym_parentheticals_into_inline_bullets(self) -> None:
+        outline = build_outline(
+            "# 1 Overview\n\nThe Ironhide 2.0 (IH2) contract supports the Transformers 2.0 (T2) ecosystem.\n"
+        )
+        paragraph = outline[0]["children"][0]
+        self.assertIn("(IH2)", paragraph["text_exact"])
+        self.assertEqual(paragraph["children"], [])
+
+    def test_ignores_docx_image_filenames_as_content(self) -> None:
+        outline = build_outline(
+            "# 1 Overview\n\nimage23.png\n\nActual paragraph.\n"
+        )
+        self.assertEqual(len(outline[0]["children"]), 1)
+        self.assertEqual(outline[0]["children"][0]["text_exact"], "Actual paragraph.")
+
     def test_preserves_pipe_table_as_single_paragraph(self) -> None:
         outline = build_outline(
             "**L.8 Proposal Volumes and Organization**\n\n"
@@ -128,8 +151,8 @@ Child paragraph.
         outline = build_outline(
             "## 3 Performance Objectives\n\n"
             "48\n"
-            "49    The contractor shall provide support.\n"
-            "50    The contractor shall maintain records.\n"
+            "49 The contractor shall provide support.\n"
+            "50 The contractor shall maintain records.\n"
         )
         self.assertEqual(outline[0]["section_number"], "3")
         self.assertEqual(outline[0]["children"][0]["text_exact"], "The contractor shall provide support. The contractor shall maintain records.")
