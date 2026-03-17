@@ -8,8 +8,8 @@ import { DRAWER_WIDTH } from 'config';
 const openedMixin = (theme) => ({
   width: DRAWER_WIDTH,
   borderRight: '1px solid',
-  borderRightColor: '#e5e7eb',
-  backgroundColor: '#ffffff',
+  borderRightColor: '#cbd5df',
+  backgroundColor: '#edf1f5',
   color: '#1f2937',
 
   transition: theme.transitions.create('width', {
@@ -30,10 +30,10 @@ const closedMixin = (theme) => ({
   overflowX: 'hidden',
   width: theme.spacing(7.5),
   borderRight: '1px solid',
-  borderRightColor: '#e5e7eb',
-  backgroundColor: '#ffffff',
+  borderRightColor: '#cbd5df',
+  backgroundColor: '#edf1f5',
   color: '#1f2937',
-  boxShadow: theme.vars.customShadows.z1
+  boxShadow: 'none'
 });
 
 // ==============================|| DRAWER - MINI STYLED ||============================== //

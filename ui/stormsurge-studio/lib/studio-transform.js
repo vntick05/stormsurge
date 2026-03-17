@@ -7,12 +7,29 @@ function slugifySegment(value) {
     .replace(/^-+|-+$/g, "") || `node-${Date.now()}`;
 }
 
+function stripDocumentLineNumbers(value) {
+  return String(value || "")
+    .split(/\r?\n/)
+    .map((line) =>
+      line
+        .replace(/^\s*\d{1,4}\s*$/g, "")
+        .replace(/^\s*\d{1,4}(?:\s{2,}|\t+)/, "")
+        .trimEnd()
+    )
+    .filter((line, index, lines) => line || (index > 0 && index < lines.length - 1))
+    .join("\n");
+}
+
+function sanitizeImportedText(value) {
+  return stripDocumentLineNumbers(value).replace(/\s+/g, " ").trim();
+}
+
 function makeSectionId(section) {
   return `section-${slugifySegment(section.section_number || section.section_title)}`;
 }
 
 function summarize(text) {
-  return String(text || "").replace(/\s+/g, " ").trim().slice(0, 160);
+  return sanitizeImportedText(text).slice(0, 160);
 }
 
 function formatDisplayLabel(rawId, fallback) {
@@ -25,7 +42,7 @@ function formatDisplayLabel(rawId, fallback) {
 
 function formatSectionLabel(sectionNumber, sectionTitle) {
   const number = String(sectionNumber || "").trim();
-  const title = String(sectionTitle || "").trim();
+  const title = sanitizeImportedText(sectionTitle);
 
   if (!number) {
     return title;
@@ -46,7 +63,7 @@ function formatSectionLabel(sectionNumber, sectionTitle) {
 function convertNode(node, sectionId, parentId, position, bucket) {
   if (node.type === "paragraph") {
     const paragraphId = node.id || `para-${sectionId}-${position}`;
-    const text = node.text_exact || "";
+    const text = sanitizeImportedText(node.text_exact || "");
     const structuredContent = Array.isArray(node.structured_content)
       ? node.structured_content
       : parseRichTextBlocks(text);
@@ -75,7 +92,7 @@ function convertNode(node, sectionId, parentId, position, bucket) {
 
   if (node.type === "bullet") {
     const bulletId = node.id || `bullet-${sectionId}-${position}`;
-    const text = node.text_exact || "";
+    const text = sanitizeImportedText(node.text_exact || "");
     const structuredContent = Array.isArray(node.structured_content)
       ? node.structured_content
       : parseRichTextBlocks(text);
@@ -99,7 +116,7 @@ function convertNode(node, sectionId, parentId, position, bucket) {
   }
 
   const sectionNodeId = `node-${slugifySegment(node.section_number || node.section_title)}-${position}`;
-  const text = node.section_title || "";
+  const text = sanitizeImportedText(node.section_title || "");
   bucket.push({
     id: sectionNodeId,
     sectionId,

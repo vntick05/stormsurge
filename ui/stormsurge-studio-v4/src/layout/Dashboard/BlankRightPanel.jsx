@@ -72,9 +72,9 @@ export default function BlankRightPanel({ onWidthChange }) {
         flexShrink: 0,
         width,
         minWidth: width,
-        bgcolor: 'background.paper',
+        bgcolor: '#edf1f5',
         borderLeft: '1px solid',
-        borderColor: 'divider',
+        borderColor: '#cbd5df',
         height: 'calc(100vh - 38px)',
         minHeight: 'calc(100vh - 38px)',
         transition: isResizing ? 'none' : theme.transitions.create('width', {
@@ -103,7 +103,9 @@ export default function BlankRightPanel({ onWidthChange }) {
           justifyContent: isCollapsed ? 'center' : 'flex-end',
           alignItems: 'center',
           minHeight: 42,
-          px: 0.5
+          px: 0.5,
+          position: 'relative',
+          zIndex: 2
         }}
       >
         <IconButton

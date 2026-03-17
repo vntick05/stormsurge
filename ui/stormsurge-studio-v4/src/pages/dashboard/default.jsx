@@ -15,11 +15,23 @@ import MainCard from 'components/MainCard';
 import { useWorkspace } from 'contexts/WorkspaceContext';
 import { getChildRequirements, getChildSections, getSectionRootRequirements } from 'utils/workspace';
 
+const REQUIREMENT_ROW_GAP = 0;
+
 function formatRequirementLabel(requirement) {
   return String(requirement.sourceRef || requirement.id || '')
     .toUpperCase()
     .replace(/\.P(\d+)/g, '.P$1')
     .replace(/\.B(\d+)/g, '.B$1');
+}
+
+function getRequirementLabelParts(requirement) {
+  const label = formatRequirementLabel(requirement);
+  const parts = label.split('.');
+
+  return parts.map((part, index) => ({
+    text: index === 0 ? part : `.${part}`,
+    isMinor: /^[A-Z]\d+$/i.test(part)
+  }));
 }
 
 function formatRequirementBody(requirement) {
@@ -42,6 +54,7 @@ function formatSectionBody(section) {
 
 function RequirementCard({
   childCount = 0,
+  depth = 0,
   dragHandleProps,
   dropProps,
   isCollapsed,
@@ -52,105 +65,52 @@ function RequirementCard({
   onToggleCollapse,
   requirement
 }) {
+  const labelParts = getRequirementLabelParts(requirement);
+
   return (
     <Box
       {...dropProps}
+      onClick={onSelect}
       sx={{
         opacity: isDragging ? 0.45 : 1,
-        transform: isDragging ? 'scale(0.99)' : 'scale(1)',
-        transition: 'transform 160ms ease, opacity 160ms ease'
+        transform: isDragging ? 'scale(0.997)' : 'scale(1)',
+        transition: 'transform 160ms ease, opacity 160ms ease',
+        cursor: 'pointer',
+        position: 'relative',
+        overflow: 'hidden',
+        bgcolor: isSelected ? 'rgba(70, 95, 255, 0.05)' : 'transparent',
+        borderBottom: '1px solid',
+        borderBottomColor: 'rgba(226, 232, 240, 0.55)',
+        outline: isDragTarget ? '1px dashed rgba(70, 95, 255, 0.35)' : 'none',
+        '&:hover': {
+          bgcolor: isSelected ? 'rgba(70, 95, 255, 0.05)' : 'rgba(248, 250, 252, 0.7)'
+        }
       }}
     >
-      <MainCard
-        contentSX={{
-          pl: 0.75,
-          pr: 1.75,
-          py: 1,
-          minHeight: 0,
-          display: 'flex',
-          alignItems: 'center',
-          '&:last-child': {
-            pb: 1
-          }
-        }}
-        onClick={onSelect}
+      <Box
         sx={{
-          borderRadius: 1,
-          cursor: 'pointer',
-          position: 'relative',
-          overflow: 'hidden',
-          bgcolor: isSelected ? 'primary.lighter' : 'background.paper',
-          boxShadow: isSelected ? '0 0 0 1px rgba(70, 95, 255, 0.24)' : undefined,
-          outline: isDragTarget ? '1px dashed rgba(70, 95, 255, 0.4)' : 'none',
-          '&:hover': {
-            bgcolor: isSelected ? 'primary.lighter' : 'grey.50'
-          }
+          display: 'flex',
+          alignItems: 'stretch',
+          width: '100%',
+          minHeight: 42,
+          pl: 0.75 + depth * 1.95,
+          pr: 1.5,
+          py: 0.85,
+          position: 'relative'
         }}
       >
         <Box
           sx={{
-            display: 'flex',
+            width: childCount > 0 ? 22 : 18,
+            minWidth: childCount > 0 ? 22 : 18,
+            display: 'inline-flex',
             alignItems: 'center',
-            gap: 0.65,
-            width: '100%',
-            minHeight: 28,
-            alignSelf: 'center',
-            position: 'relative'
+            justifyContent: 'center',
+            color: childCount > 0 ? 'rgba(100, 116, 139, 0.78)' : 'transparent',
+            ml: 0,
+            mr: 0.35
           }}
         >
-          <Box
-            {...dragHandleProps}
-            sx={{
-              display: { xs: 'none', sm: 'inline-flex' },
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: isSelected ? 'primary.main' : 'text.disabled',
-              width: 16,
-              flexShrink: 0,
-              alignSelf: 'center',
-              cursor: isDragging ? 'grabbing' : 'grab'
-            }}
-          >
-            <HolderOutlined style={{ fontSize: '0.8rem' }} />
-          </Box>
-          <Box
-            component="div"
-            sx={{
-              fontFamily: "'Visuelt Pro Light', sans-serif",
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              color: 'text.secondary',
-              flexShrink: 0,
-              minHeight: 24,
-              lineHeight: 1,
-              alignSelf: 'center',
-              mr: 0.8,
-              whiteSpace: 'nowrap',
-              transform: 'translateY(1px)'
-            }}
-          >
-            {formatRequirementLabel(requirement)}
-          </Box>
-          <Box
-            component="div"
-            sx={{
-              fontFamily: "'Visuelt Pro Light', sans-serif",
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-start',
-              color: 'rgba(15, 23, 42, 0.82)',
-              lineHeight: 1.15,
-              minHeight: 24,
-              minWidth: 0,
-              alignSelf: 'center',
-              transform: 'translateY(1px)'
-            }}
-          >
-            {formatRequirementBody(requirement)}
-          </Box>
           {childCount > 0 ? (
             <IconButton
               size="small"
@@ -159,61 +119,172 @@ function RequirementCard({
                 onToggleCollapse?.();
               }}
               sx={{
-                ml: 'auto',
-                color: 'rgba(100, 116, 139, 0.7)',
-                width: 16,
+                width: 15,
                 height: 16,
                 p: 0,
-                transition: 'transform 220ms ease, color 180ms ease',
-                transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)'
+                color: 'inherit',
+                transition: 'transform 220ms ease',
+                transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)'
               }}
             >
-              <DownOutlined style={{ fontSize: '0.58rem' }} />
+              <DownOutlined style={{ fontSize: '0.54rem' }} />
             </IconButton>
-          ) : null}
+          ) : (
+            <Box sx={{ width: 16, height: 16 }} />
+          )}
         </Box>
-      </MainCard>
+        <Box
+          component="div"
+          sx={{
+            fontFamily: "'Visuelt Pro Light', sans-serif",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+            color: 'text.secondary',
+            flexShrink: 0,
+            minHeight: 24,
+            lineHeight: 1,
+            alignSelf: 'center',
+            mr: 1,
+            whiteSpace: 'nowrap',
+            transform: 'translateY(2px)'
+          }}
+        >
+          {labelParts.map((part) => (
+            <Box
+              component="span"
+              key={`${requirement.id}-${part.text}`}
+              sx={{
+                fontSize: part.isMinor ? '0.72em' : '1em',
+                lineHeight: 1,
+                display: 'inline-flex',
+                alignItems: 'center'
+              }}
+            >
+              {part.text}
+            </Box>
+          ))}
+        </Box>
+        <Box
+          component="div"
+          sx={{
+            fontFamily: "'Visuelt Pro Light', sans-serif",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            color: 'rgba(15, 23, 42, 0.82)',
+            lineHeight: 1.15,
+            minHeight: 24,
+            minWidth: 0,
+            alignSelf: 'center',
+            transform: 'translateY(1px)',
+            pr: 1
+          }}
+        >
+          {formatRequirementBody(requirement)}
+        </Box>
+        <Box
+          {...dragHandleProps}
+          sx={{
+            display: { xs: 'none', sm: 'inline-flex' },
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: isSelected ? 'primary.main' : 'text.disabled',
+            width: 16,
+            minWidth: 16,
+            flexShrink: 0,
+            alignSelf: 'center',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            transform: 'translateY(0.45px)',
+            ml: 'auto'
+          }}
+        >
+          <HolderOutlined style={{ fontSize: '0.8rem' }} />
+        </Box>
+      </Box>
     </Box>
   );
 }
 
-function SectionCard({ dragProps, isDragging, isDragTarget, isSelected, onSelect, section }) {
+function SectionCard({
+  dragHandleProps,
+  dropProps,
+  hasCollapse = false,
+  isCollapsed,
+  isDragging,
+  isDragTarget,
+  isSelected,
+  onSelect,
+  onToggleCollapse,
+  section
+}) {
   return (
     <Box
-      {...dragProps}
+      {...dropProps}
       onClick={onSelect}
       sx={{
-        cursor: 'pointer',
         opacity: isDragging ? 0.45 : 1,
-        outline: isDragTarget ? '1px dashed rgba(70, 95, 255, 0.4)' : 'none',
-        borderRadius: 1.5,
-        px: 1.75,
-        py: 0.65,
-        minHeight: 42,
-        bgcolor: isSelected ? 'rgba(70, 95, 255, 0.06)' : 'transparent',
+        transform: isDragging ? 'scale(0.998)' : 'scale(1)',
+        transition: 'transform 160ms ease, opacity 160ms ease',
+        cursor: 'pointer',
+        position: 'relative',
+        overflow: 'hidden',
+        bgcolor: 'transparent',
+        outline: isDragTarget ? '1px dashed rgba(70, 95, 255, 0.35)' : 'none',
         '&:hover': {
-          bgcolor: 'rgba(15, 23, 42, 0.04)'
+          bgcolor: 'rgba(248, 250, 252, 0.45)'
         }
       }}
     >
       <Box
         sx={{
           display: 'flex',
-          alignItems: 'center',
-          gap: 1,
+          alignItems: 'stretch',
           width: '100%',
-          minHeight: 28
+          minHeight: 34,
+          pl: 0.75,
+          pr: 1.5,
+          pt: 1.05,
+          pb: 0.45
         }}
       >
+        <Box sx={{ width: 20, minWidth: 20, mr: 0.35, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+          {hasCollapse ? (
+            <IconButton
+              size="small"
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleCollapse?.();
+              }}
+              sx={{
+                width: 22,
+                height: 16,
+                p: 0,
+                color: 'rgba(71, 85, 105, 0.88)',
+                transition: 'transform 220ms ease',
+                transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)'
+              }}
+            >
+              <DownOutlined style={{ fontSize: '0.58rem' }} />
+            </IconButton>
+          ) : null}
+        </Box>
         <Typography
           variant="body1"
           sx={{
             fontFamily: "'Public Sans', sans-serif",
+            display: 'flex',
+            alignItems: 'center',
             textTransform: 'uppercase',
             letterSpacing: '0.04em',
-            color: 'text.secondary',
+            color: 'rgba(71, 85, 105, 0.88)',
             flexShrink: 0,
-            lineHeight: 1.2
+            lineHeight: 1,
+            alignSelf: 'center',
+            mr: 0.8,
+            fontSize: '0.78rem'
           }}
         >
           {formatSectionTag(section)}
@@ -222,17 +293,40 @@ function SectionCard({ dragProps, isDragging, isDragTarget, isSelected, onSelect
           variant="body1"
           sx={{
             fontFamily: "'Public Sans', sans-serif",
-            color: 'text.primary',
+            display: 'flex',
+            alignItems: 'center',
+            color: isSelected ? '#111827' : 'rgba(15, 23, 42, 0.9)',
             fontWeight: 600,
             lineHeight: 1.2,
             minWidth: 0,
+            flex: 1,
             whiteSpace: 'normal',
             overflowWrap: 'anywhere',
-            pr: 1
+            pr: 1,
+            alignSelf: 'center',
+            fontSize: '0.9rem'
           }}
         >
           {formatSectionBody(section)}
         </Typography>
+        <Box
+          {...dragHandleProps}
+          sx={{
+            display: { xs: 'none', sm: 'inline-flex' },
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: isSelected ? 'primary.main' : 'text.disabled',
+            width: 16,
+            minWidth: 16,
+            flexShrink: 0,
+            alignSelf: 'center',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            transform: 'translateY(0.45px)',
+            ml: 'auto'
+          }}
+        >
+          <HolderOutlined style={{ fontSize: '0.8rem' }} />
+        </Box>
       </Box>
     </Box>
   );
@@ -240,6 +334,7 @@ function SectionCard({ dragProps, isDragging, isDragTarget, isSelected, onSelect
 
 function RequirementTree({
   collapsedRequirementIds,
+  depth = 0,
   draggedId,
   dragTargetId,
   moveRequirement,
@@ -255,9 +350,10 @@ function RequirementTree({
   const isCollapsed = collapsedRequirementIds.has(requirement.id);
 
   return (
-    <Stack sx={{ gap: 0.75 }}>
+    <Stack sx={{ gap: REQUIREMENT_ROW_GAP }}>
       <RequirementCard
         childCount={childRequirements.length}
+        depth={depth}
         requirement={requirement}
         isCollapsed={isCollapsed}
         isSelected={selectedRequirementId === requirement.id}
@@ -322,10 +418,11 @@ function RequirementTree({
             overflow: 'hidden'
           }}
         >
-          <Stack sx={{ gap: 0.75, pl: { xs: 1, sm: 1.5 }, pt: 0.75, minHeight: 0 }}>
+          <Stack sx={{ gap: 0, pl: 0, pt: 0, minHeight: 0 }}>
             {childRequirements.map((childRequirement) => (
               <RequirementTree
                 collapsedRequirementIds={collapsedRequirementIds}
+                depth={depth + 1}
                 key={childRequirement.id}
                 draggedId={draggedId}
                 dragTargetId={dragTargetId}
@@ -347,7 +444,9 @@ function RequirementTree({
 }
 
 function SectionGroup({
+  collapsedSectionIds,
   collapsedRequirementIds,
+  depth = 0,
   draggedId,
   dragTargetId,
   moveRequirement,
@@ -357,21 +456,21 @@ function SectionGroup({
   sections,
   selectedRequirementId,
   setCollapsedRequirementIds,
+  setCollapsedSectionIds,
   setDraggedId,
   setDragTargetId,
   subsection
 }) {
   const childSections = getChildSections(sections, subsection.id);
+  const sectionRequirements = getSectionRootRequirements(requirements, subsection.id);
+  const hasChildren = sectionRequirements.length > 0 || childSections.length > 0;
+  const isCollapsed = collapsedSectionIds.has(subsection.id);
 
   return (
-    <Stack sx={{ gap: 0.75 }}>
+    <Stack sx={{ gap: 0.25 }}>
       <SectionCard
-        dragProps={{
-          draggable: true,
-          onDragStart: () => {
-            setDraggedId(subsection.id);
-            onRequirementSelect(subsection.id);
-          },
+        hasCollapse={hasChildren}
+        dropProps={{
           onDragEnter: (event) => {
             event.preventDefault();
             setDragTargetId(subsection.id);
@@ -384,22 +483,54 @@ function SectionGroup({
             reorderRequirements(subsection.id, true);
             setDragTargetId(null);
             setDraggedId(null);
+          }
+        }}
+        dragHandleProps={{
+          draggable: true,
+          onDragStart: (event) => {
+            event.stopPropagation();
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', subsection.id);
+            setDraggedId(subsection.id);
+            onRequirementSelect(subsection.id);
+          },
+          onMouseDown: (event) => {
+            event.stopPropagation();
           },
           onDragEnd: () => {
             setDragTargetId(null);
             setDraggedId(null);
           }
         }}
+        isCollapsed={isCollapsed}
         section={subsection}
         isDragging={draggedId === subsection.id}
         isDragTarget={dragTargetId === subsection.id && draggedId !== subsection.id}
         isSelected={selectedRequirementId === subsection.id}
         onSelect={() => onRequirementSelect(subsection.id)}
+        onToggleCollapse={() => {
+          setCollapsedSectionIds((current) => {
+            const next = new Set(current);
+            if (next.has(subsection.id)) next.delete(subsection.id);
+            else next.add(subsection.id);
+            return next;
+          });
+        }}
       />
-      <Stack sx={{ gap: 0.75, pl: { xs: 1.5, sm: 2.25 } }}>
-        {getSectionRootRequirements(requirements, subsection.id).map((requirement) => (
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateRows: isCollapsed ? '0fr' : '1fr',
+          opacity: isCollapsed ? 0 : 1,
+          transition: 'grid-template-rows 220ms ease, opacity 180ms ease',
+          overflow: 'hidden'
+        }}
+      >
+        <Stack sx={{ gap: 0, pl: 0, minHeight: 0 }}>
+        {sectionRequirements.map((requirement) => (
           <RequirementTree
             collapsedRequirementIds={collapsedRequirementIds}
+            depth={depth + 1}
             key={requirement.id}
             draggedId={draggedId}
             dragTargetId={dragTargetId}
@@ -415,7 +546,9 @@ function SectionGroup({
         ))}
         {childSections.map((childSection) => (
           <SectionGroup
+            collapsedSectionIds={collapsedSectionIds}
             collapsedRequirementIds={collapsedRequirementIds}
+            depth={depth + 1}
             key={childSection.id}
             draggedId={draggedId}
             dragTargetId={dragTargetId}
@@ -426,12 +559,14 @@ function SectionGroup({
             sections={sections}
             selectedRequirementId={selectedRequirementId}
             setCollapsedRequirementIds={setCollapsedRequirementIds}
+            setCollapsedSectionIds={setCollapsedSectionIds}
             setDraggedId={setDraggedId}
             setDragTargetId={setDragTargetId}
             subsection={childSection}
           />
         ))}
-      </Stack>
+        </Stack>
+      </Box>
     </Stack>
   );
 }
@@ -450,6 +585,7 @@ export default function DashboardDefault() {
     sourceFilename
   } = useWorkspace();
   const [collapsedRequirementIds, setCollapsedRequirementIds] = useState(() => new Set());
+  const [collapsedSectionIds, setCollapsedSectionIds] = useState(() => new Set());
   const [draggedId, setDraggedId] = useState(null);
   const [dragTargetId, setDragTargetId] = useState(null);
 
@@ -459,6 +595,8 @@ export default function DashboardDefault() {
     () => (selectedSectionId ? getSectionRootRequirements(requirements, selectedSectionId) : []),
     [requirements, selectedSectionId]
   );
+  const topSectionHasChildren = visibleRequirements.length > 0 || visibleSubsections.length > 0;
+  const isTopSectionCollapsed = selectedSectionId ? collapsedSectionIds.has(selectedSectionId) : false;
 
   const moveRequirement = (sectionId, parentId, activeId, targetId) => {
     if (!sectionId) return;
@@ -484,10 +622,48 @@ export default function DashboardDefault() {
     <Stack sx={{ gap: 1.25 }}>
       {importError ? <Alert severity="error">{importError}</Alert> : null}
 
-      <Stack sx={{ gap: 1 }}>
+      <Stack
+        sx={{
+          gap: 0,
+          mx: { xs: -2, sm: -3 },
+          bgcolor: 'background.paper'
+        }}
+      >
+        {selectedSection ? (
+          <SectionCard
+            hasCollapse={topSectionHasChildren}
+            dropProps={{}}
+            dragHandleProps={{}}
+            section={selectedSection}
+            isCollapsed={isTopSectionCollapsed}
+            isDragging={false}
+            isDragTarget={false}
+            isSelected={selectedRequirementId === selectedSection.id}
+            onSelect={() => setSelectedRequirementId(selectedSection.id)}
+            onToggleCollapse={() => {
+              setCollapsedSectionIds((current) => {
+                const next = new Set(current);
+                if (next.has(selectedSection.id)) next.delete(selectedSection.id);
+                else next.add(selectedSection.id);
+                return next;
+              });
+            }}
+          />
+        ) : null}
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateRows: isTopSectionCollapsed ? '0fr' : '1fr',
+            opacity: isTopSectionCollapsed ? 0 : 1,
+            transition: 'grid-template-rows 220ms ease, opacity 180ms ease',
+            overflow: 'hidden'
+          }}
+        >
+          <Stack sx={{ gap: 0, minHeight: 0 }}>
         {visibleRequirements.map((requirement) => (
           <RequirementTree
             collapsedRequirementIds={collapsedRequirementIds}
+            depth={0}
             key={requirement.id}
             draggedId={draggedId}
             dragTargetId={dragTargetId}
@@ -504,6 +680,7 @@ export default function DashboardDefault() {
         {visibleSubsections.length
           ? visibleSubsections.map((section) => (
               <SectionGroup
+                collapsedSectionIds={collapsedSectionIds}
                 collapsedRequirementIds={collapsedRequirementIds}
                 key={section.id}
                 draggedId={draggedId}
@@ -521,6 +698,7 @@ export default function DashboardDefault() {
                 sections={sections}
                 selectedRequirementId={selectedRequirementId}
                 setCollapsedRequirementIds={setCollapsedRequirementIds}
+                setCollapsedSectionIds={setCollapsedSectionIds}
                 setDraggedId={setDraggedId}
                 setDragTargetId={setDragTargetId}
                 subsection={section}
@@ -534,6 +712,8 @@ export default function DashboardDefault() {
             </Typography>
           </MainCard>
         ) : null}
+          </Stack>
+        </Box>
       </Stack>
     </Stack>
   );

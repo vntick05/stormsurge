@@ -31,10 +31,18 @@ DATE_ONLY_PATTERN = re.compile(
     r"^(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s+\d{1,2},\s+\d{4}$",
     re.IGNORECASE,
 )
+LINE_NUMBER_ONLY_PATTERN = re.compile(r"^\s*\d{1,4}\s*$")
+LINE_NUMBER_PREFIX_PATTERN = re.compile(r"^\s*\d{1,4}(?:\s{2,}|\t+)(?=\S)")
 
 
 def normalize_text(text: str) -> str:
-    return MULTISPACE_PATTERN.sub(" ", text.replace("\r", "\n").replace("\n", " ")).strip()
+    cleaned_lines: list[str] = []
+    for raw_line in text.replace("\r", "\n").split("\n"):
+        if LINE_NUMBER_ONLY_PATTERN.match(raw_line):
+            continue
+        stripped_prefix = LINE_NUMBER_PREFIX_PATTERN.sub("", raw_line)
+        cleaned_lines.append(stripped_prefix)
+    return MULTISPACE_PATTERN.sub(" ", " ".join(cleaned_lines)).strip()
 
 
 def strip_classification_prefix(text: str) -> str:

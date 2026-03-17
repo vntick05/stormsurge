@@ -21,8 +21,8 @@ export default function DrawerHeader({ open }) {
         paddingTop: '18px',
         paddingBottom: '8px',
         paddingLeft: open ? '24px' : 0,
-        paddingRight: open ? '0px' : 0,
-        backgroundColor: '#ffffff'
+        paddingRight: open ? '10px' : 0,
+        backgroundColor: '#edf1f5'
       }}
     >
       {open ? (
@@ -71,13 +71,13 @@ export default function DrawerHeader({ open }) {
         variant="light"
         size="small"
         sx={{
-          ml: open ? -2 : 0,
+          ml: open ? 5.625 : 0,
           width: 24,
           height: 24,
           color: 'rgba(55, 65, 81, 0.55)',
           bgcolor: 'transparent',
           opacity: open ? 0.7 : 0.45,
-          transform: 'translateY(-2px)',
+          transform: 'translateY(1px)',
           '&:hover': {
             bgcolor: 'rgba(15, 23, 42, 0.04)',
             color: '#374151',

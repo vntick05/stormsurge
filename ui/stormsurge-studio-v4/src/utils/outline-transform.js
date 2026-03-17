@@ -12,12 +12,31 @@ export function stripClassificationMarkings(value) {
     .trim();
 }
 
+export function stripDocumentLineNumbers(value) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map((line) =>
+      line
+        // Remove standalone margin line numbers.
+        .replace(/^\s*\d{1,4}\s*$/g, '')
+        // Remove line-number prefixes when OCR preserves a wide gap after the number.
+        .replace(/^\s*\d{1,4}(?:\s{2,}|\t+)/, '')
+        .trimEnd()
+    )
+    .filter((line, index, lines) => line || (index > 0 && index < lines.length - 1))
+    .join('\n');
+}
+
+export function sanitizeImportedText(value) {
+  return stripClassificationMarkings(stripDocumentLineNumbers(value));
+}
+
 function makeSectionId(section) {
   return `section-${slugifySegment(section.section_number || section.section_title)}`;
 }
 
 function summarize(text) {
-  return stripClassificationMarkings(text).slice(0, 220);
+  return sanitizeImportedText(text).slice(0, 220);
 }
 
 function formatDisplayLabel(rawId, fallback) {
@@ -30,7 +49,7 @@ function formatDisplayLabel(rawId, fallback) {
 
 function formatSectionLabel(sectionNumber, sectionTitle) {
   const number = String(sectionNumber || '').trim();
-  const title = String(sectionTitle || '').trim();
+  const title = sanitizeImportedText(sectionTitle);
 
   if (!number) return title;
   if (!title) return number;
@@ -42,7 +61,7 @@ function formatSectionLabel(sectionNumber, sectionTitle) {
 function convertContentNode(node, sectionId, parentId, position, bucket) {
   if (node.type === 'paragraph' || node.type === 'table_text') {
     const contentId = node.id || `${node.type}-${sectionId}-${position}`;
-    const text = stripClassificationMarkings(node.text_exact || '');
+    const text = sanitizeImportedText(node.text_exact || '');
 
     bucket.push({
       id: contentId,
@@ -64,7 +83,7 @@ function convertContentNode(node, sectionId, parentId, position, bucket) {
 
   if (node.type === 'bullet') {
     const bulletId = node.id || `bullet-${sectionId}-${position}`;
-    const text = stripClassificationMarkings(node.text_exact || '');
+    const text = sanitizeImportedText(node.text_exact || '');
 
     bucket.push({
       id: bulletId,

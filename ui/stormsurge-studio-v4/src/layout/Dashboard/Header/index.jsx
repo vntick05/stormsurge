@@ -29,19 +29,6 @@ export default function Header() {
       sx={{
         minHeight: { xs: 38, sm: 38 },
         px: { xs: 2, sm: 2.5 },
-        position: 'relative',
-        bgcolor: 'rgba(59, 130, 246, 0.05)',
-        outline: '1px solid rgba(59, 130, 246, 0.18)',
-        '&::after': {
-          content: '""',
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          top: '50%',
-          borderTop: '1px dashed rgba(239, 68, 68, 0.5)',
-          pointerEvents: 'none',
-          zIndex: 1
-        },
         '&.MuiToolbar-root': {
           minHeight: { xs: 38, sm: 38 }
         }
@@ -57,9 +44,9 @@ export default function Header() {
     color: 'inherit',
     elevation: 0,
     sx: {
-      bgcolor: '#f8f9fb',
+      bgcolor: '#ffffff',
       borderBottom: '1px solid',
-      borderBottomColor: 'divider',
+      borderBottomColor: '#cbd5df',
       zIndex: 1200,
       width: { xs: '100%', lg: drawerOpen ? `calc(100% - ${DRAWER_WIDTH}px)` : `calc(100% - ${MINI_DRAWER_WIDTH}px)` }
     }

@@ -63,6 +63,13 @@ class Stage1ParserTests(unittest.TestCase):
         )
         self.assertEqual([item["section_number"] for item in result["sections"]], ["2", "2.1"])
 
+    def test_markdown_fallback_strips_margin_line_numbers(self) -> None:
+        result = build_stage1_section_tree(
+            filename="sample.md",
+            normalized_markdown="# 3 Performance Objectives\n\n48\n49    The contractor shall provide support.\n50    The contractor shall maintain records.",
+        )
+        self.assertEqual([item["section_number"] for item in result["sections"]], ["3"])
+
 
 if __name__ == "__main__":
     unittest.main()

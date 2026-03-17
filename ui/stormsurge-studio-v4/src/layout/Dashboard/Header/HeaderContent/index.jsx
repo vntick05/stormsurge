@@ -67,8 +67,7 @@ export default function HeaderContent() {
             gap: 1,
             width: '100%',
             height: '100%',
-            ml: downLG ? 1 : 0,
-            position: 'relative'
+            ml: downLG ? 1 : 0
           }}
         >
           <Box
@@ -78,9 +77,7 @@ export default function HeaderContent() {
               gap: 1,
               minWidth: 0,
               height: 22,
-              ml: 0.5,
-              bgcolor: 'rgba(245, 158, 11, 0.14)',
-              outline: '1px solid rgba(245, 158, 11, 0.3)'
+              ml: 0.5
             }}
           >
             <Button
@@ -113,7 +110,7 @@ export default function HeaderContent() {
             <Button variant="text" color="inherit" startIcon={<UndoOutlined />} sx={utilityButtonSx}>
               Undo
             </Button>
-            <Button variant="text" color="inherit" startIcon={<RedoOutlined />} sx={utilityButtonSx}>
+            <Button variant="text" color="inherit" startIcon={<RedoOutlined />} sx={{ ...utilityButtonSx, mr: '30px' }}>
               Redo
             </Button>
             <Typography
@@ -137,9 +134,7 @@ export default function HeaderContent() {
               display: 'flex',
               alignItems: 'center',
               gap: 1,
-              height: 22,
-              bgcolor: 'rgba(168, 85, 247, 0.12)',
-              outline: '1px solid rgba(168, 85, 247, 0.25)'
+              height: 22
             }}
           >
             {isImporting ? <CircularProgress size={18} /> : null}

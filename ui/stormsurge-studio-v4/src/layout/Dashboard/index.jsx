@@ -12,7 +12,6 @@ import Header from './Header';
 import Footer from './Footer';
 import MiddleToolbar from './MiddleToolbar';
 import Loader from 'components/Loader';
-import Breadcrumbs from 'components/@extended/Breadcrumbs';
 
 import { handlerDrawerOpen, useGetMenuMaster } from 'api/menu';
 import { RIGHT_PANEL_DEFAULT_WIDTH } from 'config';
@@ -60,8 +59,9 @@ export default function DashboardLayout() {
             <Box
               sx={{
                 px: { xs: 2, sm: 3 },
-                pt: { xs: 'calc(0.5rem + 42px)', sm: 'calc(0.75rem + 42px)' },
+                pt: '36px',
                 pb: { xs: 2, sm: 3 },
+                bgcolor: '#ffffff',
                 position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
@@ -69,7 +69,6 @@ export default function DashboardLayout() {
                 minWidth: 0
               }}
             >
-              <Breadcrumbs />
               <Outlet />
               <Footer />
             </Box>

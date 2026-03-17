@@ -1,7 +1,10 @@
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import PropTypes from 'prop-types';
+import ApartmentOutlined from '@ant-design/icons/ApartmentOutlined';
 import CopyOutlined from '@ant-design/icons/CopyOutlined';
+import NodeIndexOutlined from '@ant-design/icons/NodeIndexOutlined';
+import PlusOutlined from '@ant-design/icons/PlusOutlined';
 import ScissorOutlined from '@ant-design/icons/ScissorOutlined';
 import SnippetsOutlined from '@ant-design/icons/SnippetsOutlined';
 
@@ -10,7 +13,16 @@ import { useGetMenuMaster } from 'api/menu';
 import { DRAWER_WIDTH, MINI_DRAWER_WIDTH } from 'config';
 
 export default function MiddleToolbar({ rightOffset }) {
-  const { copyRequirement, cutRequirement, pasteBelowRequirement, hasRequirementClipboard, selectedRequirement } = useWorkspace();
+  const {
+    addChildRequirement,
+    addNewRequirement,
+    copyRequirement,
+    createSection,
+    cutRequirement,
+    pasteBelowRequirement,
+    hasRequirementClipboard,
+    selectedRequirement
+  } = useWorkspace();
   const { menuMaster } = useGetMenuMaster();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
 
@@ -51,11 +63,13 @@ export default function MiddleToolbar({ rightOffset }) {
   return (
     <Box
       sx={{
-        height: 42,
-        minHeight: 42,
-        bgcolor: 'background.paper',
+        height: 36,
+        minHeight: 36,
+        bgcolor: '#f3f6f9',
+        borderTop: '1px solid',
+        borderTopColor: '#cbd5df',
         borderBottom: '1px solid',
-        borderBottomColor: 'divider',
+        borderBottomColor: '#cbd5df',
         flexShrink: 0,
         position: 'fixed',
         top: 38,
@@ -64,18 +78,9 @@ export default function MiddleToolbar({ rightOffset }) {
         zIndex: 1100,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        outline: '1px solid rgba(59, 130, 246, 0.18)',
-        '&::after': {
-          content: '""',
-          position: 'absolute',
-          left: 0,
-          right: 0,
-          top: '50%',
-          borderTop: '1px dashed rgba(239, 68, 68, 0.5)',
-          pointerEvents: 'none',
-          zIndex: 1
-        }
+        justifyContent: 'flex-start',
+        overflow: 'hidden',
+        
       }}
     >
       <Box
@@ -84,9 +89,11 @@ export default function MiddleToolbar({ rightOffset }) {
           alignItems: 'center',
           justifyContent: 'center',
           gap: 1.1,
-          height: 22,
-          bgcolor: 'rgba(245, 158, 11, 0.14)',
-          outline: '1px solid rgba(245, 158, 11, 0.3)',
+          height: 20,
+          ml: 3,
+          maxWidth: 'calc(100% - 32px)',
+          overflow: 'hidden',
+          transform: 'translateY(1px)',
           position: 'relative',
           zIndex: 2
         }}
@@ -125,6 +132,47 @@ export default function MiddleToolbar({ rightOffset }) {
             sx={actionButtonSx}
           >
             Cut
+          </Button>
+        </Box>
+        <Box
+          sx={{
+            width: '1px',
+            height: 18,
+            bgcolor: 'rgba(148, 163, 184, 0.32)'
+          }}
+        />
+        <Box component="span">
+          <Button
+            variant="text"
+            color="inherit"
+            startIcon={<PlusOutlined style={{ fontSize: '0.72rem' }} />}
+            onClick={addNewRequirement}
+            sx={actionButtonSx}
+          >
+            New
+          </Button>
+        </Box>
+        <Box component="span">
+          <Button
+            variant="text"
+            color="inherit"
+            startIcon={<NodeIndexOutlined style={{ fontSize: '0.72rem' }} />}
+            onClick={addChildRequirement}
+            disabled={!selectedRequirement}
+            sx={actionButtonSx}
+          >
+            Child
+          </Button>
+        </Box>
+        <Box component="span">
+          <Button
+            variant="text"
+            color="inherit"
+            startIcon={<ApartmentOutlined style={{ fontSize: '0.72rem' }} />}
+            onClick={createSection}
+            sx={actionButtonSx}
+          >
+            Section
           </Button>
         </Box>
       </Box>

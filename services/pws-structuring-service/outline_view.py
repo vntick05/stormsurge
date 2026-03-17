@@ -20,10 +20,24 @@ CLASSIFICATION_PREFIX_PATTERN = re.compile(
 )
 IMAGE_ONLY_PATTERN = re.compile(r"^<!--\s*image\s*-->$", re.IGNORECASE)
 FRONT_MATTER_TITLES = {"table of contents", "figures", "tables"}
+LINE_NUMBER_ONLY_PATTERN = re.compile(r"^\s*\d{1,4}\s*$")
+LINE_NUMBER_PREFIX_PATTERN = re.compile(r"^\s*\d{1,4}(?:\s{2,}|\t+)(?=\S)")
 
 
 def normalize_text(text: str) -> str:
-    return " ".join(html.unescape(text).replace("\r", "\n").split())
+    cleaned_lines: list[str] = []
+    for raw_line in html.unescape(text).replace("\r", "\n").split("\n"):
+        if LINE_NUMBER_ONLY_PATTERN.match(raw_line):
+            continue
+        cleaned_lines.append(LINE_NUMBER_PREFIX_PATTERN.sub("", raw_line))
+    return " ".join(" ".join(cleaned_lines).split())
+
+
+def normalize_source_line(text: str) -> str:
+    raw_line = html.unescape(text or "").replace("\r", "")
+    if LINE_NUMBER_ONLY_PATTERN.match(raw_line):
+        return ""
+    return LINE_NUMBER_PREFIX_PATTERN.sub("", raw_line).rstrip()
 
 
 def strip_inline_markdown(text: str) -> str:
@@ -251,7 +265,7 @@ def build_outline(markdown: str) -> list[dict[str, Any]]:
         paragraph_lines = []
 
     for raw_line in markdown.splitlines():
-        line = raw_line.rstrip()
+        line = normalize_source_line(raw_line)
         if not line.strip():
             flush_paragraph()
             continue
@@ -374,7 +388,7 @@ def build_generic_outline(markdown: str, section_title: str = "Imported Document
         paragraph_lines = []
 
     for raw_line in markdown.splitlines():
-        line = raw_line.rstrip()
+        line = normalize_source_line(raw_line)
         if not line.strip():
             flush_paragraph()
             continue

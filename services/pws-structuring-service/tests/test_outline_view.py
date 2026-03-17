@@ -124,6 +124,16 @@ Child paragraph.
             "Digital PDF copies are acceptable.",
         )
 
+    def test_build_outline_strips_margin_line_numbers(self) -> None:
+        outline = build_outline(
+            "## 3 Performance Objectives\n\n"
+            "48\n"
+            "49    The contractor shall provide support.\n"
+            "50    The contractor shall maintain records.\n"
+        )
+        self.assertEqual(outline[0]["section_number"], "3")
+        self.assertEqual(outline[0]["children"][0]["text_exact"], "The contractor shall provide support. The contractor shall maintain records.")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,8 @@
 import PropTypes from 'prop-types';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-import { stripClassificationMarkings, transformOutlineToWorkspace } from 'utils/outline-transform';
+import { sanitizeImportedText, stripClassificationMarkings, transformOutlineToWorkspace } from 'utils/outline-transform';
+import { getDescendantSectionIds } from 'utils/workspace';
 import { stormApi } from 'services/storm';
 
 const WorkspaceContext = createContext(null);
@@ -149,18 +150,48 @@ function getNextChildSectionNumber(sections, parentSection) {
   return `${parentNumber}.${nextNumber}`;
 }
 
+function getNextTopLevelSectionPosition(sections) {
+  return sections.filter((section) => !section.parentId).length + 1;
+}
+
+function buildSectionFromRequirement(requirement) {
+  const sectionTag = String(requirement.sourceRef || '').trim().toUpperCase();
+  const sectionBody = stripClassificationMarkings(
+    String(requirement.text || requirement.summary || requirement.title || '').replace(/\s+/g, ' ').trim()
+  );
+
+  return {
+    shortLabel: 'NEW',
+    label: sectionBody || 'New Section',
+    sectionNumber: null
+  };
+}
+
+function buildSectionFromSection(section) {
+  const rawLabel = String(section.label || '').trim();
+  const sectionNumber = String(section.sectionNumber || '').trim();
+  const label = sectionNumber && rawLabel.startsWith(sectionNumber) ? rawLabel.slice(sectionNumber.length).trim() || rawLabel : rawLabel;
+
+  return {
+    shortLabel: 'NEW',
+    label: label || 'New Section',
+    sectionNumber: null
+  };
+}
+
 function sanitizeStoredRequirements(requirements) {
   return (Array.isArray(requirements) ? requirements : []).map((requirement) => ({
     ...requirement,
-    text: stripClassificationMarkings(requirement.text || ''),
-    summary: stripClassificationMarkings(requirement.summary || ''),
-    title: stripClassificationMarkings(requirement.title || '')
+    text: sanitizeImportedText(requirement.text || ''),
+    summary: sanitizeImportedText(requirement.summary || ''),
+    title: sanitizeImportedText(requirement.title || '')
   }));
 }
 
 function sanitizeStoredSections(sections) {
   return (Array.isArray(sections) ? sections : []).map((section, index) => ({
     ...section,
+    label: sanitizeImportedText(section.label || ''),
     position: section.position || index + 1
   }));
 }
@@ -312,20 +343,32 @@ export function WorkspaceProvider({ children }) {
     if (!activeSection) return;
 
     setRequirements((currentRequirements) => {
-      const nextPosition = getGroupRequirements(currentRequirements, activeSection.id, null).length + 1;
+      const sectionId = selectedRequirement?.sectionId || activeSection.id;
+      const parentId = selectedRequirement?.parentId ?? null;
+      const siblings = getGroupRequirements(currentRequirements, sectionId, parentId);
+      const insertIndex = selectedRequirement ? siblings.findIndex((requirement) => requirement.id === selectedRequirement.id) + 1 : siblings.length;
+
+      const nextRequirement = {
+        id: createId('requirement'),
+        sectionId,
+        parentId,
+        position: insertIndex + 1,
+        sourceRef: 'NEW',
+        kind: 'paragraph',
+        title: 'New Requirement',
+        summary: 'New requirement',
+        text: 'New requirement'
+      };
+
+      const nextSiblings = [...siblings];
+      nextSiblings.splice(Math.max(insertIndex, 0), 0, nextRequirement);
+      nextSiblings.forEach((requirement, index) => {
+        requirement.position = index + 1;
+      });
+
       return [
-        ...currentRequirements,
-        {
-          id: createId('requirement'),
-          sectionId: activeSection.id,
-          parentId: null,
-          position: nextPosition,
-          sourceRef: 'NEW',
-          kind: 'paragraph',
-          title: 'New Requirement',
-          summary: 'New requirement',
-          text: 'New requirement'
-        }
+        ...currentRequirements.filter((requirement) => !(requirement.sectionId === sectionId && requirement.parentId === parentId)),
+        ...nextSiblings
       ];
     });
   };
@@ -334,41 +377,109 @@ export function WorkspaceProvider({ children }) {
     if (!selectedRequirement) return;
 
     setRequirements((currentRequirements) => {
-      const nextPosition = getChildRequirements(currentRequirements, selectedRequirement.id).length + 1;
+      const childRequirements = getChildRequirements(currentRequirements, selectedRequirement.id);
+      const nextChild = {
+        id: createId('requirement'),
+        sectionId: selectedRequirement.sectionId,
+        parentId: selectedRequirement.id,
+        position: 1,
+        sourceRef: 'NEW',
+        kind: 'paragraph',
+        title: 'New Child Requirement',
+        summary: 'New child requirement',
+        text: 'New child requirement'
+      };
+
+      const nextChildren = [nextChild, ...childRequirements];
+      nextChildren.forEach((requirement, index) => {
+        requirement.position = index + 1;
+      });
+
       return [
-        ...currentRequirements,
-        {
-          id: createId('requirement'),
-          sectionId: selectedRequirement.sectionId,
-          parentId: selectedRequirement.id,
-          position: nextPosition,
-          sourceRef: 'NEW',
-          kind: 'paragraph',
-          title: 'New Child Requirement',
-          summary: 'New child requirement',
-          text: 'New child requirement'
-        }
+        ...currentRequirements.filter(
+          (requirement) => !(requirement.sectionId === selectedRequirement.sectionId && requirement.parentId === selectedRequirement.id)
+        ),
+        ...nextChildren
       ];
     });
   };
 
   const createSection = () => {
-    if (!activeSection) return;
+    if (!selectedRequirement && !selectedSectionNode) return;
+
+    if (selectedSectionNode) {
+      const nextSection = buildSectionFromSection(selectedSectionNode);
+      const promptedLabel =
+        typeof window !== 'undefined' ? window.prompt('Name this new section', nextSection.label || 'New Section') : nextSection.label;
+      const sectionLabel = String(promptedLabel || '').trim() || nextSection.label || 'New Section';
+      const sectionIds = new Set([selectedSectionNode.id, ...getDescendantSectionIds(sections, selectedSectionNode.id)]);
+
+      setSections((currentSections) =>
+        currentSections.map((section) => {
+          if (!sectionIds.has(section.id)) return section;
+
+          if (section.id === selectedSectionNode.id) {
+            return {
+              ...section,
+              label: sectionLabel,
+              shortLabel: 'NEW',
+              sectionNumber: null,
+              parentId: null,
+              depth: 0,
+              position: getNextTopLevelSectionPosition(currentSections)
+            };
+          }
+
+          return {
+            ...section,
+            depth: Math.max(1, (section.depth || 0) - ((selectedSectionNode.depth || 0) - 1))
+          };
+        })
+      );
+
+      setSelectedSectionId(selectedSectionNode.id);
+      setSelectedRequirementId(null);
+      return;
+    }
 
     const nextSectionId = createId('section');
-    const sectionNumber = getNextChildSectionNumber(sections, activeSection);
+    const nextSection = buildSectionFromRequirement(selectedRequirement);
+    const promptedLabel =
+      typeof window !== 'undefined' ? window.prompt('Name this new section', nextSection.label || 'New Section') : nextSection.label;
+    const sectionLabel = String(promptedLabel || '').trim() || nextSection.label || 'New Section';
+
     setSections((currentSections) => [
       ...currentSections,
       {
         id: nextSectionId,
-        label: `${sectionNumber ? `${sectionNumber} ` : ''}New Section`.trim(),
-        shortLabel: sectionNumber || 'NEW',
-        sectionNumber: sectionNumber || null,
-        parentId: activeSection.id,
-        depth: (activeSection.depth || 0) + 1
+        label: sectionLabel,
+        shortLabel: nextSection.shortLabel,
+        sectionNumber: nextSection.sectionNumber,
+        parentId: null,
+        depth: 0,
+        position: getNextTopLevelSectionPosition(currentSections)
       }
     ]);
-    setSelectedRequirementId(nextSectionId);
+
+    setRequirements((currentRequirements) => {
+      const subtreeIds = new Set([selectedRequirement.id, ...getDescendantIds(currentRequirements, selectedRequirement.id)]);
+
+      const migrated = currentRequirements.map((requirement) => {
+        if (!subtreeIds.has(requirement.id)) return requirement;
+
+        return {
+          ...requirement,
+          sectionId: nextSectionId,
+          parentId: requirement.id === selectedRequirement.id ? null : requirement.parentId,
+          position: requirement.id === selectedRequirement.id ? 1 : requirement.position
+        };
+      });
+
+      return normalizeAllPositions(migrated);
+    });
+
+    setSelectedSectionId(nextSectionId);
+    setSelectedRequirementId(null);
   };
 
   const promoteRequirementItem = () => {
