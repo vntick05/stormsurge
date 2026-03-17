@@ -528,6 +528,20 @@ def distinct_documents_for_project(project_id: str) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
+def fetch_structured_artifact(project_id: str, document_id: str) -> dict[str, Any] | None:
+    try:
+        response = httpx.get(
+            f"{NORMALIZATION_SERVICE_BASE_URL}/v1/projects/{project_id}/documents/{document_id}/structured-artifact",
+            timeout=30.0,
+        )
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        return response.json()
+    except Exception:
+        return None
+
+
 def chunk_text(text: str, chunk_size_words: int, chunk_overlap_words: int) -> list[str]:
     words = text.split()
     if not words:
@@ -540,6 +554,105 @@ def chunk_text(text: str, chunk_size_words: int, chunk_overlap_words: int) -> li
         if end >= len(words):
             break
         start = max(end - chunk_overlap_words, start + 1)
+    return chunks
+
+
+def build_chunks_from_structured_artifact(
+    *,
+    record: dict[str, Any],
+    artifact: dict[str, Any],
+    chunk_size_words: int,
+    chunk_overlap_words: int,
+) -> list[dict[str, Any]]:
+    chunks: list[dict[str, Any]] = []
+    hierarchy = artifact.get("hierarchy") or {}
+    sections = hierarchy.get("sections") or []
+    hierarchy_quality = hierarchy.get("quality") or "weak"
+    cleaned_text = ((artifact.get("cleaned_text") or {}).get("full_text")) or record["normalized_markdown"] or record["extracted_text"]
+    objects = artifact.get("objects") or {}
+
+    if hierarchy_quality in {"strong", "partial"} and sections:
+        for section_index, section in enumerate(sections):
+            section_number = section.get("section_number") or ""
+            section_title = section.get("section_title") or "Section"
+            section_heading = f"{section_number} {section_title}".strip()
+            section_path = section_number or section_title
+            for section_chunk_index, content in enumerate(
+                chunk_text(section_heading, chunk_size_words=chunk_size_words, chunk_overlap_words=chunk_overlap_words)
+            ):
+                composite_index = f"s-{section_index}-{section_chunk_index}"
+                chunks.append(
+                    {
+                        "point_id": point_id_for_chunk(record["project_id"], record["filename"], composite_index),
+                        "document_id": record["id"],
+                        "project_id": record["project_id"],
+                        "filename": record["filename"],
+                        "content_type": record["content_type"],
+                        "raw_object_key": record["raw_object_key"],
+                        "parsed_object_key": record["parsed_object_key"],
+                        "normalization_provider": record.get("normalization_provider"),
+                        "chunk_index": composite_index,
+                        "chunk_kind": "section",
+                        "requirement_type": None,
+                        "section_path": section_path,
+                        "section_heading": section_heading,
+                        "section_id": section.get("section_id"),
+                        "text": f"Section Heading: {section_heading}\n\n{content}",
+                        "body_text": content,
+                    }
+                )
+    else:
+        for page_chunk_index, content in enumerate(
+            chunk_text(cleaned_text, chunk_size_words=chunk_size_words, chunk_overlap_words=chunk_overlap_words)
+        ):
+            composite_index = f"p-{page_chunk_index}"
+            chunks.append(
+                {
+                    "point_id": point_id_for_chunk(record["project_id"], record["filename"], composite_index),
+                    "document_id": record["id"],
+                    "project_id": record["project_id"],
+                    "filename": record["filename"],
+                    "content_type": record["content_type"],
+                    "raw_object_key": record["raw_object_key"],
+                    "parsed_object_key": record["parsed_object_key"],
+                    "normalization_provider": record.get("normalization_provider"),
+                    "chunk_index": composite_index,
+                    "chunk_kind": "page_window",
+                    "requirement_type": None,
+                    "section_path": "DOCUMENT",
+                    "section_heading": "Document Body",
+                    "section_id": None,
+                    "text": content,
+                    "body_text": content,
+                }
+            )
+
+    for table_index, table in enumerate(objects.get("tables") or []):
+        content = "\n".join(" | ".join(row) for row in (table.get("rows") or []) if row).strip()
+        if not content:
+            continue
+        composite_index = f"t-{table_index}"
+        chunks.append(
+            {
+                "point_id": point_id_for_chunk(record["project_id"], record["filename"], composite_index),
+                "document_id": record["id"],
+                "project_id": record["project_id"],
+                "filename": record["filename"],
+                "content_type": record["content_type"],
+                "raw_object_key": record["raw_object_key"],
+                "parsed_object_key": record["parsed_object_key"],
+                "normalization_provider": record.get("normalization_provider"),
+                "chunk_index": composite_index,
+                "chunk_kind": "table",
+                "requirement_type": None,
+                "section_path": table.get("attached_section_id") or "DOCUMENT",
+                "section_heading": table.get("attached_section_id") or "Document Body",
+                "section_id": table.get("attached_section_id"),
+                "text": f"Table Content\n\n{content}",
+                "body_text": content,
+            }
+        )
+
     return chunks
 
 
@@ -560,6 +673,17 @@ class TextChunker:
     def run(self, records: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
         chunks: list[dict[str, Any]] = []
         for record in records:
+            artifact = fetch_structured_artifact(record["project_id"], record["id"])
+            if artifact:
+                chunks.extend(
+                    build_chunks_from_structured_artifact(
+                        record=record,
+                        artifact=artifact,
+                        chunk_size_words=self.chunk_size_words,
+                        chunk_overlap_words=self.chunk_overlap_words,
+                    )
+                )
+                continue
             source_text = record["normalized_markdown"] or record["extracted_text"]
             if record.get("structured_json"):
                 try:
@@ -599,6 +723,7 @@ class TextChunker:
                             "requirement_type": None,
                             "section_path": section["section_path"],
                             "section_heading": section["section_heading"],
+                            "section_id": None,
                             "text": contextual_text,
                             "body_text": content,
                         }
@@ -620,6 +745,7 @@ class TextChunker:
                             "requirement_type": requirement["requirement_type"],
                             "section_path": requirement["section_path"],
                             "section_heading": requirement["section_heading"],
+                            "section_id": None,
                             "text": (
                                 f"Requirement Type: {requirement['requirement_type']}\n"
                                 f"Section Path: {requirement['section_path']}\n"
@@ -659,6 +785,7 @@ class TextChunker:
                             "requirement_type": None,
                             "section_path": table["section_path"],
                             "section_heading": table["section_heading"],
+                            "section_id": None,
                             "text": contextual_text,
                             "body_text": content,
                         }
@@ -729,6 +856,7 @@ class QdrantWriter:
                     "requirement_type": item["chunk"]["requirement_type"],
                     "section_path": item["chunk"]["section_path"],
                     "section_heading": item["chunk"]["section_heading"],
+                    "section_id": item["chunk"].get("section_id"),
                     "text": item["chunk"]["text"],
                     "body_text": item["chunk"]["body_text"],
                 },
@@ -794,6 +922,7 @@ class QdrantRetriever:
                 "requirement_type": result.payload.get("requirement_type"),
                 "section_path": result.payload.get("section_path"),
                 "section_heading": result.payload.get("section_heading"),
+                "section_id": result.payload.get("section_id"),
                 "text": result.payload.get("text"),
                 "body_text": result.payload.get("body_text"),
                 "raw_object_key": result.payload.get("raw_object_key"),
@@ -883,7 +1012,13 @@ class SeedSetupRequest(BaseModel):
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     get_qdrant_client()
-    warm_embedding_model()
+    try:
+        warm_embedding_model()
+    except Exception as exc:
+        # Allow the service to start in a degraded state when the embedding
+        # model cannot be fetched at boot. This keeps the UI and dependent
+        # services available while surfacing the embedding failure in /healthz.
+        print(f"retrieval.embedding_warmup_failed: {exc}", flush=True)
     try:
         yield
     finally:

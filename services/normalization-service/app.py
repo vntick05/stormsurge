@@ -19,6 +19,7 @@ from fastapi.responses import Response
 from minio import Minio
 from psycopg.rows import dict_row
 from pydantic import BaseModel, Field
+from canonical_artifacts import build_structured_document_artifact
 from pws_parser import is_likely_pws_document, parse_pws_document
 from related_requirement_search import search_related_requirements
 from xlsx_export import build_pws_hierarchy_workbook, build_workbook
@@ -854,6 +855,7 @@ def ensure_schema() -> None:
       structured_json TEXT,
       normalized_markdown_object_key TEXT,
       structured_json_object_key TEXT,
+      canonical_artifact_object_key TEXT,
       error_message TEXT,
       created_at TIMESTAMPTZ NOT NULL,
       updated_at TIMESTAMPTZ NOT NULL
@@ -1375,6 +1377,18 @@ def load_parsed_text(parsed_object_key: str | None) -> str | None:
     return payload.decode("utf-8", errors="replace")
 
 
+def load_normalized_object(object_key: str | None) -> bytes | None:
+    if not object_key:
+        return None
+    client = get_minio_client()
+    response = client.get_object(MINIO_BUCKET_NORMALIZED, object_key)
+    try:
+        return response.read()
+    finally:
+        response.close()
+        response.release_conn()
+
+
 def put_normalized_object(object_key: str, content: bytes, content_type: str) -> None:
     client = get_minio_client()
     client.put_object(
@@ -1518,6 +1532,7 @@ def upsert_normalization_record(
     structured_json: str | None,
     normalized_markdown_object_key: str | None,
     structured_json_object_key: str | None,
+    canonical_artifact_object_key: str | None,
     error_message: str | None,
 ) -> None:
     sql = """
@@ -1533,6 +1548,7 @@ def upsert_normalization_record(
       structured_json,
       normalized_markdown_object_key,
       structured_json_object_key,
+      canonical_artifact_object_key,
       error_message,
       created_at,
       updated_at
@@ -1548,6 +1564,7 @@ def upsert_normalization_record(
       %(structured_json)s,
       %(normalized_markdown_object_key)s,
       %(structured_json_object_key)s,
+      %(canonical_artifact_object_key)s,
       %(error_message)s,
       %(created_at)s,
       %(updated_at)s
@@ -1562,6 +1579,7 @@ def upsert_normalization_record(
       structured_json = EXCLUDED.structured_json,
       normalized_markdown_object_key = EXCLUDED.normalized_markdown_object_key,
       structured_json_object_key = EXCLUDED.structured_json_object_key,
+      canonical_artifact_object_key = EXCLUDED.canonical_artifact_object_key,
       error_message = EXCLUDED.error_message,
       updated_at = EXCLUDED.updated_at
     """
@@ -1582,6 +1600,7 @@ def upsert_normalization_record(
                     "structured_json": structured_json,
                     "normalized_markdown_object_key": normalized_markdown_object_key,
                     "structured_json_object_key": structured_json_object_key,
+                    "canonical_artifact_object_key": canonical_artifact_object_key,
                     "error_message": error_message,
                     "created_at": timestamp,
                     "updated_at": timestamp,
@@ -2244,11 +2263,24 @@ def normalize_document_record(document: dict[str, Any], skip_existing: bool) -> 
                 sections, tables = build_structured_records_from_docling(structured_json)
         markdown_key = f"{document['project_id']}/{document['id']}/{NORMALIZATION_PROVIDER}/normalized.md"
         json_key = f"{document['project_id']}/{document['id']}/{NORMALIZATION_PROVIDER}/normalized.json"
+        canonical_key = f"{document['project_id']}/{document['id']}/{NORMALIZATION_PROVIDER}/structured_document_v1.json"
         put_normalized_object(markdown_key, markdown.encode("utf-8"), "text/markdown; charset=utf-8")
         if structured_json is not None:
             put_normalized_object(json_key, structured_json.encode("utf-8"), "application/json")
         else:
             json_key = None
+        structured_artifact = build_structured_document_artifact(
+            document_id=document["id"],
+            filename=document["filename"],
+            content_sha256=document.get("content_sha256"),
+            provider=provider,
+            normalized_markdown=markdown,
+            sections=sections,
+            tables=tables,
+            blocks=(pws_artifacts or {}).get("blocks"),
+            pws_artifacts=pws_artifacts,
+        )
+        put_normalized_object(canonical_key, json.dumps(structured_artifact).encode("utf-8"), "application/json")
 
         upsert_normalization_record(
             document_id=document["id"],
@@ -2260,6 +2292,7 @@ def normalize_document_record(document: dict[str, Any], skip_existing: bool) -> 
             structured_json=structured_json,
             normalized_markdown_object_key=markdown_key,
             structured_json_object_key=json_key,
+            canonical_artifact_object_key=canonical_key,
             error_message=None,
         )
         replace_document_artifacts(
@@ -2290,6 +2323,7 @@ def normalize_document_record(document: dict[str, Any], skip_existing: bool) -> 
             "provider": provider,
             "normalized_markdown_object_key": markdown_key,
             "structured_json_object_key": json_key,
+            "canonical_artifact_object_key": canonical_key,
             "section_count": len(sections),
             "requirement_count": requirement_count,
             "table_count": len(tables),
@@ -2306,6 +2340,7 @@ def normalize_document_record(document: dict[str, Any], skip_existing: bool) -> 
             structured_json=None,
             normalized_markdown_object_key=None,
             structured_json_object_key=None,
+            canonical_artifact_object_key=None,
             error_message=str(exc),
         )
         return {
@@ -2347,6 +2382,21 @@ def fetch_project_sections(project_id: str) -> list[dict[str, Any]]:
     with psycopg.connect(postgres_dsn(), row_factory=dict_row) as conn:
         rows = conn.execute(sql, {"project_id": project_id}).fetchall()
     return [dict(row) for row in rows]
+
+
+def fetch_structured_artifact_record(project_id: str, document_id: str) -> dict[str, Any] | None:
+    sql = """
+    SELECT document_id, project_id, filename, provider, canonical_artifact_object_key
+    FROM document_normalizations
+    WHERE project_id = %(project_id)s
+      AND document_id = %(document_id)s
+      AND normalization_status = 'normalized'
+    ORDER BY updated_at DESC
+    LIMIT 1
+    """
+    with psycopg.connect(postgres_dsn(), row_factory=dict_row) as conn:
+        row = conn.execute(sql, {"project_id": project_id, "document_id": document_id}).fetchone()
+    return dict(row) if row else None
 
 
 def fetch_project_requirements(project_id: str) -> list[dict[str, Any]]:
@@ -2669,6 +2719,20 @@ def project_document_status(project_id: str) -> dict[str, Any]:
         documents.append(item)
 
     return {"project_id": project_id, "count": len(documents), "documents": documents}
+
+
+@app.get("/v1/projects/{project_id}/documents/{document_id}/structured-artifact")
+def get_structured_artifact(project_id: str, document_id: str) -> dict[str, Any]:
+    record = fetch_structured_artifact_record(project_id, document_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"No structured artifact found for document_id={document_id}")
+    payload = load_normalized_object(record.get("canonical_artifact_object_key"))
+    if payload is None:
+        raise HTTPException(status_code=404, detail=f"Structured artifact object missing for document_id={document_id}")
+    try:
+        return json.loads(payload.decode("utf-8"))
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=500, detail=f"Structured artifact decode failed for document_id={document_id}") from exc
 
 
 @app.get("/v1/projects/{project_id}/status")

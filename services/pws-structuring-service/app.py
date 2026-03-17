@@ -2,6 +2,7 @@ import io
 import json
 import os
 import re
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,8 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
+from canonical_artifacts import build_structured_document_artifact
+from compat_adapters import structured_artifact_to_merged_import_payload
 from outline_view import (
     build_generic_outline,
     build_outline,
@@ -21,7 +24,17 @@ from outline_view import (
     render_result_page,
     render_upload_page,
 )
+from import_cleaner import prepare_outline_markdown
 from related_linker import build_related_links
+from rich_import import (
+    align_objects_to_sections,
+    attach_aligned_objects_to_outline,
+    build_heading_anchors,
+    build_object_list,
+    extract_structured_blocks,
+    flatten_outline_sections,
+    render_rich_markdown,
+)
 from stage1_parser import build_stage1_section_tree, load_stage1_input
 from xlsx_export import build_hierarchy_workbook
 
@@ -94,6 +107,54 @@ class LLMCompanionRequest(BaseModel):
     persona: str = "solution_architect"
 
 
+def build_rich_import_payload(
+    filename: str,
+    structured_document: dict[str, Any],
+    normalized_markdown: str | None,
+) -> dict[str, Any]:
+    blocks = extract_structured_blocks(structured_document)
+    sections: list[dict[str, Any]] = []
+    if normalized_markdown:
+        prepared_markdown = prepare_outline_markdown(normalized_markdown)
+        outline = build_outline(prepared_markdown or normalized_markdown)
+        sections = flatten_outline_sections(outline)
+    return {
+        "filename": filename,
+        "format": "rich_pws_import_v1",
+        "sections": sections,
+        "blocks": blocks,
+        "rich_markdown": render_rich_markdown(blocks),
+    }
+
+
+def build_merged_import_payload(
+    filename: str,
+    structured_document: dict[str, Any],
+    normalized_markdown: str | None,
+) -> dict[str, Any]:
+    blocks = extract_structured_blocks(structured_document)
+    if not normalized_markdown:
+        raise ValueError("Docling did not return normalized markdown")
+    prepared_markdown = prepare_outline_markdown(normalized_markdown)
+    outline = build_outline(prepared_markdown or normalized_markdown)
+    if not outline and normalized_markdown.strip():
+        outline = build_generic_outline(prepared_markdown or normalized_markdown, Path(filename).stem or "Imported Document")
+    anchors = build_heading_anchors(outline, blocks)
+    objects = build_object_list(blocks, anchors)
+    alignment_decisions, unplaced_objects = align_objects_to_sections(anchors, objects)
+    augmented_outline = attach_aligned_objects_to_outline(deepcopy(outline), alignment_decisions)
+    structured_artifact = build_structured_document_artifact(
+        filename=filename,
+        normalized_markdown=prepared_markdown or normalized_markdown,
+        root_sections=augmented_outline,
+        blocks=blocks,
+        heading_anchors=anchors,
+        alignment_decisions=alignment_decisions,
+        unplaced_objects=unplaced_objects,
+    )
+    return structured_artifact_to_merged_import_payload(structured_artifact)
+
+
 def get_converter() -> DocumentConverter:
     global converter
     if converter is None:
@@ -120,9 +181,10 @@ def normalize_with_docling(filename: str, content: bytes) -> tuple[str | None, d
 def build_outline_payload(filename: str, markdown: str | None) -> dict[str, Any]:
     if not markdown:
         raise ValueError("Docling did not return normalized markdown")
-    outline = build_outline(markdown)
+    prepared_markdown = prepare_outline_markdown(markdown)
+    outline = build_outline(prepared_markdown or markdown)
     if not outline and markdown.strip():
-        outline = build_generic_outline(markdown, Path(filename).stem or "Imported Document")
+        outline = build_generic_outline(prepared_markdown or markdown, Path(filename).stem or "Imported Document")
     return {
         "filename": filename,
         "format": "simple_pws_outline_v1",
@@ -246,6 +308,10 @@ def fetch_active_projects() -> list[dict[str, Any]]:
         return projects if isinstance(projects, list) else []
     except HTTPException:
         return []
+
+
+def fetch_structured_artifact(project_id: str, document_id: str) -> dict[str, Any]:
+    return get_json(f"{NORMALIZATION_SERVICE_BASE_URL}/v1/projects/{project_id}/documents/{document_id}/structured-artifact")
 
 
 def fetch_gateway_model_id() -> str:
@@ -556,6 +622,42 @@ async def outline_upload(
         return payload
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Unable to build outline: {exc}") from exc
+
+
+@app.post("/v1/pws/rich-import/upload")
+async def rich_import_upload(file: UploadFile = File(...)) -> dict[str, Any]:
+    content = await file.read()
+    filename = file.filename or "uploaded-pws.bin"
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    try:
+        markdown, structured_document = normalize_with_docling(filename, content)
+        if not structured_document:
+            raise ValueError("Docling did not return a structured document")
+        return build_rich_import_payload(filename, structured_document, markdown)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Unable to build rich import artifact: {exc}") from exc
+
+
+@app.post("/v1/pws/merged-import/upload")
+async def merged_import_upload(file: UploadFile = File(...)) -> dict[str, Any]:
+    content = await file.read()
+    filename = file.filename or "uploaded-pws.bin"
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    try:
+        markdown, structured_document = normalize_with_docling(filename, content)
+        if not structured_document:
+            raise ValueError("Docling did not return a structured document")
+        return build_merged_import_payload(filename, structured_document, markdown)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Unable to build merged import payload: {exc}") from exc
+
+
+@app.get("/v1/projects/{project_id}/documents/{document_id}/workspace")
+def build_workspace_from_structured_artifact(project_id: str, document_id: str) -> dict[str, Any]:
+    artifact = fetch_structured_artifact(project_id, document_id)
+    return structured_artifact_to_merged_import_payload(artifact)
 
 
 @app.post("/v1/pws/correlate/upload")
