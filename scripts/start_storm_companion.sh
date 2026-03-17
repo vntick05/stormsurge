@@ -58,9 +58,9 @@ start_studio_ui() {
     return 0
   fi
 
-  log "Starting StormSurge Studio on :3200"
-  if ! docker compose -f "${ROOT_DIR}/compose.yaml" up -d --build stormsurge-studio >>"${LOG_FILE}" 2>&1; then
-    log "StormSurge Studio container failed to start"
+  log "Starting StormSurge Studio v1 on :3200"
+  if ! docker compose -f "${ROOT_DIR}/compose.yaml" up -d --build stormsurge-studio-v1 >>"${LOG_FILE}" 2>&1; then
+    log "StormSurge Studio v1 container failed to start"
     return 1
   fi
 }

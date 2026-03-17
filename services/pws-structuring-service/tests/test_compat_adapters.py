@@ -15,6 +15,8 @@ class CompatibilityAdapterTests(unittest.TestCase):
         artifact = {
             "document_id": "doc-123",
             "source": {"filename": "ih2.docx"},
+            "metadata": {"document_type": "document"},
+            "cleaned_text": {"full_text": "Overview"},
             "hierarchy": {
                 "root_sections": [{"section_number": "1", "section_title": "Overview", "children": []}],
                 "sections": [{"section_id": "section-1", "section_number": "1", "section_title": "Overview", "depth": 1}],
@@ -51,6 +53,37 @@ class CompatibilityAdapterTests(unittest.TestCase):
         self.assertEqual(len(payload["rich_objects"]), 2)
         self.assertEqual(payload["unplaced_artifacts"][0]["object_id"], "obj-image-3")
         self.assertEqual(payload["structured_artifact"]["source"]["filename"], "ih2.docx")
+
+    def test_pws_payload_rebuilds_outline_from_cleaned_markdown(self) -> None:
+        artifact = {
+            "document_id": "doc-456",
+            "source": {"filename": "ih2.docx"},
+            "metadata": {"document_type": "pws_sow"},
+            "cleaned_text": {
+                "full_text": "\n".join(
+                    [
+                        "(U) Table of Contents",
+                        "1 Overview",
+                        "Intro paragraph.",
+                        "3 Requirements",
+                        "3.6 Parent Heading",
+                        "3.6.2 Child Heading",
+                        "3.6.2.3 Third Child Heading",
+                        "Third child body.",
+                    ]
+                )
+            },
+            "hierarchy": {"root_sections": [], "sections": []},
+            "objects": {"tables": [], "images": []},
+            "blocks": [],
+            "enrichments": {"pws": {}},
+        }
+
+        payload = MODULE.structured_artifact_to_merged_import_payload(artifact)
+
+        self.assertEqual(payload["root_sections"][0]["section_number"], "1")
+        rebuilt_numbers = [section["section_number"] for section in payload["sections"]]
+        self.assertIn("3.6.2.3", rebuilt_numbers)
 
 
 if __name__ == "__main__":

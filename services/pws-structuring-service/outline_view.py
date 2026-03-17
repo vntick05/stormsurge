@@ -9,7 +9,7 @@ NUMBERED_TITLE_PATTERN = re.compile(
     r"^(?P<section_number>(?:[A-Za-z]+\.)?\d+(?:\.\d+)*|[A-Za-z]+\.\d+(?:\.\d+)*)\s+(?P<section_title>.+)$"
 )
 BOLD_LINE_PATTERN = re.compile(r"^\*\*(?P<body>.+?)\*\*$")
-BULLET_PATTERN = re.compile(r"^[-*]\s+(?P<body>.+)$")
+BULLET_PATTERN = re.compile(r"^(?P<indent>\s*)[-*•·▪]\s+(?P<body>.+)$")
 ORDERED_BULLET_PATTERN = re.compile(r"^(?P<marker>\d+\.|[A-Za-z]\.|(?:\([A-Za-z0-9ivxIVX]+\))+)\s+(?P<body>.+)$")
 INLINE_ORDERED_ITEM_PATTERN = re.compile(
     r"(?:(?<=^)|(?<=\s))(?P<marker>\d+\.|[A-Za-z]\.|(?:\([A-Za-z0-9ivxIVX]+\))+)\s+(?P<body>.*?)(?=(?:\s(?:(?:\d+\.|[A-Za-z]\.|(?:\([A-Za-z0-9ivxIVX]+\))+))\s)|$)"
@@ -264,6 +264,7 @@ def build_outline(markdown: str) -> list[dict[str, Any]]:
     paragraph_index = 0
     bullet_index = 0
     paragraph_lines: list[str] = []
+    bullet_stack: list[tuple[int, dict[str, Any]]] = []
 
     def attach_inline_ordered_items(paragraph: dict[str, Any]) -> None:
         text = paragraph.get("text_exact", "")
@@ -292,12 +293,13 @@ def build_outline(markdown: str) -> list[dict[str, Any]]:
             )
 
     def flush_paragraph() -> None:
-        nonlocal current_paragraph, paragraph_index, paragraph_lines, bullet_index
+        nonlocal current_paragraph, paragraph_index, paragraph_lines, bullet_index, bullet_stack
         if current_section is None or not paragraph_lines:
             paragraph_lines = []
             return
         paragraph_index += 1
         bullet_index = 0
+        bullet_stack = []
         current_paragraph = {
             "type": "paragraph",
             "id": f"{current_section['section_number']}.p{paragraph_index}",
@@ -311,10 +313,11 @@ def build_outline(markdown: str) -> list[dict[str, Any]]:
 
     for raw_line in markdown.splitlines():
         line = normalize_source_line(raw_line)
-        if not line.strip():
+        stripped_line = line.strip()
+        if not stripped_line:
             flush_paragraph()
             continue
-        if IMAGE_ONLY_PATTERN.match(line.strip()):
+        if IMAGE_ONLY_PATTERN.match(stripped_line):
             continue
         heading = parse_heading(line)
         if heading is not None:
@@ -322,6 +325,7 @@ def build_outline(markdown: str) -> list[dict[str, Any]]:
             current_paragraph = None
             paragraph_index = 0
             bullet_index = 0
+            bullet_stack = []
             while stack and stack[-1]["depth"] >= heading["depth"]:
                 stack.pop()
             heading["parent_section_number"] = stack[-1]["section_number"] if stack else None
@@ -332,8 +336,8 @@ def build_outline(markdown: str) -> list[dict[str, Any]]:
             stack.append(heading)
             current_section = heading
             continue
-        bullet = BULLET_PATTERN.match(line.strip())
-        ordered_bullet = ORDERED_BULLET_PATTERN.match(line.strip())
+        bullet = BULLET_PATTERN.match(line)
+        ordered_bullet = ORDERED_BULLET_PATTERN.match(stripped_line)
         if ordered_bullet is not None and (
             is_classification_marker(ordered_bullet.group("marker"))
             or is_non_list_parenthetical_marker(ordered_bullet.group("marker"))
@@ -346,15 +350,18 @@ def build_outline(markdown: str) -> list[dict[str, Any]]:
             bullet_index += 1
             marker = "-"
             body = ""
+            indent = 0
             if bullet is not None:
                 body = bullet.group("body")
                 marker = "-"
+                indent = len(bullet.group("indent") or "")
             else:
                 body = ordered_bullet.group("body")
                 marker = ordered_bullet.group("marker")
+                indent = max(len(line) - len(line.lstrip()), 0)
             bullet_record = {
                 "type": "bullet",
-                "id": f"{current_section['section_number']}.p{paragraph_index}.b{bullet_index}",
+                "id": f"{current_section['section_number']}.p{max(paragraph_index, 1)}.b{bullet_index}",
                 "marker": marker,
                 "text_exact": normalize_text(body),
                 "structured_content": parse_rich_text_blocks(body),
@@ -369,7 +376,13 @@ def build_outline(markdown: str) -> list[dict[str, Any]]:
                 }
                 if not current_section["children"] or current_section["children"][-1] is not current_paragraph:
                     current_section["children"].append(current_paragraph)
-            current_paragraph["children"].append(bullet_record)
+            while bullet_stack and bullet_stack[-1][0] >= indent:
+                bullet_stack.pop()
+            if bullet_stack:
+                bullet_stack[-1][1].setdefault("children", []).append(bullet_record)
+            else:
+                current_paragraph["children"].append(bullet_record)
+            bullet_stack.append((indent, bullet_record))
             continue
         paragraph_lines.append(line.strip())
 
@@ -390,6 +403,7 @@ def build_generic_outline(markdown: str, section_title: str = "Imported Document
     paragraph_index = 0
     bullet_index = 0
     paragraph_lines: list[str] = []
+    bullet_stack: list[tuple[int, dict[str, Any]]] = []
 
     def attach_inline_ordered_items(paragraph: dict[str, Any]) -> None:
         text = paragraph.get("text_exact", "")
@@ -418,12 +432,13 @@ def build_generic_outline(markdown: str, section_title: str = "Imported Document
             )
 
     def flush_paragraph() -> None:
-        nonlocal current_paragraph, paragraph_index, paragraph_lines, bullet_index
+        nonlocal current_paragraph, paragraph_index, paragraph_lines, bullet_index, bullet_stack
         if not paragraph_lines:
             paragraph_lines = []
             return
         paragraph_index += 1
         bullet_index = 0
+        bullet_stack = []
         current_paragraph = {
             "type": "paragraph",
             "id": f"DOC.p{paragraph_index}",
@@ -437,13 +452,14 @@ def build_generic_outline(markdown: str, section_title: str = "Imported Document
 
     for raw_line in markdown.splitlines():
         line = normalize_source_line(raw_line)
-        if not line.strip():
+        stripped_line = line.strip()
+        if not stripped_line:
             flush_paragraph()
             continue
-        if IMAGE_ONLY_PATTERN.match(line.strip()):
+        if IMAGE_ONLY_PATTERN.match(stripped_line):
             continue
-        bullet = BULLET_PATTERN.match(line.strip())
-        ordered_bullet = ORDERED_BULLET_PATTERN.match(line.strip())
+        bullet = BULLET_PATTERN.match(line)
+        ordered_bullet = ORDERED_BULLET_PATTERN.match(stripped_line)
         if ordered_bullet is not None and (
             is_classification_marker(ordered_bullet.group("marker"))
             or is_non_list_parenthetical_marker(ordered_bullet.group("marker"))
@@ -454,12 +470,15 @@ def build_generic_outline(markdown: str, section_title: str = "Imported Document
             bullet_index += 1
             marker = "-"
             body = ""
+            indent = 0
             if bullet is not None:
                 body = bullet.group("body")
                 marker = "-"
+                indent = len(bullet.group("indent") or "")
             else:
                 body = ordered_bullet.group("body")
                 marker = ordered_bullet.group("marker")
+                indent = max(len(line) - len(line.lstrip()), 0)
             bullet_record = {
                 "type": "bullet",
                 "id": f"DOC.p{max(paragraph_index, 1)}.b{bullet_index}",
@@ -477,7 +496,13 @@ def build_generic_outline(markdown: str, section_title: str = "Imported Document
                 }
                 if not section["children"] or section["children"][-1] is not current_paragraph:
                     section["children"].append(current_paragraph)
-            current_paragraph["children"].append(bullet_record)
+            while bullet_stack and bullet_stack[-1][0] >= indent:
+                bullet_stack.pop()
+            if bullet_stack:
+                bullet_stack[-1][1].setdefault("children", []).append(bullet_record)
+            else:
+                current_paragraph["children"].append(bullet_record)
+            bullet_stack.append((indent, bullet_record))
             continue
         paragraph_lines.append(line.strip())
 

@@ -34,6 +34,16 @@ export const stormApi = {
     });
   },
 
+  importHierarchy(file) {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    return request('/api/hierarchy', {
+      method: 'POST',
+      body: formData
+    });
+  },
+
   importRichArtifact(file) {
     const formData = new FormData();
     formData.append('file', file, file.name);

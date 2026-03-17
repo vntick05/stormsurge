@@ -42,7 +42,20 @@ def normalize_text(text: str) -> str:
             continue
         stripped_prefix = LINE_NUMBER_PREFIX_PATTERN.sub("", raw_line)
         cleaned_lines.append(stripped_prefix)
-    return MULTISPACE_PATTERN.sub(" ", " ".join(cleaned_lines)).strip()
+    normalized = MULTISPACE_PATTERN.sub(" ", " ".join(cleaned_lines)).strip()
+    if not normalized:
+        return ""
+    if (
+        NUMBERED_HEADING_PATTERN.match(normalized)
+        or SECTION_HEADING_PATTERN.match(normalized)
+        or APPENDIX_HEADING_PATTERN.match(normalized)
+        or TOC_HEADING_PATTERN.match(normalized)
+        or TOC_ENTRY_PATTERN.match(normalized)
+        or PAGE_ONLY_PATTERN.match(normalized)
+        or DATE_ONLY_PATTERN.match(normalized)
+    ):
+        return normalized
+    return re.sub(r"^\d{1,4}\s+(?=\S)", "", normalized).strip()
 
 
 def strip_classification_prefix(text: str) -> str:

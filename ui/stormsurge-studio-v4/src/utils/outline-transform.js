@@ -58,8 +58,39 @@ function formatDisplayLabel(rawId, fallback) {
   const cleaned = String(rawId || '')
     .replace(/\.p(\d+)/g, '.P$1')
     .replace(/\.b(\d+)/g, '.B$1')
+    .replace(/\.s(\d+)/g, '.S$1')
     .trim();
   return cleaned || fallback;
+}
+
+function isSyntheticLabelText(text, sourceRef) {
+  const normalizedText = sanitizeImportedText(text).replace(/\s+/g, '').toUpperCase();
+  const normalizedSourceRef = String(sourceRef || '').replace(/\s+/g, '').toUpperCase();
+  const normalizedDisplayLabel = formatDisplayLabel(sourceRef, '').replace(/\s+/g, '').toUpperCase();
+  if (!normalizedText) {
+    return true;
+  }
+  return Boolean(
+    normalizedText &&
+      ((normalizedSourceRef && normalizedText === normalizedSourceRef) ||
+        (normalizedDisplayLabel && normalizedText === normalizedDisplayLabel))
+  );
+}
+
+function splitParagraphSentences(text) {
+  const normalized = sanitizeImportedText(text).replace(/\s+/g, ' ').trim();
+  if (!normalized) return [];
+
+  const protectedText = normalized
+    .replace(/(\d)\.(\d)/g, '$1__DOT__$2')
+    .replace(/\b(U\.S\.|e\.g\.|i\.e\.|Mr\.|Mrs\.|Ms\.|Dr\.|vs\.)/g, (match) => match.replace(/\./g, '__DOT__'));
+
+  const parts = protectedText
+    .match(/[^.!?]+(?:[.!?]+(?=\s|$)|$)/g)
+    ?.map((part) => part.replace(/__DOT__/g, '.').trim())
+    .filter(Boolean);
+
+  return parts && parts.length ? parts : [normalized];
 }
 
 function summarizeTable(text) {
@@ -162,37 +193,122 @@ function formatSectionLabel(sectionNumber, sectionTitle) {
   return `${number} ${title}`.trim();
 }
 
-function convertContentNode(node, sectionId, parentId, position, bucket) {
+function isLikelyContinuationParagraph(currentText, nextText) {
+  const current = sanitizeImportedText(currentText).trim();
+  const next = sanitizeImportedText(nextText).trim();
+  if (!current || !next) return false;
+  if (/[.!?:]$/.test(current)) return false;
+  if (/^(?:However|Therefore|Additionally|Further|Furthermore|Moreover|Also|This|That|These|Those|And|Or|But)\b/i.test(next)) {
+    return true;
+  }
+  return true;
+}
+
+function mergeContinuationNodes(nodes) {
+  const merged = [];
+
+  (Array.isArray(nodes) ? nodes : []).forEach((node) => {
+    const current = node && typeof node === 'object' ? { ...node } : node;
+    const previous = merged[merged.length - 1];
+
+    if (
+      previous &&
+      current &&
+      previous.type === 'paragraph' &&
+      current.type === 'paragraph' &&
+      isLikelyContinuationParagraph(previous.text_exact || '', current.text_exact || '')
+    ) {
+      previous.text_exact = `${sanitizeImportedText(previous.text_exact || '')} ${sanitizeImportedText(current.text_exact || '')}`.trim();
+      previous.children = [...(previous.children || []), ...(current.children || [])];
+      previous.structured_content = [...(previous.structured_content || []), ...(current.structured_content || [])];
+      return;
+    }
+
+    merged.push(current);
+  });
+
+  return merged;
+}
+
+function convertContentNode(node, sectionId, parentId, position, bucket, options = {}) {
+  const sourceRefOverride = options.sourceRefOverride || null;
   if (node.type === 'paragraph' || node.type === 'table_text' || node.type === 'image') {
     const contentId = node.id || `${node.type}-${sectionId}-${position}`;
     const text = sanitizeImportedText(node.text_exact || '');
     const isTable = node.type === 'table_text';
     const isImage = node.type === 'image';
 
+    if (node.type === 'paragraph' && !text) {
+      let childPosition = 1;
+      (node.children || []).forEach((child) => {
+        convertContentNode(child, sectionId, parentId, childPosition, bucket);
+        childPosition += 1;
+      });
+      appendStructuredContent(node.structured_content, sectionId, parentId, childPosition, bucket);
+      return;
+    }
+
+    if (node.type === 'paragraph' && text) {
+      const sentences = splitParagraphSentences(text);
+      const sentenceIds = [];
+      sentences.forEach((sentence, index) => {
+        const sentenceId = `${contentId}.s${index + 1}`;
+        const sentenceSourceRef = sourceRefOverride && index === 0 ? sourceRefOverride : sentenceId;
+        if (isSyntheticLabelText(sentence, sentenceSourceRef)) {
+          return;
+        }
+        sentenceIds.push(sentenceId);
+        bucket.push({
+          id: sentenceId,
+          sectionId,
+          parentId,
+          position: position + index,
+          sourceRef: sentenceSourceRef,
+          kind: 'paragraph',
+          title: formatDisplayLabel(sentenceSourceRef, 'Sentence'),
+          summary: summarize(sentence),
+          text: sentence
+        });
+      });
+      const terminalParentId = sentenceIds[sentenceIds.length - 1] || parentId;
+      let childPosition = 1;
+      (node.children || []).forEach((child) => {
+        convertContentNode(child, sectionId, terminalParentId, childPosition, bucket);
+        childPosition += 1;
+      });
+      appendStructuredContent(node.structured_content, sectionId, terminalParentId, childPosition, bucket);
+      return;
+    }
+
     bucket.push({
       id: contentId,
       sectionId,
       parentId,
       position,
-      sourceRef: contentId,
+      sourceRef: sourceRefOverride || contentId,
       kind: node.type,
-      title: formatDisplayLabel(contentId, node.type === 'paragraph' ? 'Paragraph' : isTable ? 'Table Text' : 'Image'),
+      title: formatDisplayLabel(sourceRefOverride || contentId, node.type === 'paragraph' ? 'Paragraph' : isTable ? 'Table Text' : 'Image'),
       summary: isTable ? summarizeTable(text) : summarize(text),
       text,
       caption: isImage ? sanitizeImportedText(node.caption || '') : undefined,
       sourceNodeRef: isImage ? node.source_ref || null : undefined
     });
 
-    (node.children || []).forEach((child, index) => {
-      convertContentNode(child, sectionId, contentId, index + 1, bucket);
+    let childPosition = 1;
+    (node.children || []).forEach((child) => {
+      convertContentNode(child, sectionId, contentId, childPosition, bucket);
+      childPosition += 1;
     });
-    appendStructuredContent(node.structured_content, sectionId, contentId, (node.children || []).length + 1, bucket);
+    appendStructuredContent(node.structured_content, sectionId, contentId, childPosition, bucket);
     return;
   }
 
   if (node.type === 'bullet') {
     const bulletId = node.id || `bullet-${sectionId}-${position}`;
     const text = sanitizeImportedText(node.text_exact || '');
+    if (isSyntheticLabelText(text, bulletId)) {
+      return;
+    }
 
     bucket.push({
       id: bulletId,
@@ -216,6 +332,8 @@ function convertContentNode(node, sectionId, parentId, position, bucket) {
 
 function collectSection(sectionNode, parentId, depth, position, sectionsBucket, requirementsBucket) {
   const sectionId = makeSectionId(sectionNode);
+  const mergedChildren = mergeContinuationNodes(sectionNode.children || []);
+  const childSectionCount = mergedChildren.filter((child) => child?.section_number).length;
 
   sectionsBucket.push({
     id: sectionId,
@@ -230,14 +348,23 @@ function collectSection(sectionNode, parentId, depth, position, sectionsBucket, 
   let contentPosition = 1;
   let childSectionPosition = 1;
 
-  (sectionNode.children || []).forEach((child) => {
+  mergedChildren.forEach((child, index) => {
     if (child.section_number) {
       collectSection(child, sectionId, depth + 1, childSectionPosition, sectionsBucket, requirementsBucket);
       childSectionPosition += 1;
       return;
     }
 
-    convertContentNode(child, sectionId, null, contentPosition, requirementsBucket);
+    const shouldUseSectionNumberLabel =
+      childSectionCount === 0 &&
+      index === 0 &&
+      child?.type === 'paragraph' &&
+      String(child?.id || '').endsWith('.p1') &&
+      Boolean(sectionNode.section_number);
+
+    convertContentNode(child, sectionId, null, contentPosition, requirementsBucket, {
+      sourceRefOverride: shouldUseSectionNumberLabel ? sectionNode.section_number : null
+    });
     contentPosition += 1;
   });
 }
@@ -279,6 +406,28 @@ export function transformOutlineToWorkspace(payload) {
     sourceFilename: payload.filename || null,
     sourceFormat: payload.format || null,
     projectId: payload.project_id || null,
-    importDebug: alignmentDebug
+    importDebug: alignmentDebug,
+    hierarchyArtifact:
+      payload.format === 'pws_hierarchy_v1'
+        ? {
+            sourceKind: payload.source_kind || null,
+            cleanedMarkdown: payload.cleaned_markdown || '',
+            stats: payload.stats || null,
+            topSections: rootSections.map((section) => ({
+              sectionNumber: section.section_number || null,
+              sectionTitle: section.section_title || ''
+            }))
+          }
+        : payload.hierarchy_artifact
+          ? {
+              sourceKind: payload.hierarchy_artifact.source_kind || null,
+              cleanedMarkdown: payload.hierarchy_artifact.cleaned_markdown || '',
+              stats: payload.hierarchy_artifact.stats || null,
+              topSections: (payload.hierarchy_artifact.root_sections || []).map((section) => ({
+                sectionNumber: section.section_number || null,
+                sectionTitle: section.section_title || ''
+              }))
+            }
+          : null
   };
 }

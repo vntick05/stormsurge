@@ -2,6 +2,7 @@ import io
 import json
 import os
 import re
+import time
 import uuid
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -25,7 +26,8 @@ from outline_view import (
     render_result_page,
     render_upload_page,
 )
-from import_cleaner import prepare_outline_markdown
+from import_cleaner import extract_docx_hierarchy_text, prepare_outline_markdown
+from pws_hierarchy import build_pws_hierarchy_artifact
 from related_linker import build_related_links
 from rich_import import (
     align_objects_to_sections,
@@ -159,6 +161,43 @@ def build_merged_import_payload(
     return structured_artifact_to_merged_import_payload(structured_artifact)
 
 
+def build_hierarchy_first_workspace_payload(
+    filename: str,
+    structured_document: dict[str, Any],
+    hierarchy_text: str | None,
+) -> dict[str, Any]:
+    if not hierarchy_text:
+        raise ValueError("No hierarchy text available")
+    hierarchy_artifact = build_pws_hierarchy_artifact(
+        filename,
+        b"",
+        source_text_override=hierarchy_text,
+        source_kind_override="hierarchy_first_text",
+    )
+    outline = hierarchy_artifact["root_sections"]
+
+    blocks = extract_structured_blocks(structured_document) if structured_document else []
+    anchors = build_heading_anchors(outline, blocks) if blocks else []
+    objects = build_object_list(blocks, anchors) if blocks else []
+    alignment_decisions, _ = align_objects_to_sections(anchors, objects) if blocks else ([], [])
+    augmented_outline = attach_aligned_objects_to_outline(deepcopy(outline), alignment_decisions) if blocks else outline
+
+    return {
+        "filename": filename,
+        "format": "merged_pws_import_v1",
+        "document_id": None,
+        "hierarchy_artifact": hierarchy_artifact,
+        "root_sections": augmented_outline,
+        "sections": flatten_outline_sections(augmented_outline),
+        "rich_blocks": blocks,
+        "heading_anchors": anchors,
+        "rich_objects": alignment_decisions,
+        "alignment_debug": alignment_decisions,
+        "unplaced_artifacts": [item for item in alignment_decisions if not item.get("attached_section_id")],
+        "structured_artifact": None,
+    }
+
+
 def get_converter() -> DocumentConverter:
     global converter
     if converter is None:
@@ -207,6 +246,24 @@ async def read_upload_to_outline(file: UploadFile) -> dict[str, Any]:
         "filename": filename,
         "outline": payload["root_sections"],
     }
+
+
+@app.post("/v1/pws/hierarchy/upload")
+async def hierarchy_upload(file: UploadFile = File(...)) -> dict[str, Any]:
+    content = await file.read()
+    filename = file.filename or "uploaded-pws.bin"
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    docling_markdown = None
+    suffix = Path(filename).suffix.lower()
+    if suffix not in {".docx", ".txt", ".md", ".markdown"}:
+        docling_markdown, _ = normalize_with_docling(filename, content)
+
+    try:
+        return build_pws_hierarchy_artifact(filename, content, docling_markdown=docling_markdown)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Unable to extract PWS hierarchy: {exc}") from exc
 
 
 def build_correlation_payload(
@@ -309,6 +366,17 @@ def post_multipart_file(
         raise HTTPException(status_code=502, detail=f"Upload service unavailable: {exc}") from exc
 
 
+def extract_document_text(filename: str, content: bytes, content_type: str | None) -> dict[str, Any]:
+    return post_multipart_file(
+        f"{DOCUMENT_SERVICE_BASE_URL}/v1/documents/extract",
+        fields={},
+        file_field="file",
+        filename=filename,
+        content=content,
+        content_type=content_type,
+    )
+
+
 def post_json_with_timeout(url: str, payload: dict[str, Any], timeout: int) -> dict[str, Any]:
     data = json.dumps(payload).encode("utf-8")
     req = urllib_request.Request(
@@ -365,6 +433,27 @@ def fetch_active_projects() -> list[dict[str, Any]]:
 
 def fetch_structured_artifact(project_id: str, document_id: str) -> dict[str, Any]:
     return get_json(f"{NORMALIZATION_SERVICE_BASE_URL}/v1/projects/{project_id}/documents/{document_id}/structured-artifact")
+
+
+def fetch_structured_artifact_with_retry(
+    project_id: str,
+    document_id: str,
+    *,
+    attempts: int = 15,
+    delay_seconds: float = 1.0,
+) -> dict[str, Any]:
+    last_error: HTTPException | None = None
+    for attempt in range(attempts):
+        try:
+            return fetch_structured_artifact(project_id, document_id)
+        except HTTPException as exc:
+            last_error = exc
+            if exc.status_code != 404 or attempt == attempts - 1:
+                raise
+            time.sleep(delay_seconds)
+    if last_error is not None:
+        raise last_error
+    raise HTTPException(status_code=404, detail=f"No structured artifact found for document_id={document_id}")
 
 
 def build_import_project_id(filename: str) -> str:
@@ -727,47 +816,101 @@ async def canonical_import_upload(
 
     effective_project_id = (project_id or "").strip() or build_import_project_id(filename)
 
-    upload_result = post_multipart_file(
-        f"{DOCUMENT_SERVICE_BASE_URL}/v1/documents/upload",
-        fields={"project_id": effective_project_id},
-        file_field="file",
-        filename=filename,
-        content=content,
-        content_type=file.content_type,
-    )
-    document_id = str(upload_result.get("document_id") or "").strip()
-    if not document_id:
-        raise HTTPException(status_code=502, detail="Document service did not return a document_id")
-
-    normalization_result = post_json(
-        f"{NORMALIZATION_SERVICE_BASE_URL}/v1/normalize/document",
-        {"document_id": document_id, "skip_existing": False},
-    )
-    artifact = fetch_structured_artifact(effective_project_id, document_id)
-    workspace_payload = structured_artifact_to_merged_import_payload(artifact)
-
-    indexing_result: dict[str, Any] | None = None
-    indexing_error: str | None = None
     try:
-        indexing_result = post_json_with_timeout(
-            f"{RETRIEVAL_SERVICE_BASE_URL}/v1/index/project",
-            {"project_id": effective_project_id},
-            timeout=300,
-        )
-    except HTTPException as exc:
-        indexing_error = str(exc.detail)
+        markdown, structured_document = normalize_with_docling(filename, content)
+        hierarchy_text = ""
+        if Path(filename).suffix.lower() == ".docx":
+            hierarchy_text = str(extract_docx_hierarchy_text(content) or "").strip()
+        if not hierarchy_text:
+            extracted_payload = extract_document_text(filename, content, file.content_type)
+            hierarchy_text = str(extracted_payload.get("extracted_text") or "").strip()
+        if not hierarchy_text:
+            hierarchy_text = markdown or ""
+        if structured_document:
+            workspace_payload = build_hierarchy_first_workspace_payload(filename, structured_document, hierarchy_text)
+        else:
+            outline_payload = build_outline_payload(filename, hierarchy_text)
+            workspace_payload = {
+                "filename": outline_payload["filename"],
+                "format": "merged_pws_import_v1",
+                "document_id": None,
+                "root_sections": outline_payload["root_sections"],
+                "sections": flatten_outline_sections(outline_payload["root_sections"]),
+                "rich_blocks": [],
+                "heading_anchors": [],
+                "rich_objects": [],
+                "alignment_debug": [],
+                "unplaced_artifacts": [],
+                "structured_artifact": None,
+            }
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Unable to extract hierarchy: {exc}") from exc
 
     workspace_payload.update(
         {
             "project_id": effective_project_id,
-            "document_id": document_id,
-            "pipeline": "canonical_document_ingest_v1",
-            "upload": upload_result,
-            "normalization": normalization_result,
-            "indexing": indexing_result,
-            "indexing_error": indexing_error,
+            "pipeline": "hierarchy_first_canonical_import_v1",
+            "notices": [],
         }
     )
+
+    try:
+        upload_result = post_multipart_file(
+            f"{DOCUMENT_SERVICE_BASE_URL}/v1/documents/upload",
+            fields={"project_id": effective_project_id},
+            file_field="file",
+            filename=filename,
+            content=content,
+            content_type=file.content_type,
+        )
+        document_id = str(upload_result.get("document_id") or "").strip()
+        if not document_id:
+            raise HTTPException(status_code=502, detail="Document service did not return a document_id")
+
+        normalization_result = post_json_with_timeout(
+            f"{NORMALIZATION_SERVICE_BASE_URL}/v1/normalize/document",
+            {"document_id": document_id, "skip_existing": False},
+            timeout=300,
+        )
+        artifact_project_id = (
+            str(normalization_result.get("project_id") or "").strip()
+            or str(upload_result.get("project_id") or "").strip()
+            or effective_project_id
+        )
+        artifact = fetch_structured_artifact_with_retry(artifact_project_id, document_id)
+        artifact_payload = structured_artifact_to_merged_import_payload(artifact)
+
+        indexing_result: dict[str, Any] | None = None
+        indexing_error: str | None = None
+        try:
+            indexing_result = post_json_with_timeout(
+                f"{RETRIEVAL_SERVICE_BASE_URL}/v1/index/project",
+                {"project_id": effective_project_id},
+                timeout=300,
+            )
+        except HTTPException as exc:
+            indexing_error = str(exc.detail)
+
+        workspace_payload.update(
+            {
+                "document_id": document_id,
+                "artifact_project_id": artifact_project_id,
+                "upload": upload_result,
+                "normalization": normalization_result,
+                "indexing": indexing_result,
+                "indexing_error": indexing_error,
+                "structured_artifact": artifact,
+                "rich_blocks": artifact_payload.get("rich_blocks") or workspace_payload.get("rich_blocks") or [],
+                "rich_objects": artifact_payload.get("rich_objects") or workspace_payload.get("rich_objects") or [],
+                "alignment_debug": artifact_payload.get("alignment_debug") or workspace_payload.get("alignment_debug") or [],
+                "unplaced_artifacts": artifact_payload.get("unplaced_artifacts") or workspace_payload.get("unplaced_artifacts") or [],
+            }
+        )
+    except HTTPException as exc:
+        workspace_payload["notices"].append(str(exc.detail))
+    except Exception as exc:
+        workspace_payload["notices"].append(str(exc))
+
     return workspace_payload
 
 

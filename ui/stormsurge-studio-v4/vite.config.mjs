@@ -31,6 +31,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: () => '/v1/pws/import/upload'
         },
+        '/api/hierarchy': {
+          target: PWS_SERVICE_URL,
+          changeOrigin: true,
+          rewrite: () => '/v1/pws/hierarchy/upload'
+        },
         '/api/rich-import': {
           target: PWS_SERVICE_URL,
           changeOrigin: true,

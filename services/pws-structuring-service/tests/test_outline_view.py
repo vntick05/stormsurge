@@ -11,7 +11,7 @@ from outline_view import build_generic_outline, build_outline, count_outline_sta
 
 
 class OutlineViewTests(unittest.TestCase):
-    def test_build_outline_attaches_bullets_to_previous_paragraph(self) -> None:
+    def test_build_outline_attaches_bullets_to_parent_paragraph(self) -> None:
         markdown = """## 3.1 Operation and Sustainment
 
 First paragraph.
@@ -32,6 +32,7 @@ Child paragraph.
         self.assertEqual(parent["children"][0]["id"], "3.1.p1")
         self.assertEqual(parent["children"][1]["id"], "3.1.p2")
         self.assertEqual(parent["children"][1]["children"][0]["id"], "3.1.p2.b1")
+        self.assertEqual(parent["children"][1]["children"][1]["id"], "3.1.p2.b2")
         self.assertEqual(parent["children"][2]["section_number"], "3.1.1")
 
     def test_count_outline_stats_counts_nested_nodes(self) -> None:
@@ -138,10 +139,9 @@ Child paragraph.
         self.assertEqual(outline[0]["section_number"], "DOC")
         self.assertEqual(outline[0]["section_title"], "Appendix A Map Stack")
         self.assertEqual(outline[0]["children"][0]["text_exact"], "Appendix A Map Stack")
-        self.assertEqual(
-            outline[0]["children"][2]["children"][0]["text_exact"],
-            "Architecture overview",
-        )
+        self.assertEqual(outline[0]["children"][2]["text_exact"], "The submission shall include:")
+        self.assertEqual(outline[0]["children"][2]["children"][0]["type"], "bullet")
+        self.assertEqual(outline[0]["children"][2]["children"][0]["text_exact"], "Architecture overview")
         self.assertEqual(
             outline[0]["children"][3]["text_exact"],
             "Digital PDF copies are acceptable.",
@@ -156,6 +156,43 @@ Child paragraph.
         )
         self.assertEqual(outline[0]["section_number"], "3")
         self.assertEqual(outline[0]["children"][0]["text_exact"], "The contractor shall provide support. The contractor shall maintain records.")
+
+    def test_build_outline_uses_p1_for_bullet_only_section_children(self) -> None:
+        outline = build_outline(
+            "#### 3.2.1.8 Adhere to site processes.\n\n"
+            "- The term Site refers to supported locations.\n"
+        )
+        section = outline[0]
+        self.assertEqual(section["section_number"], "3.2.1.8")
+        self.assertEqual(section["children"][0]["id"], "3.2.1.8.p1")
+        self.assertEqual(section["children"][0]["children"][0]["id"], "3.2.1.8.p1.b1")
+
+    def test_build_outline_nests_indented_bullets_under_previous_bullet(self) -> None:
+        outline = build_outline(
+            "#### 3.2.2.7 Attend meetings.\n\n"
+            "- Weekly Pre-RRB\n"
+            "  - Present NSSR RITMs\n"
+            "  - Provide recommendations\n"
+            "- Bi-Weekly RRB\n"
+        )
+        section = outline[0]
+        paragraph = section["children"][0]
+        self.assertEqual(paragraph["children"][0]["text_exact"], "Weekly Pre-RRB")
+        self.assertEqual(paragraph["children"][0]["children"][0]["text_exact"], "Present NSSR RITMs")
+        self.assertEqual(paragraph["children"][0]["children"][1]["text_exact"], "Provide recommendations")
+        self.assertEqual(paragraph["children"][1]["text_exact"], "Bi-Weekly RRB")
+
+    def test_build_outline_treats_unicode_bullet_glyphs_as_bullets(self) -> None:
+        outline = build_outline(
+            "#### 3.3.1.5 Provide monthly recommendations.\n\n"
+            "- Delivery timelines for items in the service catalog\n"
+            "- NSSRs by transitioning to new SSRs\n"
+            "▪ The Government will perform an annual evaluation.\n"
+        )
+        section = outline[0]
+        paragraph = section["children"][0]
+        self.assertEqual(len(section["children"]), 1)
+        self.assertEqual(paragraph["children"][2]["text_exact"], "The Government will perform an annual evaluation.")
 
 
 if __name__ == "__main__":

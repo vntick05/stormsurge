@@ -43,6 +43,7 @@ RETRIEVAL_SERVICE_BASE_URL = os.environ.get("RETRIEVAL_SERVICE_BASE_URL", "http:
 PWS_LLM_MODEL = os.environ.get("PWS_LLM_MODEL", "openai/gpt-oss-120b")
 PWS_LLM_TIMEOUT_SECONDS = float(os.environ.get("PWS_LLM_TIMEOUT_SECONDS", "120"))
 PWS_LLM_PROMPT_VERSION = os.environ.get("PWS_LLM_PROMPT_VERSION", "pws_req_v1")
+PWS_ENABLE_LLM_ENRICHMENT = os.environ.get("PWS_ENABLE_LLM_ENRICHMENT", "false").strip().lower() in {"1", "true", "yes"}
 IGNORED_NORMALIZATION_FILENAMES = {"project.json"}
 
 converter: DocumentConverter | None = None
@@ -2236,8 +2237,8 @@ def normalize_document_record(document: dict[str, Any], skip_existing: bool) -> 
                     structured_json=structured_json,
                     markdown=markdown,
                     tika_text=tika_text,
-                    llm_extractor=build_pws_llm_extractor(),
-                    llm_model=PWS_LLM_MODEL,
+                    llm_extractor=build_pws_llm_extractor() if PWS_ENABLE_LLM_ENRICHMENT else None,
+                    llm_model=PWS_LLM_MODEL if PWS_ENABLE_LLM_ENRICHMENT else None,
                     llm_prompt_version=PWS_LLM_PROMPT_VERSION,
                 )
                 sections = pws_artifacts["sections"]

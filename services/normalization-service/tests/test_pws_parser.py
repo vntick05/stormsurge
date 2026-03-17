@@ -125,7 +125,9 @@ def sample_llm(unit: dict[str, object]) -> dict[str, object]:
 class PwsParserTests(unittest.TestCase):
     def test_detects_likely_pws_documents(self) -> None:
         self.assertTrue(is_likely_pws_document("STRATA_TO1_PWS.docx"))
+        self.assertTrue(is_likely_pws_document("IH2_SOW_v3.docx"))
         self.assertTrue(is_likely_pws_document("solicitation.docx", "Performance Work Statement\n1.0 INTRODUCTION"))
+        self.assertTrue(is_likely_pws_document("solicitation.docx", "STATEMENT OF WORK (SOW)\n1.0 INTRODUCTION"))
         self.assertFalse(is_likely_pws_document("pricing-template.xlsx", "pricing workbook"))
 
     def test_docling_structural_mode_with_llm_extraction(self) -> None:

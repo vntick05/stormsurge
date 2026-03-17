@@ -58,6 +58,14 @@ function formatSectionBody(section) {
   return label || 'Untitled Section';
 }
 
+function getSectionNumberDepth(section) {
+  const sectionNumber = String(section?.sectionNumber || '').trim();
+  if (!sectionNumber) {
+    return 0;
+  }
+  return sectionNumber.split('.').filter(Boolean).length;
+}
+
 function RequirementCard({
   childCount = 0,
   depth = 0,
@@ -71,7 +79,7 @@ function RequirementCard({
   onToggleCollapse,
   requirement
 }) {
-  const labelParts = getRequirementLabelParts(requirement);
+  const isBullet = requirement.kind === 'bullet';
 
   return (
     <Box
@@ -99,7 +107,7 @@ function RequirementCard({
           alignItems: 'stretch',
           width: '100%',
           minHeight: 42,
-          pl: 0.75 + depth * 1.95,
+          pl: 0.75 + depth * 1.95 + (isBullet ? 2.25 : 0),
           pr: 1.5,
           py: 0.85,
           position: 'relative'
@@ -138,40 +146,6 @@ function RequirementCard({
           ) : (
             <Box sx={{ width: 16, height: 16 }} />
           )}
-        </Box>
-        <Box
-          component="div"
-          sx={{
-            fontFamily: "'Visuelt Pro Light', sans-serif",
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-            color: 'text.secondary',
-            flexShrink: 0,
-            minHeight: 24,
-            lineHeight: 1,
-            alignSelf: 'center',
-            mr: 1,
-            whiteSpace: 'nowrap',
-            transform: 'translateY(2px)'
-          }}
-        >
-          {labelParts.map((part) => (
-            <Box
-              component="span"
-              key={`${requirement.id}-${part.text}`}
-              sx={{
-                fontSize: part.isMinor ? '0.72em' : '1em',
-                lineHeight: 1,
-                display: 'inline-flex',
-                alignItems: 'center'
-              }}
-            >
-              {part.text}
-            </Box>
-          ))}
         </Box>
         <Box
           component="div"
@@ -226,6 +200,11 @@ function SectionCard({
   onToggleCollapse,
   section
 }) {
+  const sectionDepth = getSectionNumberDepth(section);
+  const useSectionTitleStyle = sectionDepth > 0 && sectionDepth <= 3;
+  const titleWeight = useSectionTitleStyle ? (sectionDepth <= 1 ? 600 : sectionDepth === 2 ? 500 : 400) : 300;
+  const titleColor = useSectionTitleStyle ? (sectionDepth <= 1 ? 'rgba(15, 23, 42, 0.9)' : sectionDepth === 2 ? 'rgba(30, 41, 59, 0.88)' : 'rgba(51, 65, 85, 0.86)') : 'rgba(15, 23, 42, 0.82)';
+
   return (
     <Box
       {...dropProps}
@@ -298,11 +277,11 @@ function SectionCard({
         <Typography
           variant="body1"
           sx={{
-            fontFamily: "'Public Sans', sans-serif",
+            fontFamily: useSectionTitleStyle ? "'Public Sans', sans-serif" : "'Visuelt Pro Light', sans-serif",
             display: 'flex',
             alignItems: 'center',
-            color: isSelected ? '#111827' : 'rgba(15, 23, 42, 0.9)',
-            fontWeight: 600,
+            color: isSelected ? '#111827' : titleColor,
+            fontWeight: titleWeight,
             lineHeight: 1.2,
             minWidth: 0,
             flex: 1,
@@ -579,6 +558,7 @@ function SectionGroup({
 
 export default function DashboardDefault() {
   const {
+    hierarchyArtifact,
     importError,
     isImporting,
     importDebug,
@@ -597,7 +577,11 @@ export default function DashboardDefault() {
   const [dragTargetId, setDragTargetId] = useState(null);
 
   const selectedSection = sections.find((section) => section.id === selectedSectionId) || null;
-  const visibleSubsections = useMemo(() => (selectedSectionId ? getChildSections(sections, selectedSectionId) : []), [sections, selectedSectionId]);
+  const showInlineSubsections = Boolean(selectedSection?.parentId);
+  const visibleSubsections = useMemo(
+    () => (selectedSectionId && showInlineSubsections ? getChildSections(sections, selectedSectionId) : []),
+    [sections, selectedSectionId, showInlineSubsections]
+  );
   const visibleRequirements = useMemo(
     () => (selectedSectionId ? getSectionRootRequirements(requirements, selectedSectionId) : []),
     [requirements, selectedSectionId]

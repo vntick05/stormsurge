@@ -22,10 +22,24 @@ Serving command:
 - `compose.yaml`: single TRT-LLM service
 - `.env.example`: required environment variables
 - `scripts/serve.sh`: startup script that verifies model access and launches `trtllm-serve`
+- `docs/STARTUP.md`: StormSurge startup and recovery runbook
 - `gateway/`: thin HTTP proxy that exposes one stable endpoint for future apps
 - `docs/PLAN.md`: execution plan for the document and agent platform
 - `services/`: scaffolding for the next application services
 - `open-webui-data/`: persistent Open WebUI app data
+
+## StormSurge UI Versions
+
+The current StormSurge studio UI is now preserved as `v1`, and a separate cloned `v2`
+workspace exists for the next UI iteration.
+
+- `stormsurge-studio-v1`: current stable UI on `http://127.0.0.1:3200`
+- `stormsurge-studio-v2`: cloned UI workspace for 2.0 on `http://127.0.0.1:3201`
+
+UI source directories:
+
+- `/home/admin/stormsurge/ui/stormsurge-studio`
+- `/home/admin/stormsurge/ui/stormsurge-studio-v2`
 
 ## Setup
 

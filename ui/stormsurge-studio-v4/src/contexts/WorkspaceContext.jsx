@@ -219,7 +219,8 @@ function loadStoredWorkspace() {
       sourceFilename: parsed.sourceFilename || null,
       sourceFormat: parsed.sourceFormat || null,
       projectId: parsed.projectId || null,
-      importDebug: Array.isArray(parsed.importDebug) ? parsed.importDebug : []
+      importDebug: Array.isArray(parsed.importDebug) ? parsed.importDebug : [],
+      hierarchyArtifact: parsed.hierarchyArtifact || null
     };
   } catch {
     return null;
@@ -236,6 +237,7 @@ export function WorkspaceProvider({ children }) {
   const [sourceFormat, setSourceFormat] = useState(storedWorkspace?.sourceFormat || null);
   const [projectId, setProjectId] = useState(storedWorkspace?.projectId || null);
   const [importDebug, setImportDebug] = useState(storedWorkspace?.importDebug || []);
+  const [hierarchyArtifact, setHierarchyArtifact] = useState(storedWorkspace?.hierarchyArtifact || null);
   const [requirementClipboard, setRequirementClipboard] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isRichImporting, setIsRichImporting] = useState(false);
@@ -252,18 +254,19 @@ export function WorkspaceProvider({ children }) {
       sourceFilename,
       sourceFormat,
       projectId,
-      importDebug
+      importDebug,
+      hierarchyArtifact
     };
 
     window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(payload));
-  }, [requirements, sections, selectedRequirementId, selectedSectionId, sourceFilename, sourceFormat, projectId, importDebug]);
+  }, [requirements, sections, selectedRequirementId, selectedSectionId, sourceFilename, sourceFormat, projectId, importDebug, hierarchyArtifact]);
 
   const importDocument = async (file) => {
     setIsImporting(true);
     setImportError(null);
 
     try {
-      const payload = await stormApi.importDocument(file);
+      const payload = await stormApi.importHierarchy(file);
       const workspace = transformOutlineToWorkspace(payload);
 
       setSections(workspace.sections);
@@ -272,6 +275,7 @@ export function WorkspaceProvider({ children }) {
       setSourceFormat(workspace.sourceFormat || payload.format || null);
       setProjectId(workspace.projectId || payload.project_id || null);
       setImportDebug(workspace.importDebug || payload.alignment_debug || []);
+      setHierarchyArtifact(workspace.hierarchyArtifact || null);
       setSelectedSectionId(workspace.sections[0]?.id || null);
       setSelectedRequirementId(null);
     } catch (error) {
@@ -634,6 +638,7 @@ export function WorkspaceProvider({ children }) {
       importRichArtifact,
       isImporting,
       isRichImporting,
+      hierarchyArtifact,
       projectId,
       pasteAsChildRequirement,
       pasteBelowRequirement,
@@ -659,6 +664,7 @@ export function WorkspaceProvider({ children }) {
       importRichArtifact,
       isImporting,
       isRichImporting,
+      hierarchyArtifact,
       projectId,
       requirementClipboard,
       requirements,

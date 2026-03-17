@@ -549,13 +549,23 @@ def split_requirement_fragments(text: str, block_type: str) -> list[str]:
 
 def is_likely_pws_document(filename: str, markdown: str | None = None) -> bool:
     normalized_name = filename.lower()
-    if "pws" in normalized_name or "performance work statement" in normalized_name or "statement of work" in normalized_name:
+    if (
+        "pws" in normalized_name
+        or "sow" in normalized_name
+        or "performance work statement" in normalized_name
+        or "statement of work" in normalized_name
+    ):
         return True
     if "appendix" in normalized_name and markdown and "appendix" in markdown[:500].lower():
         return True
     if markdown:
         prefix = markdown[:2000].lower()
-        if "performance work statement" in prefix and ("1.0" in prefix or "1 " in prefix or "appendix" in prefix):
+        has_pws_marker = (
+            "performance work statement" in prefix
+            or "statement of work" in prefix
+            or "statement of work (sow)" in prefix
+        )
+        if has_pws_marker and ("1.0" in prefix or "1 " in prefix or "appendix" in prefix):
             return True
     return False
 
@@ -1483,14 +1493,14 @@ def _materialize_extractions(
     reviews: list[dict[str, Any]] = []
     llm_units_flagged = 0
     table_lookup = {table["block_id"]: table for table in tables}
-    for unit in units:
+    for unit_index, unit in enumerate(units):
         payload = _extract_with_llm_or_fallback(unit, llm_extractor, llm_model, llm_prompt_version)
         if not payload["requirements"] and unit["unit_type"] in {"paragraph", "list_item", "note", "table_row"}:
             payload["requirements"] = [_baseline_requirement_from_unit(unit, llm_model, llm_prompt_version)]
         for index, item in enumerate(payload["requirements"]):
             source_block_id = unit["source_block_ids"][0]
             table_context = unit.get("table_context") or {}
-            requirement_id = f"{source_block_id}:requirement:{index}"
+            requirement_id = f"{source_block_id}:u{unit_index}:requirement:{index}"
             review_flag = bool(item.get("review_flag", False))
             if review_flag:
                 llm_units_flagged += 1
@@ -1533,7 +1543,7 @@ def _materialize_extractions(
         for index, item in enumerate(payload["deliverables"]):
             source_block_id = unit["source_block_ids"][0]
             table_context = unit.get("table_context") or {}
-            deliverable_id = f"{source_block_id}:deliverable:{index}"
+            deliverable_id = f"{source_block_id}:u{unit_index}:deliverable:{index}"
             deliverables.append(
                 {
                     "deliverable_id": deliverable_id,
