@@ -22,7 +22,7 @@ SECTION_HEADING_RE = re.compile(
     re.IGNORECASE,
 )
 PLAIN_SECTION_HEADING_RE = re.compile(
-    r"^(?P<number>\d+(?:\.\d+)*)\s+(?P<title>[A-Z][^\n]{0,180})$"
+    r"^(?P<number>\d+(?:\.\d+)*)\s+(?P<title>[A-Z][^\n]{0,420})$"
 )
 CLASSIFICATION_PREFIX_RE = re.compile(r"^\s*\((?:U|C|S|TS|FOUO|U//FOUO|U/FOUO)\)\s*", re.IGNORECASE)
 CLASSIFICATION_INLINE_RE = re.compile(r"\(\s*(?:U|C|S|TS|FOUO|U//FOUO|U/FOUO)\s*\)", re.IGNORECASE)
