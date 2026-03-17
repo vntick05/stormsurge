@@ -2,6 +2,7 @@ import io
 import json
 import os
 import re
+import uuid
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,6 +42,9 @@ from xlsx_export import build_hierarchy_workbook
 
 app = FastAPI(title="Perfect PWS Structuring Service", version="0.1.0")
 converter: DocumentConverter | None = None
+DOCUMENT_SERVICE_BASE_URL = os.environ.get(
+    "DOCUMENT_SERVICE_BASE_URL", "http://document-service:8081"
+).rstrip("/")
 NORMALIZATION_SERVICE_BASE_URL = os.environ.get(
     "NORMALIZATION_SERVICE_BASE_URL", "http://127.0.0.1:8191"
 ).rstrip("/")
@@ -256,6 +260,55 @@ def post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
         ) from exc
 
 
+def post_multipart_file(
+    url: str,
+    *,
+    fields: dict[str, str],
+    file_field: str,
+    filename: str,
+    content: bytes,
+    content_type: str | None,
+) -> dict[str, Any]:
+    boundary = f"----stormsurge-{uuid.uuid4().hex}"
+    body = io.BytesIO()
+
+    for key, value in fields.items():
+        body.write(f"--{boundary}\r\n".encode("utf-8"))
+        body.write(f'Content-Disposition: form-data; name="{key}"\r\n\r\n'.encode("utf-8"))
+        body.write(str(value).encode("utf-8"))
+        body.write(b"\r\n")
+
+    safe_filename = filename.replace('"', "")
+    body.write(f"--{boundary}\r\n".encode("utf-8"))
+    body.write(
+        (
+            f'Content-Disposition: form-data; name="{file_field}"; '
+            f'filename="{safe_filename}"\r\n'
+        ).encode("utf-8")
+    )
+    body.write(f"Content-Type: {content_type or 'application/octet-stream'}\r\n\r\n".encode("utf-8"))
+    body.write(content)
+    body.write(b"\r\n")
+    body.write(f"--{boundary}--\r\n".encode("utf-8"))
+
+    req = urllib_request.Request(
+        url,
+        data=body.getvalue(),
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        method="POST",
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=300) as response:
+            charset = response.headers.get_content_charset() or "utf-8"
+            raw_body = response.read().decode(charset)
+            return json.loads(raw_body)
+    except HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise HTTPException(status_code=exc.code, detail=detail) from exc
+    except URLError as exc:
+        raise HTTPException(status_code=502, detail=f"Upload service unavailable: {exc}") from exc
+
+
 def post_json_with_timeout(url: str, payload: dict[str, Any], timeout: int) -> dict[str, Any]:
     data = json.dumps(payload).encode("utf-8")
     req = urllib_request.Request(
@@ -312,6 +365,14 @@ def fetch_active_projects() -> list[dict[str, Any]]:
 
 def fetch_structured_artifact(project_id: str, document_id: str) -> dict[str, Any]:
     return get_json(f"{NORMALIZATION_SERVICE_BASE_URL}/v1/projects/{project_id}/documents/{document_id}/structured-artifact")
+
+
+def build_import_project_id(filename: str) -> str:
+    stem = Path(filename).stem or "document"
+    slug = re.sub(r"[^a-z0-9]+", "-", stem.lower()).strip("-")
+    slug = slug[:40] or "document"
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    return f"import-{slug}-{timestamp}"
 
 
 def fetch_gateway_model_id() -> str:
@@ -652,6 +713,62 @@ async def merged_import_upload(file: UploadFile = File(...)) -> dict[str, Any]:
         return build_merged_import_payload(filename, structured_document, markdown)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Unable to build merged import payload: {exc}") from exc
+
+
+@app.post("/v1/pws/import/upload")
+async def canonical_import_upload(
+    file: UploadFile = File(...),
+    project_id: str | None = Form(default=None),
+) -> dict[str, Any]:
+    content = await file.read()
+    filename = file.filename or "uploaded-document.bin"
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+
+    effective_project_id = (project_id or "").strip() or build_import_project_id(filename)
+
+    upload_result = post_multipart_file(
+        f"{DOCUMENT_SERVICE_BASE_URL}/v1/documents/upload",
+        fields={"project_id": effective_project_id},
+        file_field="file",
+        filename=filename,
+        content=content,
+        content_type=file.content_type,
+    )
+    document_id = str(upload_result.get("document_id") or "").strip()
+    if not document_id:
+        raise HTTPException(status_code=502, detail="Document service did not return a document_id")
+
+    normalization_result = post_json(
+        f"{NORMALIZATION_SERVICE_BASE_URL}/v1/normalize/document",
+        {"document_id": document_id, "skip_existing": False},
+    )
+    artifact = fetch_structured_artifact(effective_project_id, document_id)
+    workspace_payload = structured_artifact_to_merged_import_payload(artifact)
+
+    indexing_result: dict[str, Any] | None = None
+    indexing_error: str | None = None
+    try:
+        indexing_result = post_json_with_timeout(
+            f"{RETRIEVAL_SERVICE_BASE_URL}/v1/index/project",
+            {"project_id": effective_project_id},
+            timeout=300,
+        )
+    except HTTPException as exc:
+        indexing_error = str(exc.detail)
+
+    workspace_payload.update(
+        {
+            "project_id": effective_project_id,
+            "document_id": document_id,
+            "pipeline": "canonical_document_ingest_v1",
+            "upload": upload_result,
+            "normalization": normalization_result,
+            "indexing": indexing_result,
+            "indexing_error": indexing_error,
+        }
+    )
+    return workspace_payload
 
 
 @app.get("/v1/projects/{project_id}/documents/{document_id}/workspace")

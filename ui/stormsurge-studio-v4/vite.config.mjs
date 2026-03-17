@@ -24,7 +24,17 @@ export default defineConfig(({ mode }) => {
         '/api/outline': {
           target: PWS_SERVICE_URL,
           changeOrigin: true,
-          rewrite: () => '/api/pws/outline-upload'
+          rewrite: () => '/v1/pws/merged-import/upload'
+        },
+        '/api/import': {
+          target: PWS_SERVICE_URL,
+          changeOrigin: true,
+          rewrite: () => '/v1/pws/import/upload'
+        },
+        '/api/rich-import': {
+          target: PWS_SERVICE_URL,
+          changeOrigin: true,
+          rewrite: () => '/v1/pws/rich-import/upload'
         },
         '/api/storm': {
           target: PWS_SERVICE_URL,

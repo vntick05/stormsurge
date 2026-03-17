@@ -28,7 +28,7 @@ export const stormApi = {
     const formData = new FormData();
     formData.append('file', file, file.name);
 
-    return request('/api/outline', {
+    return request('/api/import', {
       method: 'POST',
       body: formData
     });
