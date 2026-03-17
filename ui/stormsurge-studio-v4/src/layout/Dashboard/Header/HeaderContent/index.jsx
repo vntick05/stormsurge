@@ -19,7 +19,8 @@ import { useWorkspace } from 'contexts/WorkspaceContext';
 export default function HeaderContent() {
   const downLG = useMediaQuery((theme) => theme.breakpoints.down('lg'));
   const inputRef = useRef(null);
-  const { importOutline, isImporting, sections, sourceFilename } = useWorkspace();
+  const richInputRef = useRef(null);
+  const { importDocument, importRichArtifact, isImporting, isRichImporting, sourceFilename, sourceFormat } = useWorkspace();
 
   const utilityButtonSx = {
     minWidth: 0,
@@ -53,7 +54,32 @@ export default function HeaderContent() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    await importOutline(file);
+    await importDocument(file);
+    event.target.value = '';
+  };
+
+  const triggerDownload = (filename, content, mimeType) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleRichFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const payload = await importRichArtifact(file);
+    if (payload) {
+      const baseName = String(file.name || 'pws').replace(/\.[^.]+$/, '') || 'pws';
+      triggerDownload(`${baseName}.rich.md`, payload.rich_markdown || '', 'text/markdown;charset=utf-8');
+      triggerDownload(`${baseName}.rich.json`, JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
+    }
     event.target.value = '';
   };
 
@@ -125,8 +151,21 @@ export default function HeaderContent() {
                 textOverflow: 'ellipsis'
               }}
             >
-              {sourceFilename || 'No file loaded'}
+              {sourceFilename || 'No document loaded'}
             </Typography>
+            {sourceFormat ? (
+              <Typography
+                sx={{
+                  color: 'rgba(100, 116, 139, 0.9)',
+                  fontSize: '0.72rem',
+                  fontWeight: 400,
+                  lineHeight: 1,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {String(sourceFormat).replace(/_/g, ' ')}
+              </Typography>
+            ) : null}
           </Box>
           <Box sx={{ flexGrow: 1 }} />
           <Box
@@ -137,14 +176,15 @@ export default function HeaderContent() {
               height: 22
             }}
           >
-            {isImporting ? <CircularProgress size={18} /> : null}
+            {isImporting || isRichImporting ? <CircularProgress size={18} /> : null}
             <input hidden ref={inputRef} type="file" accept=".pdf,.doc,.docx" onChange={handleFileChange} />
+            <input hidden ref={richInputRef} type="file" accept=".pdf,.doc,.docx,.json" onChange={handleRichFileChange} />
             <Button
               variant="text"
               color="inherit"
               startIcon={<UploadOutlined />}
-              onClick={() => inputRef.current?.click()}
-              disabled={isImporting}
+              onClick={() => richInputRef.current?.click()}
+              disabled={isImporting || isRichImporting}
               sx={{
                 minWidth: 0,
                 px: 1,
@@ -173,7 +213,43 @@ export default function HeaderContent() {
                 }
               }}
             >
-              Start
+              Artifacts
+            </Button>
+            <Button
+              variant="text"
+              color="inherit"
+              startIcon={<UploadOutlined />}
+              onClick={() => inputRef.current?.click()}
+              disabled={isImporting || isRichImporting}
+              sx={{
+                minWidth: 0,
+                px: 1,
+                py: 0,
+                borderRadius: 0,
+                color: 'text.secondary',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                textTransform: 'none',
+                height: 22,
+                minHeight: 22,
+                lineHeight: 1,
+                display: 'inline-flex',
+                alignItems: 'center',
+                '& .MuiButton-startIcon': {
+                  mr: 0.5,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  '& svg': {
+                    fontSize: '0.95rem'
+                  }
+                },
+                '&:hover': {
+                  bgcolor: 'transparent',
+                  color: 'text.primary'
+                }
+              }}
+            >
+              Import
             </Button>
           </Box>
         </Box>

@@ -24,11 +24,21 @@ async function request(url, options = {}) {
 }
 
 export const stormApi = {
-  importOutline(file) {
+  importDocument(file) {
     const formData = new FormData();
     formData.append('file', file, file.name);
 
     return request('/api/outline', {
+      method: 'POST',
+      body: formData
+    });
+  },
+
+  importRichArtifact(file) {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    return request('/api/rich-import', {
       method: 'POST',
       body: formData
     });

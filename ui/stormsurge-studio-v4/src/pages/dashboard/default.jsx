@@ -35,6 +35,12 @@ function getRequirementLabelParts(requirement) {
 }
 
 function formatRequirementBody(requirement) {
+  if (requirement.kind === 'table_text') {
+    return String(requirement.summary || requirement.title || 'Table block').trim();
+  }
+  if (requirement.kind === 'image') {
+    return String(requirement.caption || requirement.text || requirement.summary || requirement.title || 'Image block').trim();
+  }
   const body = String(requirement.text || requirement.summary || requirement.title || '').replace(/\s+/g, ' ').trim();
   return body || 'No requirement text extracted.';
 }
@@ -575,6 +581,7 @@ export default function DashboardDefault() {
   const {
     importError,
     isImporting,
+    importDebug,
     reorderRequirementSiblings,
     reorderSections,
     requirements,
@@ -612,7 +619,7 @@ export default function DashboardDefault() {
       <Stack sx={{ gap: 2, alignItems: 'flex-start' }}>
         {importError ? <Alert severity="error">{importError}</Alert> : null}
         <Typography variant="body2" color="text.secondary">
-          Use the top-right toolbar button to import a PWS outline.
+          Use the top-right toolbar button to import a document.
         </Typography>
       </Stack>
     );
@@ -621,6 +628,12 @@ export default function DashboardDefault() {
   return (
     <Stack sx={{ gap: 1.25 }}>
       {importError ? <Alert severity="error">{importError}</Alert> : null}
+      {!importError && !isImporting && importDebug?.length ? (
+        <Alert severity="info">
+          Loaded {sourceFilename || 'document'} with {importDebug.length} artifact alignment decision
+          {importDebug.length === 1 ? '' : 's'}.
+        </Alert>
+      ) : null}
 
       <Stack
         sx={{

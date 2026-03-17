@@ -1,7 +1,12 @@
 import PropTypes from 'prop-types';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-import { sanitizeImportedText, stripClassificationMarkings, transformOutlineToWorkspace } from 'utils/outline-transform';
+import {
+  sanitizeImportedText,
+  stripClassificationMarkings,
+  stripEmbeddedLineNumberFragments,
+  transformOutlineToWorkspace
+} from 'utils/outline-transform';
 import { getDescendantSectionIds } from 'utils/workspace';
 import { stormApi } from 'services/storm';
 
@@ -182,9 +187,9 @@ function buildSectionFromSection(section) {
 function sanitizeStoredRequirements(requirements) {
   return (Array.isArray(requirements) ? requirements : []).map((requirement) => ({
     ...requirement,
-    text: sanitizeImportedText(requirement.text || ''),
-    summary: sanitizeImportedText(requirement.summary || ''),
-    title: sanitizeImportedText(requirement.title || '')
+    text: stripEmbeddedLineNumberFragments(sanitizeImportedText(requirement.text || '')),
+    summary: stripEmbeddedLineNumberFragments(sanitizeImportedText(requirement.summary || '')),
+    title: stripEmbeddedLineNumberFragments(sanitizeImportedText(requirement.title || ''))
   }));
 }
 
@@ -211,7 +216,10 @@ function loadStoredWorkspace() {
       sections: sanitizeStoredSections(parsed.sections),
       selectedRequirementId: parsed.selectedRequirementId || null,
       selectedSectionId: parsed.selectedSectionId || null,
-      sourceFilename: parsed.sourceFilename || null
+      sourceFilename: parsed.sourceFilename || null,
+      sourceFormat: parsed.sourceFormat || null,
+      projectId: parsed.projectId || null,
+      importDebug: Array.isArray(parsed.importDebug) ? parsed.importDebug : []
     };
   } catch {
     return null;
@@ -225,8 +233,12 @@ export function WorkspaceProvider({ children }) {
   const [selectedSectionId, setSelectedSectionId] = useState(storedWorkspace?.selectedSectionId || null);
   const [selectedRequirementId, setSelectedRequirementId] = useState(storedWorkspace?.selectedRequirementId || null);
   const [sourceFilename, setSourceFilename] = useState(storedWorkspace?.sourceFilename || null);
+  const [sourceFormat, setSourceFormat] = useState(storedWorkspace?.sourceFormat || null);
+  const [projectId, setProjectId] = useState(storedWorkspace?.projectId || null);
+  const [importDebug, setImportDebug] = useState(storedWorkspace?.importDebug || []);
   const [requirementClipboard, setRequirementClipboard] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isRichImporting, setIsRichImporting] = useState(false);
   const [importError, setImportError] = useState(null);
 
   useEffect(() => {
@@ -237,29 +249,49 @@ export function WorkspaceProvider({ children }) {
       sections,
       selectedRequirementId,
       selectedSectionId,
-      sourceFilename
+      sourceFilename,
+      sourceFormat,
+      projectId,
+      importDebug
     };
 
     window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(payload));
-  }, [requirements, sections, selectedRequirementId, selectedSectionId, sourceFilename]);
+  }, [requirements, sections, selectedRequirementId, selectedSectionId, sourceFilename, sourceFormat, projectId, importDebug]);
 
-  const importOutline = async (file) => {
+  const importDocument = async (file) => {
     setIsImporting(true);
     setImportError(null);
 
     try {
-      const payload = await stormApi.importOutline(file);
+      const payload = await stormApi.importDocument(file);
       const workspace = transformOutlineToWorkspace(payload);
 
       setSections(workspace.sections);
       setRequirements(workspace.requirements);
       setSourceFilename(workspace.sourceFilename || file.name);
+      setSourceFormat(workspace.sourceFormat || payload.format || null);
+      setProjectId(workspace.projectId || payload.project_id || null);
+      setImportDebug(workspace.importDebug || payload.alignment_debug || []);
       setSelectedSectionId(workspace.sections[0]?.id || null);
       setSelectedRequirementId(null);
     } catch (error) {
-      setImportError(error instanceof Error ? error.message : 'Outline upload failed');
+      setImportError(error instanceof Error ? error.message : 'Document import failed');
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  const importRichArtifact = async (file) => {
+    setIsRichImporting(true);
+    setImportError(null);
+
+    try {
+      return await stormApi.importRichArtifact(file);
+    } catch (error) {
+      setImportError(error instanceof Error ? error.message : 'Rich import failed');
+      return null;
+    } finally {
+      setIsRichImporting(false);
     }
   };
 
@@ -597,8 +629,12 @@ export function WorkspaceProvider({ children }) {
       demoteRequirementItem,
       hasRequirementClipboard: Boolean(requirementClipboard?.items?.length),
       importError,
-      importOutline,
+      importDebug,
+      importDocument,
+      importRichArtifact,
       isImporting,
+      isRichImporting,
+      projectId,
       pasteAsChildRequirement,
       pasteBelowRequirement,
       promoteRequirementItem,
@@ -612,18 +648,25 @@ export function WorkspaceProvider({ children }) {
       selectedSectionId,
       setSelectedRequirementId,
       setSelectedSectionId,
+      sourceFormat,
       sourceFilename
     }),
     [
       activeSection,
       importError,
+      importDebug,
+      importDocument,
+      importRichArtifact,
       isImporting,
+      isRichImporting,
+      projectId,
       requirementClipboard,
       requirements,
       sections,
       selectedRequirement,
       selectedRequirementId,
       selectedSectionId,
+      sourceFormat,
       sourceFilename
     ]
   );
