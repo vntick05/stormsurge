@@ -1,417 +1,194 @@
 services:
-  postgres:
+  stormstudio-postgres:
     image: postgres:16
-    container_name: stormsurge-postgres
+    container_name: stormstudio-postgres
     restart: unless-stopped
+    networks:
+      - stormstudio_local
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${STORMSTUDIO_POSTGRES_DB:-stormstudio}
+      POSTGRES_USER: ${STORMSTUDIO_POSTGRES_USER:-stormstudio}
+      POSTGRES_PASSWORD: ${STORMSTUDIO_POSTGRES_PASSWORD:-stormstudio}
     ports:
-      - "${POSTGRES_PORT:-5542}:5432"
+      - "${STORMSTUDIO_POSTGRES_PORT:-5432}:5432"
     volumes:
-      - gov_rfp_postgres_data:/var/lib/postgresql/data
+      - /home/admin/stormstudio-data/postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  redis:
-    image: redis:7
-    container_name: stormsurge-redis
-    restart: unless-stopped
-    ports:
-      - "${REDIS_PORT:-6479}:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  minio:
-    image: minio/minio
-    container_name: stormsurge-minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
-    ports:
-      - "${MINIO_PORT:-9100}:9000"
-      - "${MINIO_CONSOLE_PORT:-9101}:9001"
-    volumes:
-      - gov_rfp_minio_data:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD-SHELL", "pg_isready -U ${STORMSTUDIO_POSTGRES_USER:-stormstudio} -d ${STORMSTUDIO_POSTGRES_DB:-stormstudio}"]
       interval: 15s
       timeout: 10s
       retries: 10
 
-  minio-init:
-    image: minio/mc
-    container_name: stormsurge-minio-init
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 ${MINIO_ACCESS_KEY} ${MINIO_SECRET_KEY} &&
-      mc mb -p local/${MINIO_BUCKET_RAW} || true &&
-      mc mb -p local/${MINIO_BUCKET_NORMALIZED} || true &&
-      mc mb -p local/${MINIO_BUCKET_PARSED} || true &&
-      mc mb -p local/${MINIO_BUCKET_CHUNKS} || true &&
-      mc mb -p local/${MINIO_BUCKET_OUTPUTS} || true &&
-      mc mb -p local/${MINIO_BUCKET_IMPORTS} || true
-      "
-    restart: "no"
-
-  qdrant:
-    image: qdrant/qdrant
-    container_name: stormsurge-qdrant
-    restart: unless-stopped
-    ports:
-      - "${QDRANT_PORT:-6433}:6333"
-    volumes:
-      - gov_rfp_qdrant_data:/qdrant/storage
-    healthcheck:
-      test: ["CMD-SHELL", "/usr/bin/bash -lc \"printf 'GET /healthz HTTP/1.1\\r\\nHost: 127.0.0.1\\r\\n\\r\\n' >/dev/tcp/127.0.0.1/6333\""]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-
-  tika:
-    image: apache/tika:3.2.3.0
-    container_name: stormsurge-tika
-    restart: unless-stopped
-    ports:
-      - "${TIKA_PORT:-10098}:9998"
-    healthcheck:
-      test: ["CMD-SHELL", "/usr/bin/bash -lc \"exec 3<>/dev/tcp/127.0.0.1/9998; printf 'GET /tika HTTP/1.1\\r\\nHost: 127.0.0.1\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q 'Apache Tika' <&3\""]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-
-  document-service:
+  stormstudio-doc-cleaner:
     build:
-      context: /home/admin/stormsurge/services/document-service
-    container_name: stormsurge-document-service
+      context: /home/admin/stormstudio-doc-cleaner
+    container_name: stormstudio-doc-cleaner
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-      tika:
-        condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
+    networks:
+      - stormstudio_local
     environment:
-      DOCUMENT_SERVICE_PORT: 8081
-      HF_HOME: /model-cache/huggingface
-      HUGGINGFACE_HUB_CACHE: /model-cache/huggingface/hub
-      XDG_CACHE_HOME: /model-cache/xdg
-      POSTGRES_HOST: ${DOCUMENT_SERVICE_POSTGRES_HOST:-postgres}
-      POSTGRES_PORT: ${DOCUMENT_SERVICE_POSTGRES_PORT:-5432}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      REDIS_URL: ${DOCUMENT_SERVICE_REDIS_URL:-redis://redis:6379/0}
-      MINIO_ENDPOINT: ${DOCUMENT_SERVICE_MINIO_ENDPOINT:-minio:9000}
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_BUCKET_RAW: ${MINIO_BUCKET_RAW}
-      MINIO_BUCKET_PARSED: ${MINIO_BUCKET_PARSED}
-      TIKA_BASE_URL: ${TIKA_BASE_URL:-http://tika:9998}
+      DOC_CLEANER_HOST: 0.0.0.0
+      DOC_CLEANER_PORT: 8081
     ports:
-      - "${DOCUMENT_SERVICE_PORT:-8181}:8081"
+      - "8081:8081"
+    expose:
+      - "8081"
     volumes:
-      - /home/admin/stormsurge/model-cache/document-service:/model-cache
+      - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/healthz', timeout=5)\""]
       interval: 15s
       timeout: 10s
       retries: 10
 
-  normalization-service:
+  stormstudio-uploader:
     build:
-      context: /home/admin/stormsurge/services/normalization-service
-    container_name: stormsurge-normalization-service
+      context: /home/admin/stormstudio-uploader
+    container_name: stormstudio-uploader
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-      document-service:
-        condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
-    environment:
-      NORMALIZATION_SERVICE_PORT: ${NORMALIZATION_SERVICE_PORT:-8191}
-      HF_HOME: /model-cache/huggingface
-      HUGGINGFACE_HUB_CACHE: /model-cache/huggingface/hub
-      XDG_CACHE_HOME: /model-cache/xdg
-      POSTGRES_HOST: ${DOCUMENT_SERVICE_POSTGRES_HOST:-postgres}
-      POSTGRES_PORT: ${DOCUMENT_SERVICE_POSTGRES_PORT:-5432}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      MINIO_ENDPOINT: ${DOCUMENT_SERVICE_MINIO_ENDPOINT:-minio:9000}
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_BUCKET_RAW: ${MINIO_BUCKET_RAW}
-      MINIO_BUCKET_PARSED: ${MINIO_BUCKET_PARSED}
-      MINIO_BUCKET_NORMALIZED: ${MINIO_BUCKET_NORMALIZED}
-      NORMALIZATION_PROVIDER: ${NORMALIZATION_PROVIDER:-docling}
-      PWS_LLM_BASE_URL: ${PWS_LLM_BASE_URL:-http://host.docker.internal:8355/v1}
-      PWS_LLM_MODEL: ${PWS_LLM_MODEL:-openai/gpt-oss-120b}
-      PWS_LLM_PROMPT_VERSION: ${PWS_LLM_PROMPT_VERSION:-pws_req_v1}
+    networks:
+      - stormstudio_local
     ports:
-      - "${NORMALIZATION_SERVICE_PORT:-8191}:8091"
-    extra_hosts:
-      - host.docker.internal=host-gateway
+      - "3216:3216"
     volumes:
-      - /home/admin/stormsurge/model-cache/normalization-service:/model-cache
+      - /home/admin/uploads/stormstudio-assets:/home/admin/uploads/stormstudio-assets
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/healthz', timeout=5)\""]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:3216/', timeout=5)\""]
       interval: 15s
       timeout: 10s
       retries: 10
 
-  retrieval-service:
+  stormstudio-openwebui-gateway:
     build:
-      context: /home/admin/stormsurge/services/retrieval-service
-    container_name: stormsurge-retrieval-service
+      context: /home/admin/stormsurge/ui/StormStudio/services/stormstudio-openwebui-gateway
+    container_name: stormstudio-openwebui-gateway
     restart: unless-stopped
+    networks:
+      - stormstudio_local
+    environment:
+      PROJECTS_ROOT: ${STORMSTUDIO_OPENWEBUI_PROJECTS_ROOT:-/stormstudio-openwebui-projects}
+      UPSTREAM_BASE_URL: ${STORMSTUDIO_OPENWEBUI_UPSTREAM_URL:-http://host.docker.internal:8360}
+      GATEWAY_HOST: 0.0.0.0
+      GATEWAY_PORT: 8361
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8361:8361"
+    volumes:
+      - /home/admin/stormstudio-data/openwebui-projects:/stormstudio-openwebui-projects
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8361/health', timeout=3).read()\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  stormstudio-open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: stormstudio-open-webui
+    restart: unless-stopped
+    networks:
+      - stormstudio_local
     depends_on:
-      postgres:
+      stormstudio-openwebui-gateway:
         condition: service_healthy
-      qdrant:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      WEBUI_URL: ${WEBUI_URL:-http://localhost:${STORMSTUDIO_OPENWEBUI_PORT:-3000}}
+      ENABLE_OPENAI_API: "True"
+      OPENAI_API_BASE_URL: http://stormstudio-openwebui-gateway:8361/v1
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-stormstudio-openwebui}
+      ENABLE_OLLAMA_API: "False"
+    ports:
+      - "${STORMSTUDIO_OPENWEBUI_PORT:-3000}:8080"
+    volumes:
+      - /home/admin/stormstudio-data/open-webui:/app/backend/data
+
+  stormstudio-ui:
+    build:
+      context: /home/admin/stormsurge/ui/StormStudio
+    container_name: stormstudio-ui
+    restart: unless-stopped
+    networks:
+      - stormstudio_local
+    depends_on:
+      stormstudio-postgres:
         condition: service_healthy
-      document-service:
+      stormstudio-doc-cleaner:
         condition: service_healthy
-      normalization-service:
+      stormstudio-uploader:
+        condition: service_healthy
+      stormstudio-openwebui-gateway:
         condition: service_healthy
     environment:
-      RETRIEVAL_SERVICE_PORT: ${RETRIEVAL_SERVICE_PORT:-8481}
-      HF_HOME: /model-cache/huggingface
-      HUGGINGFACE_HUB_CACHE: /model-cache/huggingface/hub
-      XDG_CACHE_HOME: /model-cache/xdg
-      POSTGRES_HOST: ${DOCUMENT_SERVICE_POSTGRES_HOST:-postgres}
-      POSTGRES_PORT: ${DOCUMENT_SERVICE_POSTGRES_PORT:-5432}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      QDRANT_URL: ${RETRIEVAL_QDRANT_URL:-http://qdrant:6333}
-      QDRANT_COLLECTION: ${RETRIEVAL_QDRANT_COLLECTION:-stormsurge_chunks_structured}
-      DOCUMENT_SERVICE_BASE_URL: ${RETRIEVAL_DOCUMENT_SERVICE_BASE_URL:-http://document-service:8081}
-      NORMALIZATION_SERVICE_BASE_URL: ${RETRIEVAL_NORMALIZATION_SERVICE_BASE_URL:-http://normalization-service:8091}
-      DEFAULT_DATA_ROOT: ${RETRIEVAL_DEFAULT_DATA_ROOT:-/opt/perfect-rfp/data/rfps}
-      EMBEDDING_PROVIDER: ${RETRIEVAL_EMBEDDING_PROVIDER:-fastembed}
-      EMBEDDING_MODEL: ${RETRIEVAL_EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
-      EMBEDDINGS_BASE_URL: ${RETRIEVAL_EMBEDDINGS_BASE_URL:-}
-      EMBEDDINGS_API_KEY: ${RETRIEVAL_EMBEDDINGS_API_KEY:-}
-      CHUNK_SIZE_WORDS: ${RETRIEVAL_CHUNK_SIZE_WORDS:-220}
-      CHUNK_OVERLAP_WORDS: ${RETRIEVAL_CHUNK_OVERLAP_WORDS:-40}
-      DEFAULT_TOP_K: ${RETRIEVAL_DEFAULT_TOP_K:-5}
+      NODE_ENV: production
+      PORT: 3006
+      HOSTNAME: 0.0.0.0
+      DOC_CLEANER_URL: ${STORMSTUDIO_DOC_CLEANER_URL:-http://stormstudio-doc-cleaner:8081}
+      STORMSTUDIO_INGEST_URL: ${STORMSTUDIO_INGEST_URL:-http://host.docker.internal:8090}
+      STORMSTUDIO_ASSET_BASE_URL: ${STORMSTUDIO_ASSET_BASE_URL:-http://stormstudio-uploader:3216}
+      STORMSTUDIO_ALLOWED_DEV_ORIGINS: ${STORMSTUDIO_ALLOWED_DEV_ORIGINS:-localhost,127.0.0.1}
+      STORMSTUDIO_DATABASE_URL: ${STORMSTUDIO_DATABASE_URL:-postgres://stormstudio:stormstudio@stormstudio-postgres:5432/stormstudio}
+      DATABASE_URL: ${DATABASE_URL:-postgres://stormstudio:stormstudio@stormstudio-postgres:5432/stormstudio}
+      STORMSTUDIO_OPENWEBUI_PROJECTS_ROOT: ${STORMSTUDIO_OPENWEBUI_PROJECTS_ROOT:-/stormstudio-openwebui-projects}
+      STORMSTUDIO_REQUIREMENTS_AGENT_URL: ${STORMSTUDIO_REQUIREMENTS_AGENT_URL:-http://stormstudio-requirements-agent:8092}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
-      - "${RETRIEVAL_SERVICE_PORT:-8481}:8381"
+      - "${STORMSTUDIO_PORT:-3006}:3006"
     volumes:
-      - /home/admin/stormsurge/data:/opt/perfect-rfp/data:ro
-      - /home/admin/stormsurge/model-cache/retrieval-service:/model-cache
+      - /home/admin/stormstudio-data:/home/admin/stormstudio-data
+      - /home/admin/stormstudio-data/openwebui-projects:/stormstudio-openwebui-projects
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8381/healthz', timeout=5)\""]
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3006/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
       interval: 15s
       timeout: 10s
       retries: 10
 
-  analysis-service:
+  stormstudio-ui-dev:
     build:
-      context: /home/admin/stormsurge/services/analysis-service
-    container_name: stormsurge-analysis-service
+      context: /home/admin/stormsurge/ui/StormStudio
+      target: dev
+    container_name: stormstudio-ui-dev
     restart: unless-stopped
+    networks:
+      - stormstudio_local
     depends_on:
-      retrieval-service:
+      stormstudio-postgres:
         condition: service_healthy
-      normalization-service:
+      stormstudio-doc-cleaner:
         condition: service_healthy
-    environment:
-      ANALYSIS_SERVICE_PORT: ${ANALYSIS_SERVICE_PORT:-8192}
-      ANALYSIS_NORMALIZATION_SERVICE_BASE_URL: ${ANALYSIS_NORMALIZATION_SERVICE_BASE_URL:-http://normalization-service:8091}
-      ANALYSIS_RETRIEVAL_SERVICE_BASE_URL: ${ANALYSIS_RETRIEVAL_SERVICE_BASE_URL:-http://retrieval-service:8381}
-      ANALYSIS_LLM_BASE_URL: ${ANALYSIS_LLM_BASE_URL:-http://host.docker.internal:8460/v1}
-      ANALYSIS_LLM_MODEL: ${ANALYSIS_LLM_MODEL:-}
-      ANALYSIS_SUMMARY_TOP_K_PER_QUERY: ${ANALYSIS_SUMMARY_TOP_K_PER_QUERY:-6}
-      ANALYSIS_SUMMARY_MAX_MATCHES: ${ANALYSIS_SUMMARY_MAX_MATCHES:-30}
-      ANALYSIS_SUMMARY_TEMPERATURE: ${ANALYSIS_SUMMARY_TEMPERATURE:-0.2}
-    extra_hosts:
-      - host.docker.internal=host-gateway
-    ports:
-      - "${ANALYSIS_SERVICE_PORT:-8192}:8092"
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8092/healthz', timeout=5)\""]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-
-  pws-structuring-service:
-    build:
-      context: /home/admin/stormsurge/services/pws-structuring-service
-    container_name: stormsurge-pws-structuring-service
-    restart: unless-stopped
-    depends_on:
-      normalization-service:
+      stormstudio-uploader:
         condition: service_healthy
-      retrieval-service:
-        condition: service_healthy
-      api:
-        condition: service_started
-    environment:
-      DOCUMENT_SERVICE_BASE_URL: ${PWS_DOCUMENT_SERVICE_BASE_URL:-http://document-service:8081}
-      NORMALIZATION_SERVICE_BASE_URL: ${PWS_NORMALIZATION_SERVICE_BASE_URL:-http://normalization-service:8091}
-      RETRIEVAL_SERVICE_BASE_URL: ${PWS_RETRIEVAL_SERVICE_BASE_URL:-http://retrieval-service:8381}
-      API_GATEWAY_BASE_URL: ${PWS_API_GATEWAY_BASE_URL:-http://host.docker.internal:8460}
-      PWS_WORKSPACE_STORAGE_DIR: /workspace-outputs
-      HF_HOME: /model-cache/huggingface
-      HUGGINGFACE_HUB_CACHE: /model-cache/huggingface/hub
-      XDG_CACHE_HOME: /model-cache/xdg
-    extra_hosts:
-      - host.docker.internal=host-gateway
-    volumes:
-      - /home/admin/stormsurge/outputs/pws-workspaces:/workspace-outputs
-      - /home/admin/stormsurge/model-cache/pws-structuring-service:/model-cache
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8193/healthz', timeout=5)\""]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-
-  api:
-    build:
-      context: /home/admin/stormsurge/gateway
-    container_name: stormsurge-api
-    restart: unless-stopped
-    network_mode: host
-    volumes:
-      - /home/admin/stormsurge/data:/opt/perfect-rfp/data:ro
-    environment:
-      API_PORT: ${API_PORT:-8460}
-      TRTLLM_BASE_URL: ${TRTLLM_BASE_URL:-http://127.0.0.1:8355}
-      RETRIEVAL_SERVICE_BASE_URL: ${RETRIEVAL_SERVICE_BASE_URL:-http://127.0.0.1:8481}
-      PROJECTS_ROOT: ${PROJECTS_ROOT:-/opt/perfect-rfp/data/rfps}
-      PROJECT_CHAT_TOP_K: ${PROJECT_CHAT_TOP_K:-8}
-      PROJECT_CHAT_CONTEXT_CHARS: ${PROJECT_CHAT_CONTEXT_CHARS:-900}
-
-  open-webui:
-    image: ${OPEN_WEBUI_IMAGE:-ghcr.io/open-webui/open-webui:main}
-    container_name: stormsurge-open-webui
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_started
-    ports:
-      - "${OPEN_WEBUI_PORT:-3100}:8080"
-    extra_hosts:
-      - host.docker.internal:host-gateway
-    environment:
-      WEBUI_URL: ${WEBUI_URL:-http://localhost:3100}
-      ENABLE_OPENAI_API: ${ENABLE_OPENAI_API:-True}
-      OPENAI_API_BASE_URL: ${OPENAI_API_BASE_URL:-http://host.docker.internal:8460/v1}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-local-openwebui}
-      ENABLE_OLLAMA_API: ${ENABLE_OLLAMA_API:-False}
-    volumes:
-      - /home/admin/stormsurge/open-webui-data:/app/backend/data
-
-  stormsurge-studio-v1:
-    build:
-      context: /home/admin/stormsurge/ui/stormsurge-studio
-    container_name: stormsurge-studio-v1
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_started
-      normalization-service:
-        condition: service_healthy
-      pws-structuring-service:
-        condition: service_healthy
-      retrieval-service:
+      stormstudio-openwebui-gateway:
         condition: service_healthy
     environment:
       NODE_ENV: development
-      PORT: 3000
+      PORT: 3007
       HOSTNAME: 0.0.0.0
-      WATCHPACK_POLLING: "true"
-      PWS_STRUCTURING_SERVICE_URL: http://pws-structuring-service:8193
-    command: ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]
+      DOC_CLEANER_URL: ${STORMSTUDIO_DOC_CLEANER_URL:-http://stormstudio-doc-cleaner:8081}
+      STORMSTUDIO_INGEST_URL: ${STORMSTUDIO_INGEST_URL:-http://host.docker.internal:8090}
+      STORMSTUDIO_ASSET_BASE_URL: ${STORMSTUDIO_ASSET_BASE_URL:-http://stormstudio-uploader:3216}
+      STORMSTUDIO_ALLOWED_DEV_ORIGINS: ${STORMSTUDIO_ALLOWED_DEV_ORIGINS:-localhost,127.0.0.1}
+      STORMSTUDIO_DATABASE_URL: ${STORMSTUDIO_DATABASE_URL:-postgres://stormstudio:stormstudio@stormstudio-postgres:5432/stormstudio}
+      DATABASE_URL: ${DATABASE_URL:-postgres://stormstudio:stormstudio@stormstudio-postgres:5432/stormstudio}
+      STORMSTUDIO_OPENWEBUI_PROJECTS_ROOT: ${STORMSTUDIO_OPENWEBUI_PROJECTS_ROOT:-/stormstudio-openwebui-projects}
+      STORMSTUDIO_REQUIREMENTS_AGENT_URL: ${STORMSTUDIO_REQUIREMENTS_AGENT_URL:-http://stormstudio-requirements-agent:8092}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
-      - "${WORKBENCH_PORT:-3200}:3000"
+      - "3007:3007"
     volumes:
-      - /home/admin/stormsurge/ui/stormsurge-studio:/app
+      - /home/admin/stormsurge/ui/StormStudio:/app
       - /app/node_modules
-      - /app/.next
+      - /home/admin/stormstudio-data/openwebui-projects:/stormstudio-openwebui-projects
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3007/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 15s
+      timeout: 10s
+      retries: 10
 
-  stormsurge-studio-v2:
-    build:
-      context: /home/admin/stormsurge/ui/stormsurge-studio-v2
-    container_name: stormsurge-studio-v2
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_started
-      normalization-service:
-        condition: service_healthy
-      pws-structuring-service:
-        condition: service_healthy
-      retrieval-service:
-        condition: service_healthy
-    environment:
-      NODE_ENV: development
-      PORT: 3000
-      HOSTNAME: 0.0.0.0
-      WATCHPACK_POLLING: "true"
-      PWS_STRUCTURING_SERVICE_URL: http://pws-structuring-service:8193
-    command: ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]
-    ports:
-      - "${WORKBENCH_V2_PORT:-3201}:3000"
-    volumes:
-      - /home/admin/stormsurge/ui/stormsurge-studio-v2:/app
-      - /app/node_modules
-      - /app/.next
-
-  stormsurge-studio-v3:
-    build:
-      context: /home/admin/stormsurge/ui/stormsurge-studio-v3
-    container_name: stormsurge-studio-v3
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_started
-      normalization-service:
-        condition: service_healthy
-      pws-structuring-service:
-        condition: service_healthy
-      retrieval-service:
-        condition: service_healthy
-    environment:
-      NODE_ENV: development
-      PORT: 3000
-      HOSTNAME: 0.0.0.0
-      WATCHPACK_POLLING: "true"
-    command: ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]
-    ports:
-      - "${WORKBENCH_V3_PORT:-3202}:3000"
-    volumes:
-      - /home/admin/stormsurge/ui/stormsurge-studio-v3:/app
-      - /app/node_modules
-      - /app/.next
-
-volumes:
-  gov_rfp_postgres_data:
-    name: stormsurge_postgres_data
-  gov_rfp_qdrant_data:
-    name: stormsurge_qdrant_data
-  gov_rfp_minio_data:
-    name: stormsurge_minio_data
+networks:
+  stormstudio_local:
+    name: stormstudio_local
+    driver: bridge
